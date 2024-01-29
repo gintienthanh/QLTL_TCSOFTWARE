@@ -45,9 +45,9 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     
     
-    'Auth',
+    
     'Fileprocessor',    
-    'Docmanager'
+    'Docmanager',
     
     
 ]
