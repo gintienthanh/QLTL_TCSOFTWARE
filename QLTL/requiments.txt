@@ -1,7 +1,5 @@
 Django==5.0.1
-<<<<<<< HEAD
 djangorestframework==3.14.0
 psycopg2==2.9.9
-=======
-djangorestframework==3.14.0
->>>>>>> 13e9f8fa6cbc695ef6c808a3e6ffba84761ba032
+
+
