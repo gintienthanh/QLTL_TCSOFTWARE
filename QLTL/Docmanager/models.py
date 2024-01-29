@@ -1,5 +1,6 @@
-from django.db import models
 from django.contrib.auth.models import User
+from django.db import models
+
 # Create your models here.
 class Base(models.Models):
     base_id = models.AutoField(primary_key=True)
@@ -17,20 +18,18 @@ class Choices_frame(models.TextChoices):
     finished = 'Hoàn thành'
     fail = 'Thất bại'
 
-
-class Warehouse(Base):
-    warehouse_id = models.AutoField(primary_key=True)
+class Warehouse(models.Model):
     name = models.CharField(max_length = 255, null = True, blank = True)
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     warehouse_code = models.CharField(max_length = 255, null = True, blank = True)
+    base = models.ForeignKey(Base,on_delete=models.SET_NULL)
 
-class Shelf(Base):
-    shelf_id = models.AutoField(primary_key=True)
+class Shelf(models.Model):
     name = models.CharField(max_length = 255, null = True, blank = True)
     warehouse_id = models.ForeignKey(Warehouse,on_delete=models.CASCADE, null=True, blank=True)
+    base = models.ForeignKey(Base,on_delete=models.SET_NULL)
 
-class BoxCase(Base):
-    box_case_id = models.AutoField(primary_key=True)
+class BoxCase(models.Model):
     description = models.CharField(max_length = 255)
     name = models.CharField(max_length = 255, null = True, blank = True)
     warehouse_id = models.ForeignKey(Warehouse,on_delete=models.CASCADE, null=True, blank=True)
