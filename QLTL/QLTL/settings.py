@@ -38,11 +38,8 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    
-    
-    'Auth',
     'Fileprocessor',    
-    'Docmanager'
+    'Docmanager',
     
     
 ]
