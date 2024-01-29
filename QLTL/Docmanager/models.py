@@ -4,20 +4,30 @@ from django.utils import timezone
 from django.core.validators import RegexValidator
 
 # Create your models here.
+class Base(models.Models):
+    base_id = models.AutoField(primary_key=True)
+    is_visibale = models.BooleanField(default=True)
+    is_delete = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
 class Warehouse(models.Model):
     name = models.CharField(max_length = 255, null = True, blank = True)
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     warehouse_code = models.CharField(max_length = 255, null = True, blank = True)
+    base = models.ForeignKey(Base,on_delete=models.SET_NULL)
 
 class Shelf(models.Model):
     name = models.CharField(max_length = 255, null = True, blank = True)
     warehouse_id = models.ForeignKey(Warehouse,on_delete=models.CASCADE, null=True, blank=True)
+    base = models.ForeignKey(Base,on_delete=models.SET_NULL)
 
 class BoxCase(models.Model):
     description = models.CharField(max_length = 255)
     name = models.CharField(max_length = 255, null = True, blank = True)
     warehouse_id = models.ForeignKey(Warehouse,on_delete=models.CASCADE, null=True, blank=True)
     shelf_code = models.CharField(max_length = 255, null = True, blank = True)
+    base = models.ForeignKey(Base,on_delete=models.SET_NULL)
 
 
 class Folder(models.Model):
@@ -28,6 +38,7 @@ class Folder(models.Model):
     warehouse_id = models.ForeignKey(Warehouse,on_delete=models.CASCADE, null=True, blank=True)
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     path = models.CharField(max_length = 255, null = True, blank = True)
+    base = models.ForeignKey(Base,on_delete=models.SET_NULL)
 
 
 class Document(models.Model):
@@ -56,6 +67,7 @@ class Document(models.Model):
     files = models.FileField(null = True, blank = True)
     info_additional = models.CharField(max_length = 255, null = True, blank = True)
     user = models.ForeignKey(User, on_delete=models.CASCADE)
+    base = models.ForeignKey(Base,on_delete=models.SET_NULL)
 
 class Portfolio(models.Model):
     MODE_CHOICES = [
@@ -83,10 +95,12 @@ class Portfolio(models.Model):
     start_date = models.DateTimeField(default = timezone.datetime.now())
     end_date = models.DateTimeField(default = timezone.datetime.now())
     user = models.ForeignKey(User, on_delete=models.CASCADE)
+    base = models.ForeignKey(Base,on_delete=models.SET_NULL)
 
 
 class watchlist(models.Model):
     document_id = models.ForeignKey(Document, on_delete=models.CASCADE)
     folder = models.ForeignKey(Folder, on_delete=models.CASCADE)
     user = models.ForeignKey(User, on_delete=models.CASCADE)
+    base = models.ForeignKey(Base,on_delete=models.SET_NULL)
     
