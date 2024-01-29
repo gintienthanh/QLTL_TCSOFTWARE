@@ -1,5 +1,5 @@
 from django.db import models
-
+from django.contrib.auth.models import User
 # Create your models here.
 class Base(models.Models):
     base_id = models.AutoField(primary_key=True)
@@ -9,6 +9,10 @@ class Base(models.Models):
     updated_at = models.DateTimeField(auto_now=True)
     
 class Choices_status(models.TextChoices):
+    wait = 'Chờ duyệt'
+    finished = 'Hoàn thành'
+    fail = 'Thất bại'
+class Choices_frame(models.TextChoices):
     wait = 'Chờ duyệt'
     finished = 'Hoàn thành'
     fail = 'Thất bại'
@@ -39,7 +43,7 @@ class Portfolios(Base):
     identification_code = models.CharField(max_length=200)
     classification_id = models.CharField(max_length=200)
     retention_period = models.DateField(null=True, blank=True)
-    usage_policy = models.CharField(max_length=200, choices = Choices_policy)
+    usage_policy = models.CharField(max_length=200, )
     start_date = models.DateField(null=True, blank=True)
     end_date = models.DateField(null=True, blank=True)
     physical_condition = models.CharField(max_length=200)
@@ -49,17 +53,28 @@ class Portfolios(Base):
     barcode = models.CharField(max_length=200)
     status = models.CharField(max_length=100, choices = Choices_status)
     
+
+
+class Folders(Base):
+    folder_id = models.AutoField(primary_key=True)
+    name = models.CharField(max_length=200)
+    box_case_id = models.ForeignKey(BoxCase,  on_delete=models.CASCADE)
+    shelf_id = models.ForeignKey(Shelf,  on_delete=models.CASCADE)
+    user_id = models.ForeignKey(User,  on_delete=models.CASCADE)
+    name = models.CharField(max_length=200)
+
 class Documents(Base):
     document_id = models.AutoField(primary_key=True)
     name = models.CharField(max_length=200)
     box_case_id = models.ForeignKey(BoxCase,  on_delete=models.CASCADE)
     path = models.CharField(max_length=200)
     folder_id = models.ForeignKey(Folders, on_delete=models.CASCADE)
+    portfolio_id = models.ForeignKey(Portfolios, on_delete=models.CASCADE)
     border_frame = models.CharField(max_length=200, choises = Choices_frame)
     color = models.CharField(max_length=200)
-    usage_mode = models.CharField(max_length=200, choices = Choices_usage)
+    usage_mode = models.CharField(max_length=200)
     storage_code = models.CharField(max_length=100)
-    document_expiration = models.CharField(max_length=200, choices = Choices_expiration)
+    document_expiration = models.CharField(max_length=200)
     image_title = models.CharField(max_length=200)
     date = models.DateField(null = True, blank = True)
     physical_status = models.CharField(max_length=200)
@@ -67,4 +82,12 @@ class Documents(Base):
     files = models.FileField(upload_to='files/')
     add_info = models.JSONField(null=True, blank=True)
     username = models.ForeignKey(User, on_delete=models.CASCADE)
-
+    
+    
+class Watchlist(Base):
+    
+    watchlist_id = models.AutoField(primary_key=True)
+    folder_id = models.ForeignKey(Folders, on_delete=models.CASCADE)
+    document_id = models.ForeignKey(Documents, on_delete=models.CASCADE)
+    user_id = models.ForeignKey(User, on_delete=models.CASCADE)
+    
