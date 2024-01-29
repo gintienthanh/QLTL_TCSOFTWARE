@@ -1,4 +1,5 @@
 from django.db import models
+from django.contrib.auth.models import User
 
 # Create your models here.
 
@@ -43,7 +44,7 @@ class BoxCase(models.Model):
 class Folder(models.Model):
     UniqueID = models.AutoField(primary_key=True)
     name = models.CharField(max_length=200)
-    folder_id = models.ForeignKey(Folder, on_delete=models.CASCADE)
+    # folder_id = models.ForeignKey(Folder, on_delete=models.CASCADE)
     box_case_id = models.ForeignKey(BoxCase,  on_delete=models.CASCADE)
     shelf_id = models.ForeignKey(Shelf, on_delete=models.CASCADE)
     warehouse_id = models.ForeignKey(WareHouse, on_delete=models.CASCADE)
@@ -69,7 +70,8 @@ class Portfolio(models.Model):
 class Document(models.Model):
     UniqueID = models.AutoField(primary_key=True)
     name = models.CharField(max_length=200)
-    box_case_id = models.ForeignKey(BoxCase,  on_delete=models.CASCADE)
+    portfolio_id = models.ForeignKey(Portfolio, blank=True, null=True, on_delete=models.CASCADE) 
+    box_case_id = models.ForeignKey(BoxCase, on_delete=models.CASCADE)
     path = models.CharField(max_length=200)
     folder_id = models.ForeignKey(Folder, on_delete=models.CASCADE)
     border_frame = models.CharField(max_length=200, choices = Choices_frame )
