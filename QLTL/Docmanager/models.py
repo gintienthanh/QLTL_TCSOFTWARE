@@ -2,7 +2,7 @@ from django.contrib.auth.models import User
 from django.db import models
 
 # Create your models here.
-class Base(models.Models):
+class Base(models.Model):
     base_id = models.AutoField(primary_key=True)
     is_visibale = models.BooleanField(default=True)
     is_delete = models.BooleanField(default=False)
@@ -13,28 +13,32 @@ class Choices_status(models.TextChoices):
     wait = 'Chờ duyệt'
     finished = 'Hoàn thành'
     fail = 'Thất bại'
+    
+    
 class Choices_frame(models.TextChoices):
-    wait = 'Chờ duyệt'
-    finished = 'Hoàn thành'
-    fail = 'Thất bại'
+    img = 'hình ảnh'
+    txt = 'văn bản'
+    page = 'khung biên trang'
 
-class Warehouse(models.Model):
+class Warehouse(Base):
+    warehouse_id = models.AutoField(primary_key=True)
     name = models.CharField(max_length = 255, null = True, blank = True)
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     warehouse_code = models.CharField(max_length = 255, null = True, blank = True)
-    base = models.ForeignKey(Base,on_delete=models.SET_NULL)
+   
 
-class Shelf(models.Model):
-    name = models.CharField(max_length = 255, null = True, blank = True)
-    warehouse_id = models.ForeignKey(Warehouse,on_delete=models.CASCADE, null=True, blank=True)
-    base = models.ForeignKey(Base,on_delete=models.SET_NULL)
-
-class BoxCase(models.Model):
-    description = models.CharField(max_length = 255)
+class Shelf(Base):
+    shelf_id = models.AutoField(primary_key=True)
     name = models.CharField(max_length = 255, null = True, blank = True)
     warehouse_id = models.ForeignKey(Warehouse,on_delete=models.CASCADE, null=True, blank=True)
     shelf_code = models.CharField(max_length = 255, null = True, blank = True)   
     
+class BoxCase(Base):
+    box_case_id = models.AutoField(primary_key=True)
+    description = models.CharField(max_length = 255)
+    name = models.CharField(max_length = 255, null = True, blank = True)
+    warehouse_id = models.ForeignKey(Warehouse,on_delete=models.CASCADE, null=True, blank=True)
+   
     
 class Portfolios(Base):
     portfolio_id = models.AutoField(primary_key=True)
@@ -69,7 +73,7 @@ class Documents(Base):
     path = models.CharField(max_length=200)
     folder_id = models.ForeignKey(Folders, on_delete=models.CASCADE)
     portfolio_id = models.ForeignKey(Portfolios, on_delete=models.CASCADE)
-    border_frame = models.CharField(max_length=200, choises = Choices_frame)
+    border_frame = models.CharField(max_length=200, choices = Choices_frame)
     color = models.CharField(max_length=200)
     usage_mode = models.CharField(max_length=200)
     storage_code = models.CharField(max_length=100)
