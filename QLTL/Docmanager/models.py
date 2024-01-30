@@ -4,44 +4,44 @@ from django.utils import timezone
 from django.core.validators import RegexValidator
 
 # Create your models here.
-class Base(models.Models):
+class Base(models.Model):
     base_id = models.AutoField(primary_key=True)
     is_visibale = models.BooleanField(default=True)
     is_delete = models.BooleanField(default=False)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
+    created_at = models.DateTimeField(default = timezone.datetime.now())
+    updated_at = models.DateTimeField(default = timezone.datetime.now())
 
-class Warehouse(models.Model):
+class Warehouse(Base):
+    warehouse_id = models.AutoField(primary_key=True)
     name = models.CharField(max_length = 255, null = True, blank = True)
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     warehouse_code = models.CharField(max_length = 255, null = True, blank = True)
-    base = models.ForeignKey(Base,on_delete=models.SET_NULL)
 
-class Shelf(models.Model):
+class Shelf(Base):
+    shelf_id = models.AutoField(primary_key=True)
     name = models.CharField(max_length = 255, null = True, blank = True)
-    warehouse_id = models.ForeignKey(Warehouse,on_delete=models.CASCADE, null=True, blank=True)
-    base = models.ForeignKey(Base,on_delete=models.SET_NULL)
+    warehouse_id = models.ForeignKey(Warehouse,related_name='shelf_warehouse',on_delete=models.CASCADE, null=True, blank=True)
 
-class BoxCase(models.Model):
+class BoxCase(Base):
+    boxcase_id = models.AutoField(primary_key=True)
     description = models.CharField(max_length = 255)
     name = models.CharField(max_length = 255, null = True, blank = True)
-    warehouse_id = models.ForeignKey(Warehouse,on_delete=models.CASCADE, null=True, blank=True)
+    warehouse_id = models.ForeignKey(Warehouse,related_name='boxcase_warehouse',on_delete=models.CASCADE, null=True, blank=True)
     shelf_code = models.CharField(max_length = 255, null = True, blank = True)
-    base = models.ForeignKey(Base,on_delete=models.SET_NULL)
 
 
-class Folder(models.Model):
-    name = models.CharField()
-    folder_id = models.ForeignKey('self',on_delete=models.CASCADE, null=True, blank=True)
-    boxcase = models.ForeignKey(BoxCase,on_delete=models.CASCADE, null=True, blank=True)
-    shelf_id = models.ForeignKey(Shelf,on_delete=models.CASCADE, null=True, blank=True)
-    warehouse_id = models.ForeignKey(Warehouse,on_delete=models.CASCADE, null=True, blank=True)
+class Folder(Base):
+    folder_id = models.AutoField(primary_key=True)
+    name = models.CharField(max_length = 255, null = True, blank = True)
+    child_folder = models.ForeignKey('self',related_name='folders',on_delete=models.CASCADE, null=True, blank=True)
+    boxcase_id = models.ForeignKey(BoxCase,related_name='folder_boxcase',on_delete=models.CASCADE, null=True, blank=True)
+    shelf_id = models.ForeignKey(Shelf,related_name='folder_shelf',on_delete=models.CASCADE, null=True, blank=True)
+    warehouse_id = models.ForeignKey(Warehouse,related_name='folder_warehouse',on_delete=models.CASCADE, null=True, blank=True)
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     path = models.CharField(max_length = 255, null = True, blank = True)
-    base = models.ForeignKey(Base,on_delete=models.SET_NULL)
 
 
-class Document(models.Model):
+class Document(Base):
     MODE_CHOICES = [
         ('A', 'A'),
         ('B', 'B'),
@@ -52,24 +52,29 @@ class Document(models.Model):
         ('B', 'B'),
         ('C', 'C'),
     ]
+    DOCUMENT_EXPIRATION_CHOICES = [
+        ('A', 'A'),
+        ('B', 'B'),
+        ('C', 'C'),
+    ]
+    document_id = models.AutoField(primary_key=True)
     name = models.CharField(max_length = 255, null = True, blank = True)
     path = models.CharField(max_length = 255, null = True, blank = True)
-    folder_id = models.ForeignKey(Folder,on_delete = models.CASCADE)
-    border_frame = models.CharField(choices=MODE_CHOICES)
+    folder_id = models.ForeignKey(Folder,related_name='document_folder',on_delete = models.CASCADE)
+    border_frame = models.CharField(choices=BORDER_FRAME_CHOICES)
     color = models.CharField(max_length = 10, null = True, blank = True)
     usage_mode = models.CharField(choices=MODE_CHOICES)
     storage_code = models.CharField(max_length = 255, null = True, blank = True)
-    document_expiration = models.DateTimeField(default= timezone.datetime.now())
+    document_expiration = models.CharField(choices=DOCUMENT_EXPIRATION_CHOICES)
     images_title = models.CharField(max_length = 255, null = True, blank = True)
     date = models.DateTimeField(default= timezone.datetime.now())
     physical_status = models.CharField(max_length = 255, null = True, blank = True)
     note = models.CharField(max_length = 255, null = True, blank = True)
     files = models.FileField(null = True, blank = True)
-    info_additional = models.CharField(max_length = 255, null = True, blank = True)
+    info_additional = models.JSONField(blank=True,null=True,default=dict,editable=True,)
     user = models.ForeignKey(User, on_delete=models.CASCADE)
-    base = models.ForeignKey(Base,on_delete=models.SET_NULL)
 
-class Portfolio(models.Model):
+class Portfolio(Base):
     MODE_CHOICES = [
         ('A', 'A'),
         ('B', 'B'),
@@ -80,13 +85,13 @@ class Portfolio(models.Model):
         ('B', 'Hoàn Thành'),
         ('C', 'Thất Bại'),
     ]
-
+    portfolio_id = models.AutoField(primary_key=True)
     title = models.CharField(max_length = 255, null = True, blank = True)
     identification_code = models.CharField(max_length = 255, null = True, blank = True)
     classification_id = models.CharField(max_length = 255, null = True, blank = True)
     retention_period = models.CharField(max_length = 255, null = True, blank = True)
     usage_mode = models.CharField(choices=MODE_CHOICES)
-    box_case_id = models.ForeignKey(BoxCase,on_delete = models.CASCADE)
+    box_case_id = models.ForeignKey(BoxCase,related_name='portfolio_boxcase',on_delete = models.CASCADE)
     physical_condition = models.CharField(max_length = 255, null = True, blank = True)
     key_word = models.CharField(max_length = 255, null = True, blank = True)
     annotation = models.CharField(max_length = 255, null = True, blank = True)
@@ -95,12 +100,11 @@ class Portfolio(models.Model):
     start_date = models.DateTimeField(default = timezone.datetime.now())
     end_date = models.DateTimeField(default = timezone.datetime.now())
     user = models.ForeignKey(User, on_delete=models.CASCADE)
-    base = models.ForeignKey(Base,on_delete=models.SET_NULL)
 
 
-class watchlist(models.Model):
-    document_id = models.ForeignKey(Document, on_delete=models.CASCADE)
-    folder = models.ForeignKey(Folder, on_delete=models.CASCADE)
+class Watchlist(Base):
+    watchlist_id = models.AutoField(primary_key=True)
+    document_id = models.ForeignKey(Document,related_name='watchlist_document', on_delete=models.CASCADE)
+    folder_id = models.ForeignKey(Folder,related_name='watchlist_folder', on_delete=models.CASCADE)
     user = models.ForeignKey(User, on_delete=models.CASCADE)
-    base = models.ForeignKey(Base,on_delete=models.SET_NULL)
     

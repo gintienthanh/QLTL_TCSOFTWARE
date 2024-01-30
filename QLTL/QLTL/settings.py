@@ -89,9 +89,9 @@ ENV_FILE = os.path.join(BASE_DIR, '.env')
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': config("DB_NAME", default="default_db_name") ,
-        'USER': config("DB_USER", default="default_db_user") ,
-        'PASSWORD': config("DB_PASSWORD", default="default_db_password"),
+        'NAME': config("DB_NAME", default="tc") ,
+        'USER': config("DB_USER", default="gnad1209") ,
+        'PASSWORD': config("DB_PASSWORD", default="gnad1209"),
         'HOST': 'localhost',
         'PORT': '5432'
  }
