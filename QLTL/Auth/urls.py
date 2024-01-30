@@ -1,0 +1,16 @@
+from django.urls import path
+from Auth.views import GoogleLoginApi,FacebookSocialAuthView,UserRegistrationView,UserLoginView,UserChangePasswordView,SendPasswordResetEmailView,UserPasswordResetView,LogoutAPIView
+
+
+urlpatterns = [
+    ##api
+    path('register/',UserRegistrationView.as_view(),name="register"),
+    path('login/',UserLoginView.as_view(),name="login"),
+    path('logout/', LogoutAPIView.as_view(), name="logout"),
+    path('changepassword/', UserChangePasswordView.as_view(), name='changepassword'),
+    path('send-reset-password-email/', SendPasswordResetEmailView.as_view(), name='send-reset-password-email'),
+    path('reset-password/<uid>/<token>/', UserPasswordResetView.as_view(), name='reset-password'),
+    # oauth
+    path('oauth/google/', GoogleLoginApi.as_view(), name="google"),
+    path('oauth/facebook/', FacebookSocialAuthView.as_view(), name="facebook"),
+]
