@@ -12,3 +12,6 @@ The Docmanager application serves as the core component for document management.
 The Fileprocessor application is designed to handle file processing tasks within the system. It includes functionalities for processing and manipulating files, supporting actions such as conversion, compression, and extraction. This module enhances the overall document management experience by enabling users to perform diverse operations on their files.
 
 The TCSoftware Document Management System leverages the flexibility and power of Python and Django to deliver a robust solution for efficiently managing and processing documents. The modular structure of the project, with its three distinct applications, ensures a well-organized and scalable system that caters to the diverse needs of users involved in document management.
+
+
+ffff
