@@ -22,7 +22,7 @@ class WarehouseView(generics.ListCreateAPIView):
     #     wh = Warehouse.objects.create(name=name)
     #     return Response(data=wh.warehouse_id,status=status.HTTP_201_CREATED)
 
-class WarehouseView(generics.RetrieveUpdateDestroyAPIView):
+class Warehouse_IDView(generics.RetrieveUpdateDestroyAPIView):
     queryset = Warehouse.objects.all()
     serializer_class = WarehouseSerializers
 
@@ -30,7 +30,7 @@ class ShelfView(generics.ListCreateAPIView):
     queryset = Shelf.objects.all()
     serializer_class = ShelfSerializers
 
-class ShelfView(generics.RetrieveUpdateDestroyAPIView):
+class Shelf_IDView(generics.RetrieveUpdateDestroyAPIView):
     queryset = Shelf.objects.all()
     serializer_class = ShelfSerializers
 
@@ -38,15 +38,23 @@ class BoxCaseView(generics.ListCreateAPIView):
     queryset = BoxCase.objects.all()
     serializer_class = BoxCaseSerializers
 
-class BoxCaseView(generics.RetrieveUpdateDestroyAPIView):
+class BoxCase_IDView(generics.RetrieveUpdateDestroyAPIView):
     queryset = BoxCase.objects.all()
     serializer_class = BoxCaseSerializers
+
+class DocumentView(generics.ListCreateAPIView):
+    queryset = Document.objects.all()
+    serializer_class = DocumentSerializers
+
+class Document_IDView(generics.RetrieveUpdateDestroyAPIView):
+    queryset = Document.objects.all()
+    serializer_class = DocumentSerializers
 
 class PortfolioView(generics.ListCreateAPIView):
     queryset = Portfolio.objects.all()
     serializer_class = PortfolioSerializers
 
-class PortfolioView(generics.RetrieveUpdateDestroyAPIView):
+class Portfolio_IDView(generics.RetrieveUpdateDestroyAPIView):
     queryset = Portfolio.objects.all()
     serializer_class = PortfolioSerializers
 
@@ -54,23 +62,15 @@ class FolderView(generics.ListCreateAPIView):
     queryset = Folder.objects.all()
     serializer_class = FolderSerializers
 
-class FolderView(generics.RetrieveUpdateDestroyAPIView):
+class Folder_IDView(generics.RetrieveUpdateDestroyAPIView):
     queryset = Folder.objects.all()
     serializer_class = FolderSerializers
-
-class DocumentView(generics.ListCreateAPIView):
-    queryset = Document.objects.all()
-    serializer_class = DocumentSerializers
-
-class DocumentView(generics.RetrieveUpdateDestroyAPIView):
-    queryset = Document.objects.all()
-    serializer_class = DocumentSerializers
 
 class WatchlistView(generics.ListCreateAPIView):
     queryset = Watchlist.objects.all()
     serializer_class = WatchlistSerializers
 
-class WatchlistView(generics.RetrieveUpdateDestroyAPIView):
+class Watchlist_IDView(generics.RetrieveUpdateDestroyAPIView):
     queryset = Watchlist.objects.all()
     serializer_class = WatchlistSerializers
 
