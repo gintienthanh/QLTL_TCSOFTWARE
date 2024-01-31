@@ -45,7 +45,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'Fileprocessor',    
     'Docmanager',
-    
+    'rest_framework'
     
 ]
 
