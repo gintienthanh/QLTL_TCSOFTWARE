@@ -13,7 +13,12 @@ https://docs.djangoproject.com/en/5.0/ref/settings/
 from pathlib import Path
 import os
 from decouple import config
+from os.path import join, dirname
+from dotenv import load_dotenv
+load_dotenv()
 
+dotenv_path = join(dirname(__file__), '.env')
+load_dotenv(dotenv_path)
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -45,8 +50,9 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'Fileprocessor',    
     'Docmanager',
-    'rest_framework'
-    
+    'rest_framework',
+    'cloudinary',
+    'cloudinary_storage',
 ]
 
 MIDDLEWARE = [
@@ -140,3 +146,18 @@ STATIC_URL = 'static/'
 # https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+STATICFILES_DIRS = [
+    os.path.join(BASE_DIR, 'static'),
+]
+DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+MEDIA_URL = '/files/'
+
+#upload clouddinary
+DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
+
+CLOUDINARY_STORAGE = {
+'CLOUD_NAME':os.environ.get("CLOUD_NAME"),#'dklylkfoe'
+'API_KEY': os.environ.get("API_KEY"),#'294131542735918'
+'API_SECRET':  os.environ.get("API_SECRET")#'SB04sQAGi2fL2ZCLrKYvhOmvpas'
+}

@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Base,BoxCase,Shelf,Document,Portfolio,Warehouse,Folder,Watchlist
+from .models import *
 
 class BaseSerializers(serializers.ModelSerializer):
     class Meta:

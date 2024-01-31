@@ -3,8 +3,8 @@ from rest_framework import status,generics,serializers,permissions
 from rest_framework.views import APIView, View
 from rest_framework.response import Response
 from django.http import HttpResponse,JsonResponse
-from .model_serializers import BaseSerializers,BoxCaseSerializers,ShelfSerializers,FolderSerializers,PortfolioSerializers,DocumentSerializers,WarehouseSerializers,WatchlistSerializers
-from .models import Base,BoxCase,Shelf,Document,Portfolio,Warehouse,Folder,Watchlist
+from .model_serializers import *
+from .models import *
 
 # Create your views here.
 
