@@ -9,6 +9,7 @@ from rest_framework.permissions import IsAdminUser
 from datetime import datetime
 from django.shortcuts import redirect
 from urllib.parse import urlencode
+from django.template.loader import render_to_string
 import secrets
 import string
 import os
@@ -41,9 +42,9 @@ class UserRegistrationView(APIView):
         password = ''.join(secrets.choice(characters) for _ in range(12))
         user.set_password(password)
         user.save()
-        email_body = 'Hi '+user.username + \
-            ' Use the password to login first time: \n' +password 
-        data = {'body': email_body, 'to_email': user.email,
+        context = {'password':password}
+        html_message = render_to_string('Inform_password.html', context )
+        data = {'body': html_message, 'to_email': user.email,
                 'subject': 'Verify your email'}
         Util.send_email(data)
         return Response(user_data, status=status.HTTP_201_CREATED)
