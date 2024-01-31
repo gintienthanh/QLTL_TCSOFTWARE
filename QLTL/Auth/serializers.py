@@ -3,6 +3,7 @@ from rest_framework_simplejwt.tokens import RefreshToken, TokenError
 from django.utils.encoding import smart_str, force_bytes, DjangoUnicodeDecodeError
 from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
+from django.template.loader import render_to_string
 import os
 from dotenv import load_dotenv
 load_dotenv()
@@ -63,10 +64,11 @@ class SendPasswordResetEmailSerializer(serializers.Serializer):
             api_user_url = os.environ.get('API_USER_URL')
             if api_user_url:
                 link = f"{api_user_url}reset-password/{uid}/{token}/"
-                body = f'Click the following link to reset your password: {link}'
+                context = {'link':link}
+                html_message = render_to_string('Forgot_emailTemplate.html', context )
                 data = {
                     'subject': 'Reset Your Password',
-                    'body': body,
+                    'body': html_message,
                     'to_email': user.email
                 }
                 Util.send_email(data)
@@ -92,7 +94,7 @@ class UserPasswordResetSerializer(serializers.Serializer):
             user = User.objects.get(id=id)
             if not PasswordResetTokenGenerator().check_token(user, token):
                 raise serializers.ValidationError('Token is not Valid or Expired')
-            user.set_password(password)
+            user.set_password( )
             user.save()
             return attrs
         except DjangoUnicodeDecodeError as identifier:
