@@ -7,8 +7,8 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.permissions import IsAdminUser
 from datetime import datetime
-from django.shortcuts import redirect
-from urllib.parse import urlencode
+from Auth.services import google_validate_id_token
+from .register import register_social_user
 from django.template.loader import render_to_string
 import secrets
 import string
@@ -20,8 +20,6 @@ from Auth.models import User
 from Auth.serializers import FacebookSocialAuthSerializer,UserRegistrationSerializer,UserLoginSerializer,UserChangePasswordSerializer,SendPasswordResetEmailSerializer,UserPasswordResetSerializer,LogoutSerializer,UserSerializer
 from Auth.renderers import UserRenderer
 from .utils import Util
-from Auth.services import user_get_or_create
-from Auth.services import  google_get_access_token, google_get_user_info
 
 def get_tokens_for_user(user):
     refresh = RefreshToken.for_user(user)
@@ -103,56 +101,37 @@ class LogoutAPIView(APIView):
         return Response('logout!',status=status.HTTP_204_NO_CONTENT)
 class GoogleLoginApi( APIView):
     class InputSerializer(serializers.Serializer):
-        code = serializers.CharField(required=False)
-        error = serializers.CharField(required=False)
+        email = serializers.EmailField()
+        first_name = serializers.CharField(required=False, default='')
+        last_name = serializers.CharField(required=False, default='')
 
-    def get(self, request, *args, **kwargs):
-        # receive code or error when google call api callback
-        # validate them and set url login FE
-        # check error with code if have one of them return error page
-        # get access token from function google_get_access_token (we need code google_get_access_token to handle)
-        # and then use access token to get user info
-        # check user have already if have update field lastLogin of user use time now else create new user with profile_data from user info
-        # create token for user and redirect Url FE with both token and user info on cookie
-        input_serializer = self.InputSerializer(data=request.GET)
-        input_serializer.is_valid(raise_exception=True)
-        validated_data = input_serializer.validated_data
-        code = validated_data.get('code')
-        
-        error = validated_data.get('error')
+    def post(self, request, *args, **kwargs):
+        id_token = request.headers.get('Authorization')
+        google_validate_id_token(id_token=id_token)
 
-        login_url = 'http://localhost:3000/login'
+        serializer = self.InputSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
 
-        if error or not code:
-            params = urlencode({'error': error})
-            return redirect(f'{login_url}?{params}')
-
-        domain = os.environ.get('BASE_BACKEND_URL')
-        api_uri = 'oauth/google/'
-        redirect_uri = f'{domain}{api_uri}'
-        access_token = google_get_access_token(code=code, redirect_uri=redirect_uri)
-        user_data = google_get_user_info(access_token=access_token)
-
-        profile_data = {
-            'email': user_data['email'],
-            'first_name': user_data.get('givenName', ''),
-            'last_name': user_data.get('familyName', ''),
-        }
-        user, _ = user_get_or_create(**profile_data)
-        user.last_login = datetime.now()
-        user.auth_provider = 'google'
+        first_name = str(serializer.data.get('first_name'))
+        last_name = str(serializer.data.get('last_name'))
+        register_social_user(
+            provider='google',
+            email=serializer.data.get('email'),
+            username= first_name + last_name,
+        )
+        user = User.objects.get(email = serializer.data.get('email'))
+        user.last_login(datetime.now())
         user.save()
-        refresh = RefreshToken.for_user(user)
-        token = {
-            'refresh': str(refresh),
-            'access': str(refresh.access_token)
+        refresh_token = RefreshToken.for_user(user)
+        response = {
+            'id': user.id,
+            'name': user.username,
+            'email': user.email,
+            'refresh': str(refresh_token),
+            'access': str(refresh_token.access_token),
         }
-        response = redirect(to = os.environ.get('BASE_FRONTEND_URL'))
-        serializer = UserSerializer(user)
-        response.set_cookie(key='token',value=token)
-        response.set_cookie(key='user',value=serializer.data)
-        print(serializer)
-        return response   
+        return Response(response,status=status.HTTP_200_OK)
+    
 class FacebookSocialAuthView(APIView):
     serializer_class = FacebookSocialAuthSerializer
     def post(self, request):
