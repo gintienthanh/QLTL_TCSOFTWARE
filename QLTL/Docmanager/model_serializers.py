@@ -14,7 +14,7 @@ class WarehouseSerializers(serializers.ModelSerializer):
         model = Warehouse
         fields = '__all__'
         read_only_fields = ['created_at', 'updated_at','is_visibale','is_delete']
-
+    
 class ShelfSerializers(serializers.ModelSerializer):
     class Meta:
         model = Shelf
@@ -23,7 +23,7 @@ class ShelfSerializers(serializers.ModelSerializer):
 
 class BoxCaseSerializers(serializers.ModelSerializer):
     class Meta:
-        model = BoxCase
+        model = BoxCase 
         fields = '__all__'
         read_only_fields = ['created_at', 'updated_at','is_visibale','is_delete']
 

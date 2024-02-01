@@ -73,7 +73,7 @@ class Document(Base):
     date = models.DateTimeField(default= timezone.datetime.now())
     physical_status = models.CharField(max_length = 255, null = True, blank = True)
     note = models.CharField(max_length = 255, null = True, blank = True)
-    files = models.FileField(null = True, blank = True)
+    files = models.FileField(upload_to='files/',null = True, blank = True)
     info_additional = models.JSONField(blank=True,null=True,default=dict,editable=True,)
     # user = models.ForeignKey(User, on_delete=models.CASCADE)
 

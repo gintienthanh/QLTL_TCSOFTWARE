@@ -51,8 +51,6 @@ INSTALLED_APPS = [
     'Fileprocessor',    
     'Docmanager',
     'rest_framework',
-    'cloudinary',
-    'cloudinary_storage',
 ]
 
 MIDDLEWARE = [
@@ -152,12 +150,3 @@ STATICFILES_DIRS = [
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 MEDIA_URL = '/files/'
-
-#upload clouddinary
-DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
-
-CLOUDINARY_STORAGE = {
-'CLOUD_NAME':os.environ.get("CLOUD_NAME"),#'dklylkfoe'
-'API_KEY': os.environ.get("API_KEY"),#'294131542735918'
-'API_SECRET':  os.environ.get("API_SECRET")#'SB04sQAGi2fL2ZCLrKYvhOmvpas'
-}
