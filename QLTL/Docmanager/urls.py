@@ -25,4 +25,6 @@ urlpatterns = [
 
     # path('download/<int:document_id>',views.DownloadFile.as_view(),name='view_watchlist'),
     path('document/download/<int:document_id>', views.DownloadFile.as_view(), name='file-download'),
+    path('search/',views.Search.as_view(),name='search'),
+
 ]

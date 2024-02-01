@@ -11,6 +11,9 @@ import mimetypes
 import shutil
 import tkinter as tk
 from tkinter import filedialog
+import pandas as pd
+import zipfile
+from io import BytesIO
 # Create your views here.
 # class WarehouseView(APIView):
 #     def get(self,request):
@@ -119,3 +122,36 @@ class DownloadFile(APIView):
         response['Content-Disposition'] = f'attachment; filename="{file.files.name}"'
         # shutil.copy2(file_path, save_path)
         return response
+
+class DownloadConvertAPIView(generics.RetrieveAPIView):
+    queryset = Folder.objects.all()
+    serializer_class = FolderSerializers
+
+    def retrieve(self, request, *args, **kwargs):
+        folder = self.get_object()
+        data = {
+            'name': folder.name,
+            'boxcase_id': getattr(folder.boxcase_id, 'name', None),
+            'shelf_id': getattr(folder.shelf_id, 'name', None),
+        }
+        df = pd.DataFrame([data])
+
+        excel_file = BytesIO()
+        with pd.ExcelWriter(excel_file, engine='openpyxl') as writer:
+            df.to_excel(writer, index=False)
+        excel_file.seek(0)
+
+        zip_file = BytesIO()
+        with zipfile.ZipFile(zip_file, 'w') as zf:
+            zf.writestr('data.xlsx', excel_file.getvalue())
+        zip_file.seek(0)
+
+        response = HttpResponse(zip_file.getvalue(), content_type='application/zip')
+        response['Content-Disposition'] = 'attachment; filename=data.zip'
+        return response
+
+class Search(View):
+    def post(sefl,req):
+        searched = req.POST['searched']
+        keys = Document.objects.filter(name__contains = searched)
+        return render(req, 'home/search.html', {'searched':searched,'keys':keys})
