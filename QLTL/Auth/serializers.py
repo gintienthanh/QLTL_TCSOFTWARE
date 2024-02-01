@@ -4,10 +4,7 @@ from django.utils.encoding import smart_str, force_bytes, DjangoUnicodeDecodeErr
 from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
 from django.template.loader import render_to_string
-import os
-from dotenv import load_dotenv
-load_dotenv()
-
+from decouple import config
 from Auth.models import User
 from Auth.services import  facebookValidate
 from .register import register_social_user
@@ -61,7 +58,7 @@ class SendPasswordResetEmailSerializer(serializers.Serializer):
             user = User.objects.get(email=email)
             uid = urlsafe_base64_encode(force_bytes(user.id))
             token = PasswordResetTokenGenerator().make_token(user)
-            api_user_url = os.environ.get('API_USER_URL')
+            api_user_url = config('API_USER_URL')
             if api_user_url:
                 link = f"{api_user_url}reset-password/{uid}/{token}/"
                 context = {'link':link}
