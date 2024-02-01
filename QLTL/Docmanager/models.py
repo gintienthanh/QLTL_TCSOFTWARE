@@ -67,7 +67,7 @@ class Portfolio(Base):
     keywords = models.CharField(max_length=200)
     annotation = models.CharField(max_length=200)
     barcode = models.CharField(max_length=200)
-    status = models.CharField(max_length=100, choices = Choices_status)
+    status = models.CharField(max_length=100, choices = Choices_status.choices)
     
 
 
@@ -89,7 +89,7 @@ class Document(Base):
     path = models.CharField(max_length=200)
     folder = models.ForeignKey(Folder, on_delete=models.CASCADE, null=True, blank=True)
     portfolio = models.ForeignKey(Portfolio, on_delete=models.CASCADE)
-    border_frame = models.CharField(max_length=200, choices = Choices_frame)
+    border_frame = models.CharField(max_length=200, choices = Choices_frame.choices)
     color = models.CharField(max_length=200)
     usage_mode = models.CharField(max_length=200)
     storage_code = models.CharField(max_length=100)
