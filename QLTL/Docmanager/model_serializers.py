@@ -8,19 +8,19 @@ class BaseSerializer(serializers.ModelSerializer):
 
 class FolderSerializer(serializers.ModelSerializer):
     class Meta:
-        model = Folders
+        model = Folder
         fields = '__all__'
 
 
 class DocumentSerializer(serializers.ModelSerializer):
     class Meta:
-        model = Documents
+        model = Document
         fields = '__all__'
 
 
 class PortfolioSerializer(serializers.ModelSerializer):
     class Meta:
-        model = Portfolios
+        model = Portfolio
         fields = '__all__'
 
 class WatchListSerializer(serializers.ModelSerializer):
