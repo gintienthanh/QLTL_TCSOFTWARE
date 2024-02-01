@@ -1,12 +1,8 @@
 import requests
-from typing import Dict, Any
+
 import facebook
 from django.core.exceptions import ValidationError
-from django.db import transaction
-from typing import Tuple
-import os
-from dotenv import load_dotenv
-load_dotenv()
+from decouple import config
 
 from Auth.models import User
 
@@ -37,7 +33,7 @@ def google_validate_id_token(*, id_token: str) -> bool:
 
     audience = response.json()['aud']
 
-    if audience != os.environ.get('GOOGLE_CLIENT_ID'):
+    if audience != config('GOOGLE_CLIENT_ID'):
         raise ValidationError('Invalid audience.')
 
     return True
