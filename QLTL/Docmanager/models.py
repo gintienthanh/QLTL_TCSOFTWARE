@@ -1,6 +1,6 @@
-from django.contrib.auth.models import User
+from Auth.models import User
 from django.db import models
-
+from django.contrib.auth.models import Group
 # Create your models here.
 class Base(models.Model):
     id = models.AutoField(primary_key=True)
@@ -108,5 +108,11 @@ class Document(Base):
 class Watchlist(Base): 
     folder = models.ForeignKey(Folder, on_delete=models.CASCADE , null=True, blank=True)
     document = models.ForeignKey(Document, on_delete=models.CASCADE , null=True, blank=True)
+
+class Share(Base):
+    group = models.ForeignKey(Group, on_delete=models.CASCADE, null=True)
+    document = models.ForeignKey(Document, on_delete=models.CASCADE, null=True)
+    folder = models.ForeignKey(Folder, on_delete=models.CASCADE, null=True)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, related_name='shared_user')
     
     
