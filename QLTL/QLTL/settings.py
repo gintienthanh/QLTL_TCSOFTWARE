@@ -17,7 +17,6 @@ from decouple import config
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.0/howto/deployment/checklist/
 
@@ -25,14 +24,10 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = config('SECRET_KEYS', default='secret')
 
-
-
-
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
 ALLOWED_HOSTS = ['0.0.0.0', '172.16.100.204']
-
 
 # Application definition
 
@@ -43,7 +38,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    
+
     'rest_framework',
 
     'rest_framework_simplejwt',
@@ -59,17 +54,15 @@ INSTALLED_APPS = [
 
     'Auth',
 
-    'Fileprocessor',    
+    'Fileprocessor',
     'Docmanager',
-    
-    
+
 ]
 
 SOCIALACCOUNT_QUERY_EMAIL = True
-ACCOUNT_LOGOUT_ON_GET= True
+ACCOUNT_LOGOUT_ON_GET = True
 ACCOUNT_UNIQUE_EMAIL = True
 ACCOUNT_EMAIL_REQUIRED = True
-
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -99,7 +92,7 @@ TEMPLATES = [
                 'django.contrib.messages.context_processors.messages',
 
                 'social_django.context_processors.backends',  # <-- social
-                'social_django.context_processors.login_redirect', # <-- social
+                'social_django.context_processors.login_redirect',  # <-- social
             ],
         },
     },
@@ -114,19 +107,16 @@ STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ENV_FILE = os.path.join(BASE_DIR, '.env')
 
-# DATABASES = {
-#     'default': {
-#         'ENGINE': 'django.db.backends.postgresql',
-#         'NAME': config("DB_NAME", default="default_db_name") ,
-#         'USER': config("DB_USER", default="default_db_user") ,
-#         'PASSWORD': config("DB_PASSWORD", default="default_db_password"),
-#         'HOST': 'localhost',
-#         'PORT': '5432'
-#  }
-# }
-
-
-
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': config("DB_NAME", default="default_db_name"),
+        'USER': config("DB_USER", default="default_db_user"),
+        'PASSWORD': config("DB_PASSWORD", default="default_db_password"),
+        'HOST': 'localhost',
+        'PORT': '5432'
+    }
+}
 
 # Password validation
 # https://docs.djangoproject.com/en/5.0/ref/settings/#auth-password-validators
@@ -146,7 +136,6 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-
 # Internationalization
 # https://docs.djangoproject.com/en/5.0/topics/i18n/
 
@@ -157,7 +146,6 @@ TIME_ZONE = 'UTC'
 USE_I18N = True
 
 USE_TZ = True
-
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.0/howto/static-files/
@@ -171,24 +159,25 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 REST_FRAMEWORK = {
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
     'PAGE_SIZE': 10,
-    'DEFAULT_AUTHENTICATION_CLASSES': (   
+    'DEFAULT_AUTHENTICATION_CLASSES': (
         'oauth2_provider.contrib.rest_framework.OAuth2Authentication',
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ),
-    'DEFAULT_RENDERER_CLASSES':('rest_framework.renderers.JSONRenderer',),
+    'DEFAULT_RENDERER_CLASSES': ('rest_framework.renderers.JSONRenderer',),
 }
 
 AUTH_USER_MODEL = 'Auth.User'
 # Email Configuration
-EMAIL_BACKEND="django.core.mail.backends.smtp.EmailBackend"
+EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
 EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587
 EMAIL_HOST_USER = config('EMAIL_USER', default='smtp.gmail.com')
 EMAIL_HOST_PASSWORD = config('EMAIL_PASSWORD', default='pass')
 EMAIL_USE_TLS = True
 from datetime import timedelta
+
 SIMPLE_JWT = {
-   "ACCESS_TOKEN_LIFETIME": timedelta(minutes=40),
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=40),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=1),
     "ROTATE_REFRESH_TOKENS": False,
     "BLACKLIST_AFTER_ROTATION": False,
