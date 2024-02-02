@@ -1,7 +1,9 @@
 from django.db import models
 
 # Create your models here.
-from django.contrib.auth.models import AbstractBaseUser,BaseUserManager
+from django.contrib.auth.models import AbstractBaseUser,BaseUserManager,Group
+
+# from Docmanager.models import Document, Folder
 
 class UserManager(BaseUserManager):
     def create_user(self,email,username=None,password=None,password2=None):
@@ -10,6 +12,7 @@ class UserManager(BaseUserManager):
         user = self.model(
             email = self.normalize_email(email), 
         ) 
+        user.set_password(password)
         user.save(using=self._db)
         return user
     
