@@ -13,6 +13,7 @@ from django.template.loader import render_to_string
 import secrets
 import string
 import os
+from django.utils import timezone
 from dotenv import load_dotenv
 load_dotenv()
 
@@ -30,7 +31,7 @@ def get_tokens_for_user(user):
         'access': str(refresh.access_token),
     }
 class UserRegistrationView(APIView):
-    permission_classes = [IsAdminUser]
+    # permission_classes = [IsAdminUser]
     renderer_classes = [UserRenderer]
     def post(self,request,format=None):
         serializer = UserRegistrationSerializer(data=request.data)
@@ -65,6 +66,7 @@ class UserLoginView(APIView):
                 return Response({'mess':'FirstTime Login','token':token}, status=status.HTTP_403_FORBIDDEN)
         else:
             return Response({'errors':{'non_field_errors':['Email or Password is not Valid']}}, status=status.HTTP_404_NOT_FOUND)
+        user.last_login = timezone.now()
         return Response({'token':token,'msg':'Login Success'}, status=status.HTTP_200_OK)
         
 

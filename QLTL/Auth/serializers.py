@@ -5,6 +5,7 @@ from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
 from django.template.loader import render_to_string
 import os
+from django.utils import timezone
 from dotenv import load_dotenv
 load_dotenv()
 
@@ -46,6 +47,7 @@ class UserChangePasswordSerializer(serializers.Serializer):
     user = self.context.get('user')
     if password != password2:
        raise serializers.ValidationError("Password and confirm password doesn't match!")
+    user.last_login = timezone.now()
     user.set_password(password)
     user.save()
     return attrs
@@ -94,7 +96,7 @@ class UserPasswordResetSerializer(serializers.Serializer):
             user = User.objects.get(id=id)
             if not PasswordResetTokenGenerator().check_token(user, token):
                 raise serializers.ValidationError('Token is not Valid or Expired')
-            user.set_password( )
+            user.set_password(password)
             user.save()
             return attrs
         except DjangoUnicodeDecodeError as identifier:
