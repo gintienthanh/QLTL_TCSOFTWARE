@@ -12,7 +12,7 @@ from .register import register_social_user
 from django.template.loader import render_to_string
 import secrets
 import string
-
+from django.utils import timezone
 
 from Auth.models import User
 from Auth.serializers import FacebookSocialAuthSerializer,UserRegistrationSerializer,UserLoginSerializer,UserChangePasswordSerializer,SendPasswordResetEmailSerializer,UserPasswordResetSerializer,LogoutSerializer,UserSerializer
@@ -41,7 +41,7 @@ class UserRegistrationView(APIView):
         context = {'password':password}
         html_message = render_to_string('Inform_password.html', context )
         data = {'body': html_message, 'to_email': user.email,
-                'subject': 'Verify your email'}
+                'subject': 'Password to login'}
         Util.send_email(data)
         return Response(user_data, status=status.HTTP_201_CREATED)
 
@@ -61,6 +61,7 @@ class UserLoginView(APIView):
                 return Response({'mess':'FirstTime Login','token':token}, status=status.HTTP_403_FORBIDDEN)
         else:
             return Response({'errors':{'non_field_errors':['Email or Password is not Valid']}}, status=status.HTTP_404_NOT_FOUND)
+        user.last_login = timezone.now()
         return Response({'token':token,'msg':'Login Success'}, status=status.HTTP_200_OK)
         
 
