@@ -19,12 +19,14 @@ urlpatterns = [
 
     path('folder/',views.FolderView.as_view(),name='view_folder'),
     path('folder/<int:folder_id>/',views.Folder_IDView.as_view(),name='view_folder_ID'),
+    path('folders/<int:child_folder>',views.FolderChildView.as_view(),name='child_folder'),
 
     path('watchlist/',views.WatchlistView.as_view(),name='view_watchlist'),
     path('watchlist/<int:watchlist_id>/',views.Watchlist_IDView.as_view(),name='view_watchlist_ID'),
 
     # path('download/<int:document_id>',views.DownloadFile.as_view(),name='view_watchlist'),
     path('document/download/<int:document_id>', views.DownloadFile.as_view(), name='file-download'),
+    path('folder/download/<int:folder_id>', views.Downloadfolder.as_view(), name='folder-download'),
     path('search/',views.Search.as_view(),name='search'),
 
 ]

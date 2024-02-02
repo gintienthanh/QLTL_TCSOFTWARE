@@ -37,8 +37,13 @@ SECRET_KEY = 'django-insecure-r=)3n66vdit+8cndtc9b(h4!3hu7v983z*tbi%**bn+xwy0x7$
 DEBUG = True
 
 ALLOWED_HOSTS = []
+# ALLOWED_HOSTS = ['192.168.1.98','localhost']
 
+# CORS_ORIGIN_ALLOW_ALL = True
 
+# CORS_ORIGIN_WHITELIST = (
+#   'http://localhost:8000',
+# )
 # Application definition
 
 INSTALLED_APPS = [
@@ -51,6 +56,8 @@ INSTALLED_APPS = [
     'Fileprocessor',    
     'Docmanager',
     'rest_framework',
+    'corsheaders',#connect
+
 ]
 
 MIDDLEWARE = [
@@ -61,6 +68,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'corsheaders.middleware.CorsMiddleware', #connect
 ]
 
 ROOT_URLCONF = 'QLTL.urls'

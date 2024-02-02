@@ -46,6 +46,16 @@ class FolderSerializers(serializers.ModelSerializer):
         fields = '__all__'
         read_only_fields = ['created_at', 'updated_at','is_visibale','is_delete']
 
+class FolderChildSerializers(serializers.ModelSerializer):
+    class Meta:
+        model = Folder
+        fields = '__all__'
+        read_only_fields = ['created_at', 'updated_at','is_visibale','is_delete']
+
+    def to_representation(self, instance):
+        # Xử lý đối tượng Folder thành một đối tượng có thể được chuyển đổi thành JSON
+        return instance.name
+    
 class WatchlistSerializers(serializers.ModelSerializer):
     class Meta:
         model = Watchlist

@@ -6,7 +6,6 @@ from django.http import HttpResponse,JsonResponse
 from .model_serializers import *
 from .models import *
 from django.http import FileResponse
-from django.shortcuts import get_object_or_404
 import mimetypes
 import shutil
 import tkinter as tk
@@ -14,6 +13,7 @@ from tkinter import filedialog
 import pandas as pd
 import zipfile
 from io import BytesIO
+import openpyxl
 # Create your views here.
 # class WarehouseView(APIView):
 #     def get(self,request):
@@ -35,9 +35,11 @@ from io import BytesIO
 #             return Response(data=warehouse_data.data,status=status.HTTP_201_CREATED)
 #         return Response('sai du lieu', status=status.HTTP_400_BAD_REQUEST)
     
-class WarehouseView(generics.ListCreateAPIView):
-    queryset = Warehouse.objects.all()
-    serializer_class = WarehouseSerializers
+class WarehouseView(APIView):
+    def get(self,req):
+        queryset = Warehouse.objects.all()
+        serializer_class = WarehouseSerializers
+        return Response(serializer_class.data, status=200)
 
 class Warehouse_IDView(generics.RetrieveUpdateDestroyAPIView):
     queryset = Warehouse.objects.all()
@@ -88,6 +90,28 @@ class FolderView(generics.ListCreateAPIView):
     queryset = Folder.objects.all()
     serializer_class = FolderSerializers
 
+class FolderChildView(APIView):
+    def get(self,request,child_folder):
+        try:
+            queryset_folder = Folder.objects.filter(child_folder = child_folder)
+            serializer_folder = FolderSerializers(queryset_folder,many=True)
+            queryset_document = Document.objects.filter(folder__child_folder = child_folder)
+            print(queryset_document)
+            # if queryset_document is None:
+            #     serializer_document = DocumentSerializers(queryset_document,many=True)
+            #     return Response(serializer_folder.data + serializer_document.data)
+            serializer_document = DocumentSerializers(queryset_document,many=True)
+            response = {
+                "status":200,
+                "data": {
+                    "folder": serializer_folder.data, 
+                    "document": serializer_document.data,
+                }
+            }
+            return Response(response,status=status.HTTP_200_OK)
+        except:
+            return Response({'status':400},status=status.HTTP_400_BAD_REQUEST)
+
 class Folder_IDView(generics.RetrieveUpdateDestroyAPIView):
     queryset = Folder.objects.all()
     serializer_class = FolderSerializers
@@ -114,6 +138,7 @@ class DownloadFile(APIView):
         return download_path
     def get(self, request, document_id,format=None):
         file = Document.objects.get(document_id=document_id)
+
         file_path = file.files.path
         content_type, encoding = mimetypes.guess_type(file_path)
         content_type = content_type or 'application/octet-stream'
@@ -123,16 +148,17 @@ class DownloadFile(APIView):
         # shutil.copy2(file_path, save_path)
         return response
 
-class DownloadConvertAPIView(generics.RetrieveAPIView):
+class Downloadfolder(generics.RetrieveAPIView):
     queryset = Folder.objects.all()
     serializer_class = FolderSerializers
+    lookup_field = 'folder_id'
 
     def retrieve(self, request, *args, **kwargs):
         folder = self.get_object()
         data = {
             'name': folder.name,
-            'boxcase_id': getattr(folder.boxcase_id, 'name', None),
-            'shelf_id': getattr(folder.shelf_id, 'name', None),
+            'boxcase_id': getattr(folder.boxcase, 'name', None),
+            'shelf_id': getattr(folder.shelf, 'name', None),
         }
         df = pd.DataFrame([data])
 
