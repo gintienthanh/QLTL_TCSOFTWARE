@@ -113,7 +113,7 @@ DATABASES = {
         'NAME': config("DB_NAME", default="default_db_name"),
         'USER': config("DB_USER", default="default_db_user"),
         'PASSWORD': config("DB_PASSWORD", default="default_db_password"),
-        'HOST': 'localhost',
+        'HOST': config("HOST", default="default_db_password"),
         'PORT': '5432'
     }
 }
