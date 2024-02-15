@@ -23,8 +23,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 # SECURITY WARNING: keep the secret key used in production secret!
 
-SECRET_KEY = config('SECRET_KEYS', default='secret')
->>>>>>> 25289c188891e86f3bf7e2568484c2637e23b9b4
+SECRET_KEY = config('SECRET_KEY', default='secret')
 
 
 
@@ -115,16 +114,16 @@ STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ENV_FILE = os.path.join(BASE_DIR, '.env')
 
-# DATABASES = {
-#     'default': {
-#         'ENGINE': 'django.db.backends.postgresql',
-#         'NAME': config("DB_NAME", default="default_db_name") ,
-#         'USER': config("DB_USER", default="default_db_user") ,
-#         'PASSWORD': config("DB_PASSWORD", default="default_db_password"),
-#         'HOST': 'localhost',
-#         'PORT': '5432'
-#  }
-# }
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': config("DB_NAME", default="default_db_name") ,
+        'USER': config("DB_USER", default="default_db_user") ,
+        'PASSWORD': config("DB_PASSWORD", default="default_db_password"),
+        'HOST': config("HOST", default="default_host"),
+        'PORT': '5432'
+ }
+}
 
 
 
