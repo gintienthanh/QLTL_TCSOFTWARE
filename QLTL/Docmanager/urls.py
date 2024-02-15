@@ -17,9 +17,9 @@ urlpatterns = [
     path('portfolio/',views.PortfolioView.as_view(),name='view_portfolio'),
     path('portfolio/<int:portfolio_id>/',views.Portfolio_IDView.as_view(),name='view_portfolio_ID'),
 
-    path('folder/',views.FolderView.as_view(),name='view_folder'),
+    path('folders/',views.FolderView.as_view(),name='view_folder'),
     path('folder/<int:folder_id>/',views.Folder_IDView.as_view(),name='view_folder_ID'),
-    path('folders/<int:child_folder>',views.FolderChildView.as_view(),name='child_folder'),
+    path('folderlist/<int:child_folder>',views.FolderChildView.as_view(),name='child_folder'),
 
     path('watchlist/',views.WatchlistView.as_view(),name='view_watchlist'),
     path('watchlist/<int:watchlist_id>/',views.Watchlist_IDView.as_view(),name='view_watchlist_ID'),
