@@ -3,8 +3,9 @@ import requests
 import facebook
 from django.core.exceptions import ValidationError
 from decouple import config
-
-from Auth.models import User
+from typing import Tuple
+from django.db import transaction
+from django.contrib.auth.models import User
 
 GOOGLE_ID_TOKEN_INFO_URL = 'https://www.googleapis.com/oauth2/v3/tokeninfo'
 GOOGLE_ACCESS_TOKEN_OBTAIN_URL = 'https://oauth2.googleapis.com/token'
@@ -71,29 +72,29 @@ def google_validate_id_token(*, id_token: str) -> bool:
 #         raise ValidationError('Failed to obtain user info from Google.')
 
 #     return response.json()
-# @transaction.atomic
-# def user_get_or_create(*, email: str, **extra_data) -> Tuple[User, bool]:
-#     user = User.objects.filter(email=email).first()
+@transaction.atomic
+def user_get_or_create(*, email: str, **extra_data) -> Tuple[User, bool]:
+    user = User.objects.filter(email=email).first()
 
-#     if user:
-#         return user, False
+    if user:
+        return user, False
 
-#     return user_create(email=email, **extra_data), True
-# def user_create(email, password=None, **extra_fields) -> User:
-#     extra_fields = {
-#         'is_admin': False,
-#         'is_verified':True,
-#         **extra_fields
-#     }
+    return user_create(email=email, **extra_data), True
+def user_create(email, password=None, **extra_fields) -> User:
+    extra_fields = {
+        'is_admin': False,
+        'is_verified':True,
+        **extra_fields
+    }
 
-    # user = User(email=email, **extra_fields)
+    user = User(email=email, **extra_fields)
 
-    # if password:
-    #     user.set_password(password)
-    # else:
-    #     user.set_unusable_password()
+    if password:
+        user.set_password(password)
+    else:
+        user.set_unusable_password()
 
-    # user.full_clean()
-    # user.save()
+    user.full_clean()
+    user.save()
 
-    # return user
+    return user

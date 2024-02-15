@@ -4,7 +4,7 @@ import os
 import random
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from Auth.models import User
+from django.contrib.auth.models import User
 
 def check_verified(user):
      return user.is_verified
