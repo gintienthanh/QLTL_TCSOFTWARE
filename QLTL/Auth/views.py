@@ -26,7 +26,7 @@ def get_tokens_for_user(user):
         'access': str(refresh.access_token),
     }
 class UserRegistrationView(APIView):
-    permission_classes = [IsAdminUser]
+    # permission_classes = [IsAdminUser]
     renderer_classes = [UserRenderer]
     def post(self,request,format=None):
         serializer = UserRegistrationSerializer(data=request.data)

@@ -21,5 +21,4 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/', include('Docmanager.urls')),
     path('user/', include('Auth.urls')),
-
 ]
