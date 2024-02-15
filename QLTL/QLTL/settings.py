@@ -23,7 +23,8 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 # SECURITY WARNING: keep the secret key used in production secret!
 
-SECRET_KEY = config('SECRET_KEY')
+SECRET_KEY = config('SECRET_KEYS', default='secret')
+>>>>>>> 25289c188891e86f3bf7e2568484c2637e23b9b4
 
 
 
@@ -107,23 +108,23 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'QLTL.wsgi.application'
 
-
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 # Database
 # https://docs.djangoproject.com/en/5.0/ref/settings/#databases
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ENV_FILE = os.path.join(BASE_DIR, '.env')
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': config("DB_NAME", default="default_db_name") ,
-        'USER': config("DB_USER", default="default_db_user") ,
-        'PASSWORD': config("DB_PASSWORD", default="default_db_password"),
-        'HOST': 'localhost',
-        'PORT': '5432'
- }
-}
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.postgresql',
+#         'NAME': config("DB_NAME", default="default_db_name") ,
+#         'USER': config("DB_USER", default="default_db_user") ,
+#         'PASSWORD': config("DB_PASSWORD", default="default_db_password"),
+#         'HOST': 'localhost',
+#         'PORT': '5432'
+#  }
+# }
 
 
 
@@ -183,8 +184,8 @@ AUTH_USER_MODEL = 'Auth.User'
 EMAIL_BACKEND="django.core.mail.backends.smtp.EmailBackend"
 EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587
-EMAIL_HOST_USER = config('EMAIL_USER')
-EMAIL_HOST_PASSWORD = config('EMAIL_PASSWORD')
+EMAIL_HOST_USER = config('EMAIL_USER', default='smtp.gmail.com')
+EMAIL_HOST_PASSWORD = config('EMAIL_PASSWORD', default='pass')
 EMAIL_USE_TLS = True
 from datetime import timedelta
 SIMPLE_JWT = {
