@@ -28,5 +28,5 @@ urlpatterns = [
     path('document/download/<int:document_id>', views.DownloadFile.as_view(), name='file-download'),
     path('folder/download/<int:folder_id>', views.Downloadfolder.as_view(), name='folder-download'),
     path('search/',views.Search.as_view(),name='search'),
-
 ]
+

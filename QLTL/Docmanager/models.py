@@ -1,7 +1,6 @@
 from django.contrib.auth.models import User
 from django.db import models
 from django.utils import timezone
-from django.core.validators import RegexValidator
 
 # Create your models here.
 class Base(models.Model):
@@ -33,7 +32,13 @@ class BoxCase(Base):
     shelf_code = models.CharField(max_length = 255, null = True, blank = True)
 
 
+
+
 class Folder(Base):
+    TYPE_CHOICES = [
+        ('Folder', 'folder'),
+        ('File', 'file'),
+    ]
     folder_id = models.AutoField(primary_key=True)
     name = models.CharField(max_length = 255, null = True, blank = True)
     child_folder = models.ForeignKey('self',related_name='folders',on_delete=models.CASCADE, null=True, blank=True)
@@ -42,7 +47,7 @@ class Folder(Base):
     warehouse = models.ForeignKey(Warehouse,related_name='folder_warehouse',on_delete=models.CASCADE, null=True, blank=True)
     # user = models.ForeignKey(User, on_delete=models.CASCADE)
     path = models.CharField(max_length = 255, null = True, blank = True)
-
+    type = models.CharField(max_length = 100, choices = TYPE_CHOICES)
 
 class Document(Base):
     MODE_CHOICES = [
@@ -110,4 +115,26 @@ class Watchlist(Base):
     document = models.ForeignKey(Document,related_name='watchlist_document', on_delete=models.CASCADE)
     folder = models.ForeignKey(Folder,related_name='watchlist_folder', on_delete=models.CASCADE)
     # user = models.ForeignKey(User, on_delete=models.CASCADE)
+
+class Choices_type_warehouse(models.TextChoices):
+    BoxCase = 'Hộp cặp'
+    Warehouse = 'Kho'
+    Shelf = 'Giá Kệ'
+
+class Choices_type(models.TextChoices):
+    File = 'File'
+    Folder = 'Folder'
+
+class Warehouse(Base):
+    name = models.CharField(max_length = 255, null = True, blank = True)
+    code = models.CharField(max_length = 255, null = True, blank = True)
+    description = models.CharField(max_length = 255)
+    type_warehouse = models.CharField(max_length=100, choices = Choices_type_warehouse.choices)
+    def __str__(self) :
+        return  self.name
     
+# class Share(Base):
+#     group = models.ForeignKey(Group, on_delete=models.CASCADE, null=True)
+#     document = models.ForeignKey(Document, on_delete=models.CASCADE, null=True)
+#     folder = models.ForeignKey(Folder, on_delete=models.CASCADE, null=True)
+#     user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, related_name='shared_user')
