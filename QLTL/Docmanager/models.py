@@ -10,8 +10,8 @@ class Base(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     owner = models.ForeignKey(User, on_delete=models.CASCADE)
-    create_by = models.ForeignKey(User,  related_name='%(class)s_created')
-    delete_by = models.ForeignKey(User,  related_name='%(class)s_deleted')
+    create_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='%(class)s_created')
+    delete_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='%(class)s_deleted')
     class  Meta:
         abstract = True
        
