@@ -1,15 +1,17 @@
 from Auth.models import User
 from django.db import models
 from django.contrib.auth.models import Group
+
+
 # Create your models here.
 class Base(models.Model):
     id = models.AutoField(primary_key=True)
-    is_visibale = models.BooleanField(default=True)
     is_delete = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     owner = models.ForeignKey(User, on_delete=models.CASCADE)
-    
+    create_by = models.ForeignKey(User,  related_name='%(class)s_created')
+    delete_by = models.ForeignKey(User,  related_name='%(class)s_deleted')
     class  Meta:
         abstract = True
        
@@ -25,33 +27,26 @@ class Choices_frame(models.TextChoices):
     img = 'hình ảnh'
     txt = 'văn bản'
     page = 'khung biên trang'
+    
+class Choices_type_warehouse(models.TextChoices):
+    BoxCase = 'Hộp cặp'
+    Warehouse = 'Kho'
+    Shelf = 'Giá Kệ'
+
+class Choices_type(models.TextChoices):
+    File = 'File'
+    Folder = 'Folder'
+
+
+
 
 class Warehouse(Base):
     name = models.CharField(max_length = 255, null = True, blank = True)
-    warehouse_code = models.CharField(max_length = 255, null = True, blank = True)
-    
-    def __str__(self) :
-        return  self.name
-   
-
-class Shelf(Base):
-    
-    name = models.CharField(max_length = 255, null = True, blank = True)
-    warehouse = models.ForeignKey(Warehouse,on_delete=models.CASCADE, null=True, blank=True)
-    
-    
-    def __str__(self) :
-        return  self.name
-    
-class BoxCase(Base):
+    code = models.CharField(max_length = 255, null = True, blank = True)
     description = models.CharField(max_length = 255)
-    name = models.CharField(max_length = 255, null = True, blank = True)
-    shelf = models.ForeignKey(Warehouse,on_delete=models.CASCADE, null=True, blank=True)
-    shelf_code = models.CharField(max_length = 255, null = True, blank = True)   
-    
+    type_warehouse = models.CharField(max_length=100, choices = Choices_type_warehouse.choices)
     def __str__(self) :
         return  self.name
-   
     
 class Portfolio(Base):
     
@@ -63,7 +58,7 @@ class Portfolio(Base):
     start_date = models.DateField(null=True, blank=True)
     end_date = models.DateField(null=True, blank=True)
     physical_condition = models.CharField(max_length=200)
-    box_case = models.ForeignKey(BoxCase,  on_delete=models.CASCADE)
+    box_case = models.ForeignKey(Warehouse,  on_delete=models.CASCADE)
     keywords = models.CharField(max_length=200)
     annotation = models.CharField(max_length=200)
     barcode = models.CharField(max_length=200)
@@ -73,11 +68,10 @@ class Portfolio(Base):
 
 class Folder(Base):
     name = models.CharField(max_length=200)
-    box_case = models.ForeignKey(BoxCase,  on_delete=models.CASCADE, null=True, blank=True)
-    shelf = models.ForeignKey(Shelf,  on_delete=models.CASCADE, null=True, blank=True)
-    parent_folder = models.ForeignKey('self', on_delete=models.CASCADE, null=True, blank=True, related_name='subfolders')
+    parent_folder = models.ForeignKey('self', on_delete=models.CASCADE, null=True, blank=True, related_name='subfolders') 
     path = models.CharField(max_length=255, null=True, blank=True)
     warehouse = models.ForeignKey(Warehouse, on_delete=models.CASCADE, null=True, blank=True)
+    type = models.CharField(max_length=100, choices = Choices_type.choices)
     
     def __str__(self) :
         return  self.name
@@ -85,7 +79,7 @@ class Folder(Base):
 class Document(Base):
     
     name = models.CharField(max_length=200)
-    box_case = models.ForeignKey(BoxCase,  on_delete=models.CASCADE)
+    box_case = models.ForeignKey(Warehouse,  on_delete=models.CASCADE)
     path = models.CharField(max_length=200)
     folder = models.ForeignKey(Folder, on_delete=models.CASCADE, null=True, blank=True)
     portfolio = models.ForeignKey(Portfolio, on_delete=models.CASCADE)
