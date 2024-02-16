@@ -28,10 +28,6 @@ class WatchListSerializer(serializers.ModelSerializer):
         model = Watchlist
         fields = '__all__'
 
-class BoxcaseSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = BoxCase
-        fields = '__all__'
         
 
 class WarehouseSerializer(serializers.ModelSerializer):
@@ -39,7 +35,3 @@ class WarehouseSerializer(serializers.ModelSerializer):
         model = Warehouse
         fields = '__all__'
         
-class ShelfSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Shelf
-        fields = '__all__'
