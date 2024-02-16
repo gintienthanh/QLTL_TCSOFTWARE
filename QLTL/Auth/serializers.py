@@ -5,10 +5,12 @@ from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
 from django.template.loader import render_to_string
 from decouple import config
-from Auth.models import User
+from django.contrib.auth.models import User
 from Auth.services import  facebookValidate
 from .register import register_social_user
 from .utils import Util
+from Auth.services import  user_get_or_create
+
 from django.utils import timezone
 
 class UserSerializer(serializers.ModelSerializer):
@@ -125,17 +127,16 @@ class FacebookSocialAuthSerializer(serializers.Serializer):
     def validate_auth_token(self, auth_token):
         user_data = facebookValidate(auth_token)
         try:
-            user_id = user_data['id']
-            email = user_data.get('email')
-            username = user_data['name']
-            provider = 'facebook'
-            return register_social_user(
-                provider=provider,
-                user_id=user_id,
-                email=email,
-                username=username
-            )
+            data ={ 
+                'user_id' : user_data['id'],
+                'email' : user_data.get('email'),
+                'username' : user_data['name']
+            }
+            
+            
+            user, _ = user_get_or_create(**data)
+            return user
         except Exception as identifier:
             raise serializers.ValidationError(
-                'The token  is invalid or expired. Please login again.'
+                'The token is invalid or expired. Please login again.'
             )

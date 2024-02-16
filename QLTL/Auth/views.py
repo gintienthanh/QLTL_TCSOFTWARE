@@ -7,14 +7,13 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.permissions import IsAdminUser
 from datetime import datetime
-from Auth.services import google_validate_id_token
-from .register import register_social_user
+from Auth.services import google_validate_id_token, user_get_or_create
 from django.template.loader import render_to_string
 import secrets
 import string
 from django.utils import timezone
 
-from Auth.models import User
+from django.contrib.auth.models import User
 from Auth.serializers import FacebookSocialAuthSerializer,UserRegistrationSerializer,UserLoginSerializer,UserChangePasswordSerializer,SendPasswordResetEmailSerializer,UserPasswordResetSerializer,LogoutSerializer,UserSerializer
 from Auth.renderers import UserRenderer
 from .utils import Util
@@ -110,15 +109,7 @@ class GoogleLoginApi( APIView):
 
         serializer = self.InputSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-
-        first_name = str(serializer.data.get('first_name'))
-        last_name = str(serializer.data.get('last_name'))
-        register_social_user(
-            provider='google',
-            email=serializer.data.get('email'),
-            username= first_name + last_name,
-        )
-        user = User.objects.get(email = serializer.data.get('email'))
+        user, _ = user_get_or_create(**serializer.validated_data)
         user.last_login(datetime.now())
         user.save()
         refresh_token = RefreshToken.for_user(user)
@@ -137,7 +128,17 @@ class FacebookSocialAuthView(APIView):
         print(request.data)
         serializer = self.serializer_class(data=request.data)
         serializer.is_valid(raise_exception=True)
-        data = ((serializer.validated_data)['auth_token'])
-        print('response:',data)
-        return Response({'data':data}, status=status.HTTP_200_OK)
+        user = ((serializer.validated_data)['auth_token'])
+        user.last_login(datetime.now())
+        user.save()
+        refresh_token = RefreshToken.for_user(user)
+        response = {
+            'id': user.id,
+            'name': user.username,
+            'email': user.email,
+            'refresh': str(refresh_token),
+            'access': str(refresh_token.access_token),
+        }
+        print('user facebook:',user)
+        return Response(response,status=status.HTTP_200_OK)
 
