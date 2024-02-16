@@ -1,222 +1,34 @@
 from django.shortcuts import render
-from django.shortcuts import render
 from .model_serializers import*
 from .models import*
 from rest_framework import authentication, permissions, status, generics
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from django.http import HttpResponse
+from rest_framework.permissions import IsAuthenticated, BasePermission
+# Create your views here.
 import pandas as pd
 from io import BytesIO
 import zipfile
+from django.http import HttpResponse
+import os
+from django.conf import settings
 
-# Create your views here.
+class PortfolioList(generics.ListCreateAPIView):
+    serializer_class = PortfolioSerializer
 
-class PortfolioList(APIView):
-    def get(self, request):
-        portfolios = Portfolio.objects.all()
-        serializer = PortfolioSerializer(portfolios, many=True)
-        return Response(serializer.data)
-
-    def post(self, request):
-        serializer = PortfolioSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-
-
-class PortfolioUpdate(APIView):
-    def get_object(self, pk):
-        try:
-            return Portfolio.objects.get(pk=pk)
-        except Portfolio.DoesNotExist:
-            raise status.HTTP_404_NOT_FOUND
-
-    def get(self, request, pk):
-        portfolio = self.get_object(pk)
-        serializer = PortfolioSerializer(portfolio)
-        return Response(serializer.data)
-
-    def put(self, request, pk):
-        portfolio = self.get_object(pk)
-        serializer = PortfolioSerializer(portfolio, data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-    def patch(self, request, pk):
-        portfolio = self.get_object(pk)
-        serializer = PortfolioSerializer(portfolio, data=request.data, partial=True)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-    def delete(self, request, pk):
-        portfolio = self.get_object(pk)
-        portfolio.is_deleted = True
-        portfolio.save()
-        return Response(status=status.HTTP_204_NO_CONTENT)
-    
-
+    def get_queryset(self):
+        return Portfolio.objects.filter(is_delete=False)
     
     
-
-    
-    
-    
-class DocumentList(generics.ListCreateAPIView):
-    queryset = Document.objects.all()
-    serializer_class = DocumentSerializer
-    
-    
-class DocumentUpdate(generics.RetrieveUpdateDestroyAPIView):
-    queryset = Document.objects.all()
-    serializer_class = DocumentSerializer
+class PortfolioUpdate(generics.RetrieveUpdateDestroyAPIView):
+    queryset = Portfolio.objects.all()
+    serializer_class = PortfolioSerializer
     
     def destroy(self, request, *args, **kwargs):
         instance = self.get_object()
         instance.is_delete = True
         instance.save()
         return Response(status=status.HTTP_204_NO_CONTENT)
-    
-    
-
-class FolderList(APIView):
-    def get(self, request):
-        folders = Folder.objects.all()
-        serializer = FolderSerializer(folders, many=True)
-        return Response(serializer.data)
-
-    def post(self, request):
-        serializer = FolderSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-class FolderUpdate(APIView):
-    def get_object(self, pk):
-        try:
-            return Folder.objects.get(pk=pk)
-        except Folder.DoesNotExist:
-            raise status.HTTP_404_NOT_FOUND
-
-    def get(self, request, pk):
-        folder = self.get_object(pk)
-        serializer = FolderSerializer(folder)
-        return Response(serializer.data)
-
-    def put(self, request, pk):
-        folder = self.get_object(pk)
-        serializer = FolderSerializer(folder, data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-    def patch(self, request, pk):
-        folder = self.get_object(pk)
-        serializer = FolderSerializer(folder, data=request.data, partial=True)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-    def delete(self, request, pk):
-        folder = self.get_object(pk)
-        folder.is_deleted = True
-        folder.save()
-        return Response(status=status.HTTP_204_NO_CONTENT)
-
-
-    
-
-class WarehouseList(APIView):
-    def get(self, request):
-        warehouses = Warehouse.objects.all()
-        serializer = WarehouseSerializer(warehouses, many=True)
-        return Response(serializer.data)
-
-    def post(self, request):
-        serializer = WarehouseSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-class WarehouseUpdate(APIView):
-    def get_object(self, pk):
-        try:
-            return Warehouse.objects.get(pk=pk)
-        except Warehouse.DoesNotExist:
-            raise status.HTTP_404_NOT_FOUND
-
-    def get(self, request, pk):
-        warehouse = self.get_object(pk)
-        serializer = WarehouseSerializer(warehouse)
-        return Response(serializer.data)
-
-    def put(self, request, pk):
-        warehouse = self.get_object(pk)
-        serializer = WarehouseSerializer(warehouse, data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-    def patch(self, request, pk):
-        warehouse = self.get_object(pk)
-        serializer = WarehouseSerializer(warehouse, data=request.data, partial=True)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    def delete(self, request, pk):
-        warehouse = self.get_object(pk)
-        warehouse.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
-
-
-
-class WatchList(APIView):
-    def get(self, request):
-        watchlists = Watchlist.objects.all()
-        serializer = WatchListSerializer(watchlists, many=True)
-        return Response(serializer.data)
-
-    def post(self, request):
-        serializer = WatchListSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-    def put(self, request, pk):
-        try:
-            watchlist = Watchlist.objects.get(pk=pk)
-        except Watchlist.DoesNotExist:
-            return Response(status=status.HTTP_404_NOT_FOUND)
-
-        serializer = WatchListSerializer(watchlist, data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-    def delete(self, request, pk):
-        try:
-            watchlist = Watchlist.objects.get(pk=pk)
-        except Watchlist.DoesNotExist:
-            return Response(status=status.HTTP_404_NOT_FOUND)
-        
-        watchlist.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
-    
-
 
 class DownloadConvertAPIView(generics.RetrieveAPIView):
     queryset = Portfolio.objects.all()
@@ -280,10 +92,84 @@ class DownloadConvertAPIView(generics.RetrieveAPIView):
         with zipfile.ZipFile(zip_file, 'w') as zf:
             zf.writestr('portfolio_info.xlsx', portfolio_excel_file.getvalue())
             zf.writestr('documents_info.xlsx', documents_excel_file.getvalue())
+
+            # Thêm trường files vào file zip
+            for document in documents:
+                file_path = os.path.join(settings.MEDIA_ROOT, str(document.files))
+                arcname = os.path.basename(str(document.files))
+                zf.write(file_path, arcname=arcname)
+
         zip_file.seek(0)
 
         response = HttpResponse(zip_file.getvalue(), content_type='application/zip')
         response['Content-Disposition'] = 'attachment; filename=data.zip'
         return response
+    
+class DocumentList(generics.ListCreateAPIView):
+    queryset = Document.objects.all()
+    serializer_class = DocumentSerializer
+    
+    
+class DocumentUpdate(generics.RetrieveUpdateDestroyAPIView):
+    queryset = Document.objects.all()
+    serializer_class = DocumentSerializer
+    
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        instance.is_delete = True
+        instance.save()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+    
+    
+class FolderList(generics.ListCreateAPIView):
+    queryset = Folder.objects.all()
+    serializer_class = FolderSerializer
+    
+    
+    
+class FolderUpdate(generics.RetrieveUpdateDestroyAPIView):
+    queryset = Folder.objects.all()
+    serializer_class = FolderSerializer
+    
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        instance.is_delete = True
+        instance.save()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+    
 
+class BoxCaseList(generics.ListCreateAPIView):
+    queryset = BoxCase.objects.all()
+    serializer_class = BoxcaseSerializer
+
+class BoxCaseUpdate(generics.RetrieveUpdateDestroyAPIView):
+    queryset = BoxCase.objects.all()
+    serializer_class = BoxcaseSerializer
+    
+class ShelfList(generics.ListCreateAPIView):
+    queryset = Shelf.objects.all()
+    serializer_class = ShelfSerializer
+
+class ShelfUpdate(generics.RetrieveUpdateDestroyAPIView):
+    queryset = Shelf.objects.all()
+    serializer_class = ShelfSerializer
+    
+    
+class WarehouseList(generics.ListCreateAPIView):
+    queryset = Warehouse.objects.all()
+    serializer_class = WarehouseSerializer
+    
+class WarehouseUpdate(generics.RetrieveUpdateDestroyAPIView):
+    queryset = Warehouse.objects.all()
+    serializer_class = WarehouseSerializer
+    
+    
+    
+class WatchList(generics.ListCreateAPIView):
+    queryset = Watchlist.objects.all()
+    serializer_class = WatchListSerializer
                                                                                             
+class WatchlistUpdate(generics.RetrieveUpdateDestroyAPIView):
+    queryset = BoxCase.objects.all()
+    serializer_class = WarehouseSerializer
+    

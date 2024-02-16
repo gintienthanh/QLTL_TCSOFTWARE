@@ -22,21 +22,12 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 # SECURITY WARNING: keep the secret key used in production secret!
 
-
 SECRET_KEY = config('SECRET_KEYS', default='secret')
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-
-CORS_ORIGIN_ALLOW_ALL = True
-ALLOWED_HOSTS = ['*']
-CORS_ALLOWED_ORIGINS = [
-    "http://127.0.0.1:3000", 
-    "http://localhost:3000", 
-]
-CORS_ALLOW_CREDENTIALS = True
-CORS_ALLOW_HEADERS = ['*']
+ALLOWED_HOSTS = [ '0.0.0.0', '172.16.100.204', 'quanlytailieu-be.tcgroup.vn','127.0.0.1']
 
 # Application definition
 
@@ -82,7 +73,6 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 
-    'corsheaders.middleware.CorsMiddleware',
     'allauth.account.middleware.AccountMiddleware',
     'social_django.middleware.SocialAuthExceptionMiddleware',  # <-- social
 ]
@@ -120,16 +110,15 @@ ENV_FILE = os.path.join(BASE_DIR, '.env')
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': config("DB_NAME", default="default_db_name") ,
-        'USER': config("DB_USER", default="default_db_user") ,
+        'NAME': config("DB_NAME", default="default_db_name"),
+        'USER': config("DB_USER", default="default_db_user"),
         'PASSWORD': config("DB_PASSWORD", default="default_db_password"),
         'HOST': config("HOST", default="default_host"),
         'PORT': '5432'
- }
+        
+
+    }
 }
-
-
-
 
 # Password validation
 # https://docs.djangoproject.com/en/5.0/ref/settings/#auth-password-validators
@@ -164,9 +153,6 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/5.0/howto/static-files/
 
 STATIC_URL = 'static/'
-MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
-MEDIA_URL = '/media/'
-
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field
@@ -179,10 +165,10 @@ REST_FRAMEWORK = {
         'oauth2_provider.contrib.rest_framework.OAuth2Authentication',
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ),
-    'DEFAULT_RENDERER_CLASSES': ('rest_framework.renderers.JSONRenderer',),
+    # 'DEFAULT_RENDERER_CLASSES': ('rest_framework.renderers.JSONRenderer',),
 }
 
-# AUTH_USER_MODEL = 'Auth.User'
+AUTH_USER_MODEL = 'Auth.User'
 # Email Configuration
 EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
 EMAIL_HOST = 'smtp.gmail.com'
