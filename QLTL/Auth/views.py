@@ -11,7 +11,9 @@ from Auth.services import google_validate_id_token, user_get_or_create
 from django.template.loader import render_to_string
 import secrets
 import string
+import json
 from django.utils import timezone
+from django.contrib.auth.hashers import check_password
 
 from django.contrib.auth.models import User
 from Auth.serializers import FacebookSocialAuthSerializer,UserRegistrationSerializer,UserLoginSerializer,UserChangePasswordSerializer,SendPasswordResetEmailSerializer,UserPasswordResetSerializer,LogoutSerializer,UserSerializer
@@ -28,22 +30,24 @@ class UserRegistrationView(APIView):
     # permission_classes = [IsAdminUser]
     renderer_classes = [UserRenderer]
     def post(self,request,format=None):
-        serializer = UserRegistrationSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        user = serializer.save()
-        user_data = serializer.data
-       
-        characters = string.ascii_letters + string.digits + string.punctuation
-        password = ''.join(secrets.choice(characters) for _ in range(12))
-        user.set_password(password)
-        user.save()
-        context = {'password':password}
-        html_message = render_to_string('Inform_password.html', context )
-        data = {'body': html_message, 'to_email': user.email,
-                'subject': 'Password to login'}
-        Util.send_email(data)
-        return Response(user_data, status=status.HTTP_201_CREATED)
-
+        try:
+            serializer = UserRegistrationSerializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            user = serializer.save()
+            user_data = serializer.data
+            characters = string.ascii_letters + string.digits + string.punctuation
+            password = ''.join(secrets.choice(characters) for _ in range(12))
+            password_json = json.dumps(password)
+            user.set_password(password_json)
+            user.save() 
+            context = {'password':password}
+            html_message = render_to_string('Inform_password.html', context )
+            data = {'body': html_message, 'to_email': user.email,
+                    'subject': 'Password to login'}
+            Util.send_email(data)
+            return Response(user_data, status=status.HTTP_201_CREATED)
+        except: 
+            return Response({'errors':{'non_field_errors':['Error when create user']}}, status=status.HTTP_400_BAD_REQUEST)
 class UserLoginView(APIView):
     renderer_classes = [UserRenderer]
     def post(self,request,format=None):
@@ -51,7 +55,15 @@ class UserLoginView(APIView):
         serializer.is_valid(raise_exception=True)
         email = serializer.data.get('email')
         password = serializer.data.get('password')
-        user = authenticate(email=email,password=password)
+        # checklogin
+        try: 
+            user = User.objects.get(email=email)
+            check_password(password, user.password)
+            if user.is_active is False: return Response({'message: ':'Account unable','status':'400'}, status=status.HTTP_400_BAD_REQUEST)
+        except:
+            return Response({'message: ':'Login fail','status':'400'}, status=status.HTTP_400_BAD_REQUEST)
+        # or use authenticate
+        # user = authenticate(email=email,password=password)
         if user is not None:
             if not user.is_active:
                 raise AuthenticationFailed('Account disabled, contact admin')
@@ -125,7 +137,6 @@ class GoogleLoginApi( APIView):
 class FacebookSocialAuthView(APIView):
     serializer_class = FacebookSocialAuthSerializer
     def post(self, request):
-        print(request.data)
         serializer = self.serializer_class(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = ((serializer.validated_data)['auth_token'])
@@ -139,6 +150,5 @@ class FacebookSocialAuthView(APIView):
             'refresh': str(refresh_token),
             'access': str(refresh_token.access_token),
         }
-        print('user facebook:',user)
         return Response(response,status=status.HTTP_200_OK)
 

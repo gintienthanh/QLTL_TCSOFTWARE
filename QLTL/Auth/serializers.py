@@ -22,7 +22,9 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
         model = User
         fields = ['email']
     def create(self, validate_data):
-        return User.objects.create_user(**validate_data)
+        username = validate_data['email']
+        return User.objects.create_user(**validate_data,username=username)
+        
 class EmailVerificationSerializer(serializers.ModelSerializer):
     token = serializers.CharField(max_length=555)
 
@@ -59,6 +61,7 @@ class SendPasswordResetEmailSerializer(serializers.Serializer):
     def validate(self, attrs):
         email = attrs.get('email')
         if User.objects.filter(email = email).exists():
+            print('ok')
             user = User.objects.get(email=email)
             uid = urlsafe_base64_encode(force_bytes(user.id))
             token = PasswordResetTokenGenerator().make_token(user)
@@ -77,6 +80,7 @@ class SendPasswordResetEmailSerializer(serializers.Serializer):
             else:
                 raise serializers.ValidationError('API_USER_URL is not set.')
         else:
+            print('kh tìm thấy')
             raise serializers.ValidationError('You are not a Registered User')
 class UserPasswordResetSerializer(serializers.Serializer):
     password = serializers.CharField(max_length=255, style={'input_type':'password'}, write_only=True)
@@ -88,7 +92,7 @@ class UserPasswordResetSerializer(serializers.Serializer):
             password = attrs.get('password')
             password2 = attrs.get('password2')
             uid = self.context.get('uid')
-            token = self.context.get('token')
+            token = self.context.get('token')                            
             if password != password2:
                 raise serializers.ValidationError("Password and Confirm Password doesn't match")
             id = smart_str(urlsafe_base64_decode(uid))
