@@ -9,9 +9,11 @@ class Base(models.Model):
     is_delete = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    delete_at = models.DateTimeField(auto_now=True)
     owner = models.ForeignKey(User, on_delete=models.CASCADE)
     create_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='%(class)s_created')
     delete_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='%(class)s_deleted')
+    editor = models.ForeignKey(User, on_delete=models.CASCADE, related_name='%(class)s_editor')
     class  Meta:
         abstract = True
        
@@ -45,20 +47,28 @@ class Warehouse(Base):
     code = models.CharField(max_length = 255, null = True, blank = True)
     description = models.CharField(max_length = 255)
     type_warehouse = models.CharField(max_length=100, choices = Choices_type_warehouse.choices)
+    parent_warehouse = models.ForeignKey('self', on_delete=models.CASCADE, null=True, blank=True, related_name='subwarehouse') 
     def __str__(self) :
         return  self.name
     
+class ClassifyVariant(models.Model):
+    variant_name = models.CharField(max_length=100)
+    def __str__(self) :
+        return  self.variant_name
+    
+
+  
 class Portfolio(Base):
     
     title = models.CharField(max_length=200)
     identification_code = models.CharField(max_length=200)
-    classification_id = models.CharField(max_length=200)
+    classification = models. ForeignKey(ClassifyVariant, blank=True, null = True, on_delete=models.PROTECT)
     retention_period = models.DateField(null=True, blank=True)
     usage_policy = models.CharField(max_length=200, )
     start_date = models.DateField(null=True, blank=True)
     end_date = models.DateField(null=True, blank=True)
     physical_condition = models.CharField(max_length=200)
-    box_case = models.ForeignKey(Warehouse,  on_delete=models.CASCADE)
+    warehouse = models.ForeignKey(Warehouse,  on_delete=models.CASCADE)
     keywords = models.CharField(max_length=200)
     annotation = models.CharField(max_length=200)
     barcode = models.CharField(max_length=200)
@@ -70,7 +80,8 @@ class Folder(Base):
     name = models.CharField(max_length=200)
     parent_folder = models.ForeignKey('self', on_delete=models.CASCADE, null=True, blank=True, related_name='subfolders') 
     path = models.CharField(max_length=255, null=True, blank=True)
-    warehouse = models.ForeignKey(Warehouse, on_delete=models.CASCADE, null=True, blank=True)
+    files = models.FileField(upload_to='files/')
+    file_size = models.BigIntegerField()
     type = models.CharField(max_length=100, choices = Choices_type.choices)
     
     def __str__(self) :
@@ -92,7 +103,6 @@ class Document(Base):
     date = models.DateField(null = True, blank = True)
     physical_status = models.CharField(max_length=200)
     note = models.CharField(max_length=1000)
-    files = models.FileField(upload_to='files/')
     add_info = models.JSONField(null=True, blank=True)
     
     def __str__(self) :

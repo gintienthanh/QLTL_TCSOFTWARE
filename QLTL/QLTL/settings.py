@@ -23,7 +23,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # SECURITY WARNING: keep the secret key used in production secret!
 
 
-SECRET_KEY = config('SECRET_KEYS', default='secret')
+SECRET_KEY = config('SECRET_KEY', default='secret')
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
@@ -124,7 +124,7 @@ DATABASES = {
         'USER': config("DB_USER", default="default_db_user") ,
         'PASSWORD': config("DB_PASSWORD", default="default_db_password"),
         'HOST': config("HOST", default="default_host"),
-        'PORT': '5432'
+        'PORT': '5433'
  }
 }
 
