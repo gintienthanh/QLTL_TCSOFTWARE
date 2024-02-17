@@ -5,10 +5,12 @@ from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
 from django.template.loader import render_to_string
 from decouple import config
-from Auth.models import User
+from django.contrib.auth.models import User
 from Auth.services import  facebookValidate
 from .register import register_social_user
 from .utils import Util
+from Auth.services import  user_get_or_create
+
 from django.utils import timezone
 
 class UserSerializer(serializers.ModelSerializer):
@@ -20,7 +22,9 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
         model = User
         fields = ['email']
     def create(self, validate_data):
-        return User.objects.create_user(**validate_data)
+        username = validate_data['email']
+        return User.objects.create_user(**validate_data,username=username)
+        
 class EmailVerificationSerializer(serializers.ModelSerializer):
     token = serializers.CharField(max_length=555)
 
@@ -57,6 +61,7 @@ class SendPasswordResetEmailSerializer(serializers.Serializer):
     def validate(self, attrs):
         email = attrs.get('email')
         if User.objects.filter(email = email).exists():
+            print('ok')
             user = User.objects.get(email=email)
             uid = urlsafe_base64_encode(force_bytes(user.id))
             token = PasswordResetTokenGenerator().make_token(user)
@@ -75,6 +80,7 @@ class SendPasswordResetEmailSerializer(serializers.Serializer):
             else:
                 raise serializers.ValidationError('API_USER_URL is not set.')
         else:
+            print('kh tìm thấy')
             raise serializers.ValidationError('You are not a Registered User')
 class UserPasswordResetSerializer(serializers.Serializer):
     password = serializers.CharField(max_length=255, style={'input_type':'password'}, write_only=True)
@@ -86,7 +92,7 @@ class UserPasswordResetSerializer(serializers.Serializer):
             password = attrs.get('password')
             password2 = attrs.get('password2')
             uid = self.context.get('uid')
-            token = self.context.get('token')
+            token = self.context.get('token')                            
             if password != password2:
                 raise serializers.ValidationError("Password and Confirm Password doesn't match")
             id = smart_str(urlsafe_base64_decode(uid))
@@ -125,17 +131,16 @@ class FacebookSocialAuthSerializer(serializers.Serializer):
     def validate_auth_token(self, auth_token):
         user_data = facebookValidate(auth_token)
         try:
-            user_id = user_data['id']
-            email = user_data.get('email')
-            username = user_data['name']
-            provider = 'facebook'
-            return register_social_user(
-                provider=provider,
-                user_id=user_id,
-                email=email,
-                username=username
-            )
+            data ={ 
+                'user_id' : user_data['id'],
+                'email' : user_data.get('email'),
+                'username' : user_data['name']
+            }
+            
+            
+            user, _ = user_get_or_create(**data)
+            return user
         except Exception as identifier:
             raise serializers.ValidationError(
-                'The token  is invalid or expired. Please login again.'
+                'The token is invalid or expired. Please login again.'
             )
