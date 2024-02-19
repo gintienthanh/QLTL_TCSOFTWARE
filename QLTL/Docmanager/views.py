@@ -10,6 +10,7 @@ import mimetypes
 import shutil
 import tkinter as tk
 from tkinter import filedialog
+from rest_framework import filters
 import pandas as pd
 import zipfile
 from io import BytesIO
@@ -37,11 +38,6 @@ class PortfolioUpdate(APIView):
         except Portfolio.DoesNotExist:
             raise status.HTTP_404_NOT_FOUND
 
-    def get(self, request, pk):
-        portfolio = self.get_object(pk)
-        serializer = PortfolioSerializers(portfolio)
-        return Response(serializer.data)
-
     def put(self, request, pk):
         portfolio = self.get_object(pk)
         serializer = PortfolioSerializers(portfolio, data=request.data)
@@ -64,6 +60,12 @@ class PortfolioUpdate(APIView):
         portfolio.save()
         return Response(status=status.HTTP_204_NO_CONTENT)
     
+class PortfolioFilter(generics.ListAPIView):
+    queryset = Portfolio.objects.all()
+    serializer_class = PortfolioSerializers
+    filter_backends = [filters.SearchFilter]
+    search_fields = ['title']
+    
 class DocumentList(generics.ListCreateAPIView):
     queryset = Document.objects.all()
     serializer_class = DocumentSerializers
@@ -77,6 +79,12 @@ class DocumentUpdate(generics.RetrieveUpdateDestroyAPIView):
         instance.is_delete = True
         instance.save()
         return Response(status=status.HTTP_204_NO_CONTENT)
+ 
+class DocumentFilter(generics.ListAPIView):
+    queryset = Document.objects.all()
+    serializer_class = DocumentSerializers
+    filter_backends = [filters.SearchFilter]
+    search_fields = ['name']   
     
 class FolderList(APIView):
     def get(self, request):
@@ -107,12 +115,7 @@ class FolderUpdate(APIView):
             return Folder.objects.get(pk=pk)
         except Folder.DoesNotExist:
             raise status.HTTP_404_NOT_FOUND
-
-    def get(self, request, pk):
-        folder = self.get_object(pk)
-        serializer = FolderSerializers(folder)
-        return Response(serializer.data)
-
+    
     def put(self, request, pk):
         folder = self.get_object(pk)
         serializer = FolderSerializers(folder, data=request.data)
@@ -150,6 +153,12 @@ class FolderParentView(APIView):
         except:
             return Response({'status':400},status=status.HTTP_400_BAD_REQUEST)
 
+    
+class FolderFilter(generics.ListAPIView):
+    queryset = Folder.objects.all()
+    serializer_class = FolderSerializers
+    filter_backends = [filters.SearchFilter]
+    search_fields = ['name']
 
     
 
@@ -173,11 +182,6 @@ class WarehouseUpdate(APIView):
         except Warehouse.DoesNotExist:
             raise status.HTTP_404_NOT_FOUND
 
-    def get(self, request, pk):
-        warehouse = self.get_object(pk)
-        serializer = WarehouseSerializers(warehouse)
-        return Response(serializer.data)
-
     def put(self, request, pk):
         warehouse = self.get_object(pk)
         serializer = WarehouseSerializers(warehouse, data=request.data)
@@ -197,6 +201,12 @@ class WarehouseUpdate(APIView):
         warehouse = self.get_object(pk)
         warehouse.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+class WareHouseFilter(generics.ListAPIView):
+    queryset = Warehouse.objects.all()
+    serializer_class = WarehouseSerializers
+    filter_backends = [filters.SearchFilter]
+    search_fields = ['name']
 
 class WatchList(APIView):
     def get(self, request):

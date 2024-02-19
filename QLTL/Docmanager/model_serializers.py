@@ -48,3 +48,8 @@ class WatchlistSerializers(serializers.ModelSerializer):
         model = Watchlist
         fields = '__all__'
         read_only_fields = ['created_at', 'updated_at','is_visibale','is_delete']
+
+class ClassificationSerializer(serializers.ModelSerializer):
+    class Meta: 
+        model = ClassifyVariant
+        fields = '__all__'
