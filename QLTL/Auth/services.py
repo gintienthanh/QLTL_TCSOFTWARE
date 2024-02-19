@@ -1,14 +1,11 @@
 import requests
-from typing import Dict, Any
+
 import facebook
 from django.core.exceptions import ValidationError
-from django.db import transaction
+from decouple import config
 from typing import Tuple
-import os
-from dotenv import load_dotenv
-load_dotenv()
-
-from Auth.models import User
+from django.db import transaction
+from django.contrib.auth.models import User
 
 GOOGLE_ID_TOKEN_INFO_URL = 'https://www.googleapis.com/oauth2/v3/tokeninfo'
 GOOGLE_ACCESS_TOKEN_OBTAIN_URL = 'https://oauth2.googleapis.com/token'
@@ -37,44 +34,44 @@ def google_validate_id_token(*, id_token: str) -> bool:
 
     audience = response.json()['aud']
 
-    if audience != os.environ.get('GOOGLE_CLIENT_ID'):
+    if audience != config('GOOGLE_CLIENT_ID'):
         raise ValidationError('Invalid audience.')
 
     return True
 
 
-def google_get_access_token(*, code: str, redirect_uri: str) -> str:
-    # Reference: https://developers.google.com/identity/protocols/oauth2/web-server#obtainingaccesstokens
-    data = {
-        'code': code,
-        'client_id': os.environ.get('GOOGLE_CLIENT_ID'),
-        'client_secret': os.environ.get('GOOGLE_CLIENT_SECRET'),
-        'redirect_uri': redirect_uri,
-        'grant_type': 'authorization_code'
-    }
-    print('data: ',data)
-    print('GOOGLE_ACCESS_TOKEN_OBTAIN_URL: ',GOOGLE_ACCESS_TOKEN_OBTAIN_URL)
-    response = requests.post(GOOGLE_ACCESS_TOKEN_OBTAIN_URL, data=data)
-    print('response: ',response.text)
-    if not response.ok:
-        raise ValidationError('Failed to obtain access token from Google.')
+# def google_get_access_token(*, code: str, redirect_uri: str) -> str:
+#     # Reference: https://developers.google.com/identity/protocols/oauth2/web-server#obtainingaccesstokens
+#     data = {
+#         'code': code,
+#         'client_id': os.environ.get('GOOGLE_CLIENT_ID'),
+#         'client_secret': os.environ.get('GOOGLE_CLIENT_SECRET'),
+#         'redirect_uri': redirect_uri,
+#         'grant_type': 'authorization_code'
+#     }
+#     print('data: ',data)
+#     print('GOOGLE_ACCESS_TOKEN_OBTAIN_URL: ',GOOGLE_ACCESS_TOKEN_OBTAIN_URL)
+#     response = requests.post(GOOGLE_ACCESS_TOKEN_OBTAIN_URL, data=data)
+#     print('response: ',response.text)
+#     if not response.ok:
+#         raise ValidationError('Failed to obtain access token from Google.')
 
-    access_token = response.json()['access_token']
+#     access_token = response.json()['access_token']
 
-    return access_token
+#     return access_token
 
 
-def google_get_user_info(*, access_token: str) -> Dict[str, Any]:
-    # Reference: https://developers.google.com/identity/protocols/oauth2/web-server#callinganapi
-    response = requests.get(
-        GOOGLE_USER_INFO_URL,
-        params={'access_token': access_token}
-    )
+# def google_get_user_info(*, access_token: str) -> Dict[str, Any]:
+#     # Reference: https://developers.google.com/identity/protocols/oauth2/web-server#callinganapi
+#     response = requests.get(
+#         GOOGLE_USER_INFO_URL,
+#         params={'access_token': access_token}
+#     )
 
-    if not response.ok:
-        raise ValidationError('Failed to obtain user info from Google.')
+#     if not response.ok:
+#         raise ValidationError('Failed to obtain user info from Google.')
 
-    return response.json()
+#     return response.json()
 @transaction.atomic
 def user_get_or_create(*, email: str, **extra_data) -> Tuple[User, bool]:
     user = User.objects.filter(email=email).first()

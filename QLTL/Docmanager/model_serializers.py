@@ -15,19 +15,6 @@ class WarehouseSerializers(serializers.ModelSerializer):
         fields = '__all__'
         read_only_fields = ['created_at', 'updated_at','is_visibale','is_delete']
     
-class ShelfSerializers(serializers.ModelSerializer):
-    class Meta:
-        model = Shelf
-        fields = '__all__'
-        read_only_fields = ['created_at', 'updated_at','is_visibale','is_delete']
-
-class BoxCaseSerializers(serializers.ModelSerializer):
-    class Meta:
-        model = BoxCase 
-        fields = '__all__'
-        read_only_fields = ['created_at', 'updated_at','is_visibale','is_delete']
-
-
 class DocumentSerializers(serializers.ModelSerializer):
     class Meta:
         model = Document

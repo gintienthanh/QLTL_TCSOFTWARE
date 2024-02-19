@@ -5,7 +5,7 @@ charset-normalizer==3.3.2
 cryptography==42.0.2
 defusedxml==0.7.1
 Deprecated==1.2.14
-Django==5.0.1
+django==5.0.1
 django-allauth==0.60.1
 django-oauth-toolkit==2.3.0
 djangorestframework==3.14.0
@@ -33,9 +33,9 @@ social-auth-core==4.5.2
 sqlparse==0.4.4
 tzdata==2023.4
 urllib3==2.2.0
-wrapt==1.16.0djangorestframework-simplejwt==5.3.1
+wrapt==1.16.0
+djangorestframework-simplejwt==5.3.1
 django-allauth==0.60.1
 django-rest-framework-social-oauth2==1.2.0
 python-dotenv==1.0.1
 django-facebook2==0.3.2
-

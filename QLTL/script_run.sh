@@ -1,0 +1,1 @@
+sudo docker run --rm --name qltl -p 18000:8000 hungdvtima2022/qltl:0.0.1
