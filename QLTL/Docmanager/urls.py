@@ -36,7 +36,8 @@ from django.conf import settings
 from django.conf.urls.static import static
 urlpatterns = [
     path('folderlist', FolderList.as_view()),
-    path('folderlist/<int:pk>', FolderUpdate.as_view()),
+    path('folder/<int:pk>', FolderUpdate.as_view()),
+    path('folderparent/<int:pk>', FolderParentView.as_view()),
    
     path('warehouselist', WarehouseList.as_view()),
     path('warehouselist/<int:pk>', WarehouseUpdate.as_view()),
@@ -50,5 +51,6 @@ urlpatterns = [
     path('watchlist', WatchList.as_view()),
     
     path('download/<int:pk>/', DownloadConvertAPIView.as_view(), name='download-convert'),
-    
+    path('document/download/<int:document_id>', DownloadFile.as_view(), name='file-download'),
+
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
