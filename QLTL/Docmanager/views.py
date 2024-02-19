@@ -34,10 +34,6 @@ class PortfolioUpdate(APIView):
         except Portfolio.DoesNotExist:
             raise status.HTTP_404_NOT_FOUND
 
-    def get(self, request, pk):
-        portfolio = self.get_object(pk)
-        serializer = PortfolioSerializer(portfolio)
-        return Response(serializer.data)
 
     def put(self, request, pk):
         portfolio = self.get_object(pk)
@@ -116,11 +112,7 @@ class FolderUpdate(APIView):
         except Folder.DoesNotExist:
             raise status.HTTP_404_NOT_FOUND
 
-    def get(self, request, pk):
-        folder = self.get_object(pk)
-        serializer = FolderSerializer(folder)
-        return Response(serializer.data)
-
+    
     def put(self, request, pk):
         folder = self.get_object(pk)
         serializer = FolderSerializer(folder, data=request.data)
@@ -170,11 +162,6 @@ class WarehouseUpdate(APIView):
             return Warehouse.objects.get(pk=pk)
         except Warehouse.DoesNotExist:
             raise status.HTTP_404_NOT_FOUND
-
-    def get(self, request, pk):
-        warehouse = self.get_object(pk)
-        serializer = WarehouseSerializer(warehouse)
-        return Response(serializer.data)
 
     def put(self, request, pk):
         warehouse = self.get_object(pk)
