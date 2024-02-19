@@ -1,11 +1,11 @@
 from django.shortcuts import render
-from django.shortcuts import render
 from .model_serializers import*
 from .models import*
 from rest_framework import authentication, permissions, status, generics
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from django.http import HttpResponse
+from rest_framework import filters
 import pandas as pd
 from io import BytesIO
 import zipfile
@@ -61,7 +61,11 @@ class PortfolioUpdate(APIView):
         portfolio.save()
         return Response(status=status.HTTP_204_NO_CONTENT)
     
-
+class PortfolioFilter(generics.ListAPIView):
+    queryset = Portfolio.objects.all()
+    serializer_class = PortfolioSerializer
+    filter_backends = [filters.SearchFilter]
+    search_fields = ['title']
     
     
 
@@ -82,8 +86,15 @@ class DocumentUpdate(generics.RetrieveUpdateDestroyAPIView):
         instance.is_delete = True
         instance.save()
         return Response(status=status.HTTP_204_NO_CONTENT)
+ 
+class DocumentFilter(generics.ListAPIView):
+    queryset = Document.objects.all()
+    serializer_class = DocumentSerializer
+    filter_backends = [filters.SearchFilter]
+    search_fields = ['name']   
     
-    
+
+
 
 class FolderList(APIView):
     def get(self, request):
@@ -131,7 +142,12 @@ class FolderUpdate(APIView):
         folder.is_deleted = True
         folder.save()
         return Response(status=status.HTTP_204_NO_CONTENT)
-
+    
+class FolderFilter(generics.ListAPIView):
+    queryset = Folder.objects.all()
+    serializer_class = FolderSerializer
+    filter_backends = [filters.SearchFilter]
+    search_fields = ['name']
 
     
 
@@ -180,7 +196,11 @@ class WarehouseUpdate(APIView):
         warehouse.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
-
+class WareHouseFilter(generics.ListAPIView):
+    queryset = Warehouse.objects.all()
+    serializer_class = WarehouseSerializer
+    filter_backends = [filters.SearchFilter]
+    search_fields = ['name']
 
 class WatchList(APIView):
     def get(self, request):

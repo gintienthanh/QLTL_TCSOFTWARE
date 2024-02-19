@@ -35,3 +35,8 @@ class WarehouseSerializer(serializers.ModelSerializer):
         model = Warehouse
         fields = '__all__'
         
+class ClassificationSerializer(serializers.ModelSerializer):
+    class Meta: 
+        model = ClassifyVariant
+        fields = '__all__'
+        
