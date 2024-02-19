@@ -17,22 +17,26 @@ from decouple import config
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
 
-SECRET_KEY = config('SECRET_KEYS')
 
-
-
+SECRET_KEY = config('SECRET_KEY', default='secret')
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
 
+CORS_ORIGIN_ALLOW_ALL = True
+ALLOWED_HOSTS = ['*']
+CORS_ALLOWED_ORIGINS = [
+    "http://127.0.0.1:3000", 
+    "http://localhost:3000", 
+]
+CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOW_HEADERS = ['*']
 
 # Application definition
 
@@ -43,7 +47,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    
+
     'rest_framework',
 
     'rest_framework_simplejwt',
@@ -59,17 +63,15 @@ INSTALLED_APPS = [
 
     'Auth',
 
-    'Fileprocessor',    
+    'Fileprocessor',
     'Docmanager',
-    
-    
+
 ]
 
 SOCIALACCOUNT_QUERY_EMAIL = True
-ACCOUNT_LOGOUT_ON_GET= True
+ACCOUNT_LOGOUT_ON_GET = True
 ACCOUNT_UNIQUE_EMAIL = True
 ACCOUNT_EMAIL_REQUIRED = True
-
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -80,6 +82,7 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 
+    'corsheaders.middleware.CorsMiddleware',
     'allauth.account.middleware.AccountMiddleware',
     'social_django.middleware.SocialAuthExceptionMiddleware',  # <-- social
 ]
@@ -99,7 +102,7 @@ TEMPLATES = [
                 'django.contrib.messages.context_processors.messages',
 
                 'social_django.context_processors.backends',  # <-- social
-                'social_django.context_processors.login_redirect', # <-- social
+                'social_django.context_processors.login_redirect',  # <-- social
             ],
         },
     },
@@ -107,7 +110,7 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'QLTL.wsgi.application'
 
-
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 # Database
 # https://docs.djangoproject.com/en/5.0/ref/settings/#databases
 
@@ -120,8 +123,8 @@ DATABASES = {
         'NAME': config("DB_NAME", default="default_db_name") ,
         'USER': config("DB_USER", default="default_db_user") ,
         'PASSWORD': config("DB_PASSWORD", default="default_db_password"),
-        'HOST': 'localhost',
-        'PORT': '5432'
+        'HOST': config("HOST", default="default_host"),
+        'PORT': '5433'
  }
 }
 
@@ -146,7 +149,6 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-
 # Internationalization
 # https://docs.djangoproject.com/en/5.0/topics/i18n/
 
@@ -158,11 +160,13 @@ USE_I18N = True
 
 USE_TZ = True
 
-
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.0/howto/static-files/
 
 STATIC_URL = 'static/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+MEDIA_URL = '/media/'
+
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field
@@ -171,24 +175,25 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 REST_FRAMEWORK = {
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
     'PAGE_SIZE': 10,
-    'DEFAULT_AUTHENTICATION_CLASSES': (   
+    'DEFAULT_AUTHENTICATION_CLASSES': (
         'oauth2_provider.contrib.rest_framework.OAuth2Authentication',
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ),
-    'DEFAULT_RENDERER_CLASSES':('rest_framework.renderers.JSONRenderer',),
+    'DEFAULT_RENDERER_CLASSES': ('rest_framework.renderers.JSONRenderer',),
 }
 
-AUTH_USER_MODEL = 'Auth.User'
+# AUTH_USER_MODEL = 'Auth.User'
 # Email Configuration
-EMAIL_BACKEND="django.core.mail.backends.smtp.EmailBackend"
+EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
 EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587
-EMAIL_HOST_USER = config('EMAIL_USER')
-EMAIL_HOST_PASSWORD = config('EMAIL_PASSWORD')
+EMAIL_HOST_USER = config('EMAIL_USER', default='smtp.gmail.com')
+EMAIL_HOST_PASSWORD = config('EMAIL_PASSWORD', default='pass')
 EMAIL_USE_TLS = True
 from datetime import timedelta
+
 SIMPLE_JWT = {
-   "ACCESS_TOKEN_LIFETIME": timedelta(minutes=40),
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=40),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=1),
     "ROTATE_REFRESH_TOKENS": False,
     "BLACKLIST_AFTER_ROTATION": False,

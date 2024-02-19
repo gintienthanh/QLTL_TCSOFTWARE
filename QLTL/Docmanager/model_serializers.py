@@ -8,19 +8,19 @@ class BaseSerializer(serializers.ModelSerializer):
 
 class FolderSerializer(serializers.ModelSerializer):
     class Meta:
-        model = Folders
+        model = Folder
         fields = '__all__'
 
 
 class DocumentSerializer(serializers.ModelSerializer):
     class Meta:
-        model = Documents
+        model = Document
         fields = '__all__'
 
 
 class PortfolioSerializer(serializers.ModelSerializer):
     class Meta:
-        model = Portfolios
+        model = Portfolio
         fields = '__all__'
 
 class WatchListSerializer(serializers.ModelSerializer):
@@ -28,10 +28,6 @@ class WatchListSerializer(serializers.ModelSerializer):
         model = Watchlist
         fields = '__all__'
 
-class BoxcaseSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = BoxCase
-        fields = '__all__'
         
 
 class WarehouseSerializer(serializers.ModelSerializer):
@@ -39,7 +35,8 @@ class WarehouseSerializer(serializers.ModelSerializer):
         model = Warehouse
         fields = '__all__'
         
-class ShelfSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Shelf
+class ClassificationSerializer(serializers.ModelSerializer):
+    class Meta: 
+        model = ClassifyVariant
         fields = '__all__'
+        
