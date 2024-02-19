@@ -58,7 +58,6 @@ folium==0.15.0
 fontawesomefree==6.5.1
 fonttools==4.38.0
 frozendict==2.3.8
-geopandas==0.14.1
 google-auth==2.26.2
 greenlet==3.0.3
 gunicorn==21.2.0
