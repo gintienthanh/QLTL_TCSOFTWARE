@@ -60,9 +60,9 @@ INSTALLED_APPS = [
     'allauth.socialaccount.providers.google',
     'allauth.socialaccount.providers.facebook',
     'rest_framework.authtoken',
+    'rest_framework_swagger',
 
     'Auth',
-
     'Fileprocessor',
     'Docmanager',
 
@@ -193,7 +193,7 @@ EMAIL_USE_TLS = True
 from datetime import timedelta
 
 SIMPLE_JWT = {
-    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=40),
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=400),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=1),
     "ROTATE_REFRESH_TOKENS": False,
     "BLACKLIST_AFTER_ROTATION": False,

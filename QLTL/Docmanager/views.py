@@ -2,6 +2,7 @@ from django.shortcuts import render
 from .model_serializers import*
 from .models import*
 from rest_framework import authentication, permissions, status, generics
+
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -155,11 +156,25 @@ class FolderFilter(generics.ListAPIView):
 
 class WarehouseList(APIView):
     permission_classes = [IsAuthenticated]
-    def get(self, request):
-        warehouses = Warehouse.objects.all()
-        serializer = WarehouseSerializer(warehouses, many=True)
-        return Response(serializer.data)
+    
+    # def get(self, request):
+    #     warehouses = Warehouse.objects.all()
+    #     serializer = WarehouseSerializer(warehouses, many=True)
+    #     return Response(serializer.data)
+    def get(self, request, *args, **kwargs):
+        type_warehouse = request.GET.get('type_warehouse')
 
+        if type_warehouse == 'Giá Kệ':
+            warehouse = Warehouse.objects.filter(type_warehouse='Giá Kệ')
+        elif type_warehouse == 'Kho':
+            warehouse = Warehouse.objects.filter(type_warehouse='Kho')
+        elif type_warehouse == 'Hộp Cặp':
+            warehouse = Warehouse.objects.filter(type_warehouse='Hộp cặp')
+        else:
+            return Response({"error": "Invalid type_warehouse value"}, status=status.HTTP_400_BAD_REQUEST)
+
+        serializer = WarehouseSerializer(warehouse, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
     def post(self, request):
         serializer = WarehouseSerializer(data=request.data)
         if serializer.is_valid():
