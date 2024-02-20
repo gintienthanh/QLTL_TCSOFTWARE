@@ -2,6 +2,7 @@ from django.shortcuts import render
 from .model_serializers import*
 from .models import*
 from rest_framework import authentication, permissions, status, generics
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from django.http import HttpResponse
@@ -13,6 +14,7 @@ import zipfile
 # Create your views here.
 
 class PortfolioList(APIView):
+    permission_classes = [IsAuthenticated]
     def get(self, request):
         portfolios = Portfolio.objects.all()
         serializer = PortfolioSerializer(portfolios, many=True)
@@ -28,6 +30,7 @@ class PortfolioList(APIView):
 
 
 class PortfolioUpdate(APIView):
+    permission_classes = [IsAuthenticated]
     def get_object(self, pk):
         try:
             return Portfolio.objects.get(pk=pk)
@@ -58,6 +61,7 @@ class PortfolioUpdate(APIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
     
 class PortfolioFilter(generics.ListAPIView):
+    permission_classes = [IsAuthenticated]
     queryset = Portfolio.objects.all()
     serializer_class = PortfolioSerializer
     filter_backends = [filters.SearchFilter]
@@ -69,11 +73,13 @@ class PortfolioFilter(generics.ListAPIView):
     
     
 class DocumentList(generics.ListCreateAPIView):
+    permission_classes = [IsAuthenticated]
     queryset = Document.objects.all()
     serializer_class = DocumentSerializer
     
     
 class DocumentUpdate(generics.RetrieveUpdateDestroyAPIView):
+    permission_classes = [IsAuthenticated]
     queryset = Document.objects.all()
     serializer_class = DocumentSerializer
     
@@ -84,6 +90,7 @@ class DocumentUpdate(generics.RetrieveUpdateDestroyAPIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
  
 class DocumentFilter(generics.ListAPIView):
+    permission_classes = [IsAuthenticated]
     queryset = Document.objects.all()
     serializer_class = DocumentSerializer
     filter_backends = [filters.SearchFilter]
@@ -93,6 +100,7 @@ class DocumentFilter(generics.ListAPIView):
 
 
 class FolderList(APIView):
+    permission_classes = [IsAuthenticated]
     def get(self, request):
         folders = Folder.objects.all()
         serializer = FolderSerializer(folders, many=True)
@@ -106,6 +114,7 @@ class FolderList(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class FolderUpdate(APIView):
+    permission_classes = [IsAuthenticated]
     def get_object(self, pk):
         try:
             return Folder.objects.get(pk=pk)
@@ -136,6 +145,7 @@ class FolderUpdate(APIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
     
 class FolderFilter(generics.ListAPIView):
+    permission_classes = [IsAuthenticated]
     queryset = Folder.objects.all()
     serializer_class = FolderSerializer
     filter_backends = [filters.SearchFilter]
@@ -144,6 +154,7 @@ class FolderFilter(generics.ListAPIView):
     
 
 class WarehouseList(APIView):
+    permission_classes = [IsAuthenticated]
     def get(self, request):
         warehouses = Warehouse.objects.all()
         serializer = WarehouseSerializer(warehouses, many=True)
@@ -157,6 +168,7 @@ class WarehouseList(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class WarehouseUpdate(APIView):
+    permission_classes = [IsAuthenticated]
     def get_object(self, pk):
         try:
             return Warehouse.objects.get(pk=pk)
@@ -184,12 +196,14 @@ class WarehouseUpdate(APIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 class WareHouseFilter(generics.ListAPIView):
+    permission_classes = [IsAuthenticated]
     queryset = Warehouse.objects.all()
     serializer_class = WarehouseSerializer
     filter_backends = [filters.SearchFilter]
     search_fields = ['name']
 
 class WatchList(APIView):
+    permission_classes = [IsAuthenticated]
     def get(self, request):
         watchlists = Watchlist.objects.all()
         serializer = WatchListSerializer(watchlists, many=True)
@@ -226,6 +240,7 @@ class WatchList(APIView):
 
 
 class DownloadConvertAPIView(generics.RetrieveAPIView):
+    permission_classes = [IsAuthenticated]
     queryset = Portfolio.objects.all()
     serializer_class = PortfolioSerializer
 
