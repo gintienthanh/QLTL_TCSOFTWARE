@@ -95,8 +95,16 @@ class FolderList(APIView):
     def post(self, request):
         serializer = FolderSerializers(data=request.data)
         uploaded_file = request.FILES.get('files')
+        files = request.FILES.getlist('files[]')
         if serializer.is_valid():
-            if uploaded_file:
+            if files:
+                # Lưu danh sách các tệp tin
+                files_list = []
+                for file in files:
+                    files_list.append(file)
+                serializer.save(type='File', files=files_list)
+            elif uploaded_file:
+            # Lưu tệp tin duy nhất
                 serializer.save(type='File', files=uploaded_file)
             else:
                 serializer.save(type='Folder')

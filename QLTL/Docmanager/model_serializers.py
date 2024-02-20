@@ -33,6 +33,7 @@ class FolderSerializers(serializers.ModelSerializer):
         fields = '__all__'
         read_only_fields = ['created_at', 'updated_at','is_visibale','is_delete']
 # ,'create_by','delete_by','editor','owner'
+        
 class FolderChildSerializers(serializers.ModelSerializer):
     class Meta:
         model = Folder
