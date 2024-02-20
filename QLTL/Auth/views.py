@@ -14,18 +14,14 @@ import string
 import json
 from django.utils import timezone
 from django.contrib.auth.hashers import check_password
+from allauth.socialaccount.models import SocialAccount, SocialApp
 
 from django.contrib.auth.models import User
 from Auth.serializers import FacebookSocialAuthSerializer,UserRegistrationSerializer,UserLoginSerializer,UserChangePasswordSerializer,SendPasswordResetEmailSerializer,UserPasswordResetSerializer,LogoutSerializer,UserSerializer
 from Auth.renderers import UserRenderer
 from .utils import Util
 
-def get_tokens_for_user(user):
-    refresh = RefreshToken.for_user(user)
-    return {
-        'refresh': str(refresh),
-        'access': str(refresh.access_token),
-    }
+
 class UserRegistrationView(APIView):
     # permission_classes = [IsAdminUser]
     renderer_classes = [UserRenderer]
@@ -68,15 +64,25 @@ class UserLoginView(APIView):
         if user is not None:
             if not user.is_active:
                 raise AuthenticationFailed('Account disabled, contact admin')
-            token = get_tokens_for_user(user)
+            refresh = RefreshToken.for_user(user)
             if user.last_login is None:
-                return Response({'status':403,'mess':'FirstTime Login','token':token}, status=status.HTTP_403_FORBIDDEN)
+                return Response({
+                    'status':403,
+                    'mess':'FirstTime Login',
+                    'access': str(refresh.access_token),
+                    }, status=status.HTTP_403_FORBIDDEN)
         else:
-            return Response({'errors':{'non_field_errors':['Email or Password is not Valid']}}, status=status.HTTP_404_NOT_FOUND)
+            return Response({
+                'errors':{'non_field_errors':['Email or Password is not Valid']}}, status=status.HTTP_404_NOT_FOUND)
         user.last_login = timezone.now()
-        return Response({'token':token,'msg':'Login Success'}, status=status.HTTP_200_OK)
+        return Response({
+            'status':200,
+            'refresh': str(refresh),
+            'access': str(refresh.access_token),
+            'name':user.username,
+            'is_admin': user.is_superuser,
+            'message':'Login Success'}, status=status.HTTP_200_OK)
         
-
 class UserChangePasswordView(APIView):
     renderer_classes = [UserRenderer]
     permission_classes = [IsAuthenticated]
@@ -111,10 +117,12 @@ class LogoutAPIView(APIView):
 
         return Response('logout!',status=status.HTTP_204_NO_CONTENT)
 class GoogleLoginApi( APIView):
+
     class InputSerializer(serializers.Serializer):
+        id = serializers.IntegerField(required=False, default='')
         email = serializers.EmailField()
-        first_name = serializers.CharField(required=False, default='')
-        last_name = serializers.CharField(required=False, default='')
+        username = serializers.CharField(required=False, default='')
+        
 
     def post(self, request, *args, **kwargs):
         id_token = request.headers.get('Authorization')
@@ -122,16 +130,34 @@ class GoogleLoginApi( APIView):
 
         serializer = self.InputSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        user, _ = user_get_or_create(**serializer.validated_data)
+        data = {
+            'email':serializer.validated_data['email'],
+            'username':serializer.validated_data['username']
+        }
+        user, _ = user_get_or_create(**data)
+        uid = serializer.validated_data['id']
+        provider = 'google' 
+        social_app = SocialApp.objects.get(provider=provider)
+        social_account, created = SocialAccount.objects.get_or_create(
+            user=user,
+            provider=provider,
+            uid=uid
+        )
+        if created:
+            social_account.extra_data = {} 
+            social_account.app = social_app
+            social_account.save()
         user.last_login = timezone.now()
         user.save()
         refresh_token = RefreshToken.for_user(user)
         response = {
+            'status':200,
             'id': user.id,
             'name': user.username,
             'email': user.email,
             'refresh': str(refresh_token),
             'access': str(refresh_token.access_token),
+            'is_admin': user.is_superuser
         }
         return Response(response,status=status.HTTP_200_OK)
     
@@ -145,11 +171,13 @@ class FacebookSocialAuthView(APIView):
         user.save()
         refresh_token = RefreshToken.for_user(user)
         response = {
+            'status':200,
             'id': user.id,
             'name': user.username,
             'email': user.email,
             'refresh': str(refresh_token),
             'access': str(refresh_token.access_token),
+            'is_admin': user.is_superuser
         }
         return Response(response,status=status.HTTP_200_OK)
 
