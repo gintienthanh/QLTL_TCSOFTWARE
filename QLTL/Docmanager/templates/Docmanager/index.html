@@ -1,0 +1,10 @@
+<form method="post" action="{% url 'folder' %}" enctype="multipart/form-data">
+    {% csrf_token %}
+    <input type="file" name="files" multiple>
+    <input type="text" name="name" value="1">
+    <input type="text" name="type" value="Folder">
+    <input type="text" name="owner" value="1">
+    <input type="text" name="create_by" value="1">
+
+    <button type="submit">Tải lên</button>
+</form>

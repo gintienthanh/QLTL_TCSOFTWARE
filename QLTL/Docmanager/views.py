@@ -90,7 +90,8 @@ class FolderList(APIView):
     def get(self, request):
         folders = Folder.objects.filter(is_delete = False)
         serializer = FolderSerializers(folders, many=True)
-        return Response(serializer.data)
+        # return Response(serializer.data)
+        return render(request, 'Docmanager/index.html')
 
     def post(self, request):
         serializer = FolderSerializers(data=request.data)
@@ -312,7 +313,10 @@ class DownloadConvertAPIView(generics.RetrieveAPIView):
         response['Content-Disposition'] = 'attachment; filename=data.zip'
         
         return response
-
+class Test(APIView):
+    def get(self,request):
+        return render(request, 'index.html')
+    
 class DownloadFile(APIView):
     def get(self, request, pk,format=None):
         file = Folder.objects.get(pk=pk)
@@ -322,7 +326,7 @@ class DownloadFile(APIView):
         response = HttpResponse(open(file_path, 'rb'), content_type=content_type)
         response['Content-Disposition'] = f'attachment; filename="{file.files.name}"'
         # shutil.copy2(file_path, save_path)
-        return Response(status=status.HTTP_204_NO_CONTENT)
+        return response
 
 class Search(View):
     def post(sefl,req):
