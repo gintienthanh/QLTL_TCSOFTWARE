@@ -9,8 +9,11 @@ urlpatterns = [
     
     path('warehouse', WarehouseList.as_view()),
     path('warehouse/<int:pk>', WarehouseUpdate.as_view()),
-    path('warehouse-filter/', WareHouseFilter.as_view()),
+    path('warehouse-filter/', WarehouseFilter.as_view()),
     
+    path('share', ShareList.as_view()),
+    path('share/<int:pk>', ShareUpdate.as_view()),
+    path('share-filter/', ShareFilter.as_view()),
     
     path('portfolio', PortfolioList.as_view()),
     path('portfolio/<int:pk>', PortfolioUpdate.as_view()),
