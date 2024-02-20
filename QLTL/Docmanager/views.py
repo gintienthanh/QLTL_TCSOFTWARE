@@ -9,12 +9,11 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from django.http import HttpResponse
-from rest_framework import filters
 import pandas as pd
 from io import BytesIO
 import zipfile
 from rest_framework.decorators import permission_classes
-# from django_filters import rest_framework as filters
+from django_filters import rest_framework as filters
 # Create your views here.
 
 class PortfolioList(APIView):
@@ -65,11 +64,10 @@ class PortfolioUpdate(APIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
     
 class PortfolioFilter(generics.ListAPIView):
-    permission_classes = [IsAuthenticated]
     queryset = Portfolio.objects.all()
     serializer_class = PortfolioSerializer
-    filter_backends = [filters.SearchFilter]
-    search_fields = ['title']
+    filter_backends = [filters.DjangoFilterBackend]
+    filterset_fields = ['name']
     
     
 
@@ -94,17 +92,16 @@ class DocumentUpdate(generics.RetrieveUpdateDestroyAPIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
  
 class DocumentFilter(generics.ListAPIView):
-    permission_classes = [IsAuthenticated]
     queryset = Document.objects.all()
     serializer_class = DocumentSerializer
-    filter_backends = [filters.SearchFilter]
-    search_fields = ['name']   
+    filter_backends = [filters.DjangoFilterBackend]
+    filterset_fields = ['name']
     
 
 
 
 class FolderList(APIView):
-    permission_classes = [IsAuthenticated]
+    # permission_classes = [IsAuthenticated]
     def get(self, request):
         folders = Folder.objects.all()
         serializer = FolderSerializer(folders, many=True)
@@ -119,13 +116,16 @@ class FolderList(APIView):
 
 # @permission_classes([CheckSharedGroupdFactory(Folder(),'Chỉnh sửa') | CheckOwnerFactory(Folder())])
 class FolderUpdate(APIView):
-    permission_classes = [IsAuthenticated]
+    # permission_classes = [IsAuthenticated]
     def get_object(self, pk):
         try:
             return Folder.objects.get(pk=pk)
         except Folder.DoesNotExist:
             raise status.HTTP_404_NOT_FOUND
-
+    def get(self, request, pk):
+        folder = self.get_object(pk)
+        serializer = FolderSerializer(folder)
+        return Response(serializer.data)
     
     def put(self, request, pk):
         folder = self.get_object(pk)
@@ -150,11 +150,10 @@ class FolderUpdate(APIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
     
 class FolderFilter(generics.ListAPIView):
-    permission_classes = [IsAuthenticated]
     queryset = Folder.objects.all()
     serializer_class = FolderSerializer
-    filter_backends = [filters.SearchFilter]
-    search_fields = ['name']
+    filter_backends = [filters.DjangoFilterBackend]
+    filterset_fields = ['name','file_size','parent_folder']
 
 class ShareList(APIView):
     def get(self, request):
@@ -220,8 +219,8 @@ class ShareUpdate(APIView):
 class ShareFilter(generics.ListAPIView):
     queryset = Share.objects.all()
     serializer_class = ShareSerializer
-    filter_backends = [filters.SearchFilter]
-    search_fields = ['owner', 'folder', 'document']    
+    filter_backends = (filters.DjangoFilterBackend,)
+    filterset_fields = ('owner', 'document','folder')
 
 
 # class ShareList(generics.ListCreateAPIView):
@@ -321,12 +320,11 @@ class WarehouseUpdate(APIView):
         warehouse.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
-class WareHouseFilter(generics.ListAPIView):
-    permission_classes = [IsAuthenticated]
+class WarehouseFilter(generics.ListAPIView):
     queryset = Warehouse.objects.all()
     serializer_class = WarehouseSerializer
-    filter_backends = [filters.SearchFilter]
-    search_fields = ['name']
+    filter_backends = [filters.DjangoFilterBackend]
+    filterset_fields = ['name','type']
 
 class WatchList(APIView):
     permission_classes = [IsAuthenticated]
