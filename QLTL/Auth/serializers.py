@@ -7,7 +7,6 @@ from django.template.loader import render_to_string
 from decouple import config
 from django.contrib.auth.models import User
 from Auth.services import  facebookValidate
-from .register import register_social_user
 from .utils import Util
 from Auth.services import  user_get_or_create
 from allauth.socialaccount.models import SocialAccount, SocialApp

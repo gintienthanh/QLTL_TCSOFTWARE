@@ -1,11 +1,8 @@
 from rest_framework.response import Response
-from django.contrib.auth import authenticate
 from rest_framework import status,permissions,serializers
 from rest_framework.views import APIView
-from rest_framework.exceptions import AuthenticationFailed
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.permissions import IsAuthenticated
-from rest_framework.permissions import IsAdminUser
 from django.utils import timezone
 from Auth.services import google_validate_id_token, user_get_or_create
 from django.template.loader import render_to_string
@@ -55,8 +52,6 @@ class UserLoginView(APIView):
         is_True = check_password(password, user.password)
         if is_True is False:
             return Response({'message: ':'Password not match','status':'400'}, status=status.HTTP_400_BAD_REQUEST)
-        # or use authenticate
-        # user = authenticate(email=email,password=password)
         if user is not None:
             refresh = RefreshToken.for_user(user)
             if user.is_active is False: return Response({'message: ':'Account unable','status':'400'}, status=status.HTTP_400_BAD_REQUEST)
