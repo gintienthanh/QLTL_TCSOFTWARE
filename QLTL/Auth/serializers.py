@@ -10,7 +10,7 @@ from Auth.services import  facebookValidate
 from .register import register_social_user
 from .utils import Util
 from Auth.services import  user_get_or_create
-
+from allauth.socialaccount.models import SocialAccount, SocialApp
 from django.utils import timezone
 
 class UserSerializer(serializers.ModelSerializer):
@@ -33,10 +33,10 @@ class EmailVerificationSerializer(serializers.ModelSerializer):
         fields = ['token']
 
 class UserLoginSerializer(serializers.ModelSerializer):
-    email = serializers.EmailField(max_length=255)
+    username = serializers.CharField(max_length=255)
     class Meta:
         model = User
-        fields = ['email', 'password']   
+        fields = ['username', 'password']   
 class UserChangePasswordSerializer(serializers.Serializer):
   password = serializers.CharField(max_length=255, style={'input_type':'password'}, write_only=True)
   password2 = serializers.CharField(max_length=255, style={'input_type':'password'}, write_only=True)
@@ -127,18 +127,26 @@ class LogoutSerializer(serializers.Serializer):
 class FacebookSocialAuthSerializer(serializers.Serializer):
     """Handles serialization of facebook related data"""
     auth_token = serializers.CharField()
-
     def validate_auth_token(self, auth_token):
         user_data = facebookValidate(auth_token)
         try:
             data ={ 
-                'user_id' : user_data['id'],
-                'email' : user_data.get('email'),
+                'email' : user_data['email'],
                 'username' : user_data['name']
             }
-            
-            
             user, _ = user_get_or_create(**data)
+            uid = user_data['id']
+            provider = 'facebook' 
+            social_app = SocialApp.objects.get(provider=provider)
+            social_account, created = SocialAccount.objects.get_or_create(
+                user=user,
+                provider=provider,
+                uid=uid
+            )
+            if created:
+                social_account.extra_data = {} 
+                social_account.app = social_app
+                social_account.save()
             return user
         except Exception as identifier:
             raise serializers.ValidationError(

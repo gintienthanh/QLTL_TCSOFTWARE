@@ -11,7 +11,7 @@ GOOGLE_ID_TOKEN_INFO_URL = 'https://www.googleapis.com/oauth2/v3/tokeninfo'
 GOOGLE_ACCESS_TOKEN_OBTAIN_URL = 'https://oauth2.googleapis.com/token'
 GOOGLE_USER_INFO_URL = 'https://www.googleapis.com/oauth2/v3/userinfo'
 
-@staticmethod
+# @staticmethod
 def facebookValidate(auth_token):
         """
         validate method Queries the facebook GraphAPI to fetch the user info
@@ -81,20 +81,12 @@ def user_get_or_create(*, email: str, **extra_data) -> Tuple[User, bool]:
 
     return user_create(email=email, **extra_data), True
 def user_create(email, password=None, **extra_fields) -> User:
-    extra_fields = {
-        'is_admin': False,
-        'is_verified':True,
-        **extra_fields
-    }
-
-    user = User(email=email, **extra_fields)
-
+    username = extra_fields['username']
+    user = User(email=email,username=username) 
     if password:
         user.set_password(password)
     else:
         user.set_unusable_password()
-
-    user.full_clean()
     user.save()
-
+    print('user sau khi tạo',user)
     return user
