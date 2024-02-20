@@ -88,5 +88,4 @@ def user_create(email, password=None, **extra_fields) -> User:
     else:
         user.set_unusable_password()
     user.save()
-    print('user sau khi tạo',user)
     return user
