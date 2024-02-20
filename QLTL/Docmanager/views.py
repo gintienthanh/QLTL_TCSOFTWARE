@@ -4,6 +4,8 @@ from django.shortcuts import render
 from .model_serializers import*
 from .models import*
 from rest_framework import authentication, permissions, status, generics
+
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from django.http import HttpResponse
@@ -16,6 +18,7 @@ from rest_framework.decorators import permission_classes
 # Create your views here.
 
 class PortfolioList(APIView):
+    permission_classes = [IsAuthenticated]
     def get(self, request):
         portfolios = Portfolio.objects.all()
         serializer = PortfolioSerializer(portfolios, many=True)
@@ -31,6 +34,7 @@ class PortfolioList(APIView):
 
 
 class PortfolioUpdate(APIView):
+    permission_classes = [IsAuthenticated]
     def get_object(self, pk):
         try:
             return Portfolio.objects.get(pk=pk)
@@ -61,6 +65,7 @@ class PortfolioUpdate(APIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
     
 class PortfolioFilter(generics.ListAPIView):
+    permission_classes = [IsAuthenticated]
     queryset = Portfolio.objects.all()
     serializer_class = PortfolioSerializer
     filter_backends = [filters.SearchFilter]
@@ -72,11 +77,13 @@ class PortfolioFilter(generics.ListAPIView):
     
 @permission_classes([CheckSharedGroupdFactory(Document(),'Chỉ xem')| CheckOwnerFactory(Document())])
 class DocumentList(generics.ListCreateAPIView):
+    permission_classes = [IsAuthenticated]
     queryset = Document.objects.all()
     serializer_class = DocumentSerializer
     
 @permission_classes([CheckSharedGroupdFactory(Document(),'Chỉnh sửa') | CheckOwnerFactory(Document())])
 class DocumentUpdate(generics.RetrieveUpdateDestroyAPIView):
+    permission_classes = [IsAuthenticated]
     queryset = Document.objects.all()
     serializer_class = DocumentSerializer
     
@@ -87,6 +94,7 @@ class DocumentUpdate(generics.RetrieveUpdateDestroyAPIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
  
 class DocumentFilter(generics.ListAPIView):
+    permission_classes = [IsAuthenticated]
     queryset = Document.objects.all()
     serializer_class = DocumentSerializer
     filter_backends = [filters.SearchFilter]
@@ -96,6 +104,7 @@ class DocumentFilter(generics.ListAPIView):
 
 
 class FolderList(APIView):
+    permission_classes = [IsAuthenticated]
     def get(self, request):
         folders = Folder.objects.all()
         serializer = FolderSerializer(folders, many=True)
@@ -110,6 +119,7 @@ class FolderList(APIView):
 
 # @permission_classes([CheckSharedGroupdFactory(Folder(),'Chỉnh sửa') | CheckOwnerFactory(Folder())])
 class FolderUpdate(APIView):
+    permission_classes = [IsAuthenticated]
     def get_object(self, pk):
         try:
             return Folder.objects.get(pk=pk)
@@ -140,6 +150,7 @@ class FolderUpdate(APIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
     
 class FolderFilter(generics.ListAPIView):
+    permission_classes = [IsAuthenticated]
     queryset = Folder.objects.all()
     serializer_class = FolderSerializer
     filter_backends = [filters.SearchFilter]
@@ -255,11 +266,26 @@ class ShareFilter(generics.ListAPIView):
 #         model = Share
 #         fields = ('owner', 'folder', 'document')
 class WarehouseList(APIView):
-    def get(self, request):
-        warehouses = Warehouse.objects.all()
-        serializer = WarehouseSerializer(warehouses, many=True)
-        return Response(serializer.data)
+    permission_classes = [IsAuthenticated]
+    
+    # def get(self, request):
+    #     warehouses = Warehouse.objects.all()
+    #     serializer = WarehouseSerializer(warehouses, many=True)
+    #     return Response(serializer.data)
+    def get(self, request, *args, **kwargs):
+        type_warehouse = request.GET.get('type_warehouse')
 
+        if type_warehouse == 'Giá Kệ':
+            warehouse = Warehouse.objects.filter(type_warehouse='Giá Kệ')
+        elif type_warehouse == 'Kho':
+            warehouse = Warehouse.objects.filter(type_warehouse='Kho')
+        elif type_warehouse == 'Hộp Cặp':
+            warehouse = Warehouse.objects.filter(type_warehouse='Hộp cặp')
+        else:
+            return Response({"error": "Invalid type_warehouse value"}, status=status.HTTP_400_BAD_REQUEST)
+
+        serializer = WarehouseSerializer(warehouse, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
     def post(self, request):
         serializer = WarehouseSerializer(data=request.data)
         if serializer.is_valid():
@@ -268,6 +294,7 @@ class WarehouseList(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class WarehouseUpdate(APIView):
+    permission_classes = [IsAuthenticated]
     def get_object(self, pk):
         try:
             return Warehouse.objects.get(pk=pk)
@@ -295,12 +322,14 @@ class WarehouseUpdate(APIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 class WareHouseFilter(generics.ListAPIView):
+    permission_classes = [IsAuthenticated]
     queryset = Warehouse.objects.all()
     serializer_class = WarehouseSerializer
     filter_backends = [filters.SearchFilter]
     search_fields = ['name']
 
 class WatchList(APIView):
+    permission_classes = [IsAuthenticated]
     def get(self, request):
         watchlists = Watchlist.objects.all()
         serializer = WatchListSerializer(watchlists, many=True)
@@ -337,6 +366,7 @@ class WatchList(APIView):
 
 
 class DownloadConvertAPIView(generics.RetrieveAPIView):
+    permission_classes = [IsAuthenticated]
     queryset = Portfolio.objects.all()
     serializer_class = PortfolioSerializer
 
