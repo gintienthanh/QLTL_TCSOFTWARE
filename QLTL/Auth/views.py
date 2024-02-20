@@ -12,6 +12,8 @@ import json
 from django.utils import timezone
 from django.contrib.auth.hashers import check_password
 from allauth.socialaccount.models import SocialAccount, SocialApp
+from rest_framework.permissions import IsAdminUser
+
 
 from django.contrib.auth.models import User
 from Auth.serializers import FacebookSocialAuthSerializer,UserRegistrationSerializer,UserLoginSerializer,UserChangePasswordSerializer,SendPasswordResetEmailSerializer,UserPasswordResetSerializer,LogoutSerializer,UserSerializer
@@ -20,7 +22,7 @@ from .utils import Util
 
 
 class UserRegistrationView(APIView):
-    # permission_classes = [IsAdminUser]
+    permission_classes = [IsAdminUser]
     renderer_classes = [UserRenderer]
     def post(self,request,format=None):
         try:
