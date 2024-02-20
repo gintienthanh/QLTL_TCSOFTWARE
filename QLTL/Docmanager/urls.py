@@ -8,6 +8,9 @@ urlpatterns = [
    
     path('warehouselist', WarehouseList.as_view()),
     path('warehouselist/<int:pk>', WarehouseUpdate.as_view()),
+    
+    path('sharelist', ShareList.as_view()),
+    path('sharelist/<int:pk>', ShareUpdate.as_view()),
    
     path('portfoliolist', PortfolioList.as_view()),
     path('portfoliolist/<int:pk>', PortfolioUpdate.as_view()),

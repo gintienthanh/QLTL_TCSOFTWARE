@@ -39,7 +39,9 @@ class Choices_type(models.TextChoices):
     File = 'File'
     Folder = 'Folder'
 
-
+class ChoicesSharingType(models.TextChoices):
+    ONLY_VIEW = 'Chỉ xem'
+    EDIT = 'Chỉnh sửa'
 
 
 class Warehouse(Base):
@@ -90,10 +92,10 @@ class Folder(Base):
 class Document(Base):
     
     name = models.CharField(max_length=200)
-    box_case = models.ForeignKey(Warehouse,  on_delete=models.CASCADE)
+    box_case = models.ForeignKey(Warehouse,  on_delete=models.CASCADE, null = True, blank = True)
     path = models.CharField(max_length=200)
     folder = models.ForeignKey(Folder, on_delete=models.CASCADE, null=True, blank=True)
-    portfolio = models.ForeignKey(Portfolio, on_delete=models.CASCADE)
+    portfolio = models.ForeignKey(Portfolio, on_delete=models.CASCADE,  null = True, blank = True)
     border_frame = models.CharField(max_length=200, choices = Choices_frame.choices)
     color = models.CharField(max_length=200)
     usage_mode = models.CharField(max_length=200)
@@ -114,9 +116,8 @@ class Watchlist(Base):
     document = models.ForeignKey(Document, on_delete=models.CASCADE , null=True, blank=True)
 
 class Share(Base):
-    group = models.ForeignKey(Group, on_delete=models.CASCADE, null=True)
     document = models.ForeignKey(Document, on_delete=models.CASCADE, null=True)
     folder = models.ForeignKey(Folder, on_delete=models.CASCADE, null=True)
-    user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, related_name='shared_user')
+    type = models.CharField(max_length=100, choices=ChoicesSharingType.choices)
     
     
