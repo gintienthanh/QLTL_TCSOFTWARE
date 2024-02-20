@@ -118,6 +118,11 @@ class FolderUpdate(APIView):
             return Folder.objects.get(pk=pk)
         except Folder.DoesNotExist:
             raise status.HTTP_404_NOT_FOUND
+        
+    def get(self, request, pk):
+        folder = self.get_object(pk)
+        serializer = FolderSerializers(folder)
+        return Response(serializer.data)
     
     def put(self, request, pk):
         folder = self.get_object(pk)
@@ -142,14 +147,15 @@ class FolderUpdate(APIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 class FolderParentView(APIView):
+    lookup_field = 'folder_parent'
     def get(self,request,parent_folder):
         try:
-            queryset_folder = Folder.objects.filter(parent_folder = parent_folder)
-            serializer_folder = FolderSerializers(queryset_folder,many=True)
+            queryset = Folder.objects.filter(parent_folder = parent_folder)
+            serializer = FolderSerializers(queryset,many=True)
             response = {
                 "status":200,
                 "data": {
-                    "folder": serializer_folder.data,  
+                    "folder": serializer.data,  
                 }
             }
             return Response(response,status=status.HTTP_200_OK)
@@ -313,9 +319,6 @@ class DownloadConvertAPIView(generics.RetrieveAPIView):
         response['Content-Disposition'] = 'attachment; filename=data.zip'
         
         return response
-class Test(APIView):
-    def get(self,request):
-        return render(request, 'index.html')
     
 class DownloadFile(APIView):
     def get(self, request, pk,format=None):
