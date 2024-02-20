@@ -12,8 +12,8 @@ class Base(models.Model):
     delete_at = models.DateTimeField(auto_now=True)
     owner = models.ForeignKey(User, on_delete=models.CASCADE)
     create_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='%(class)s_created')
-    delete_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='%(class)s_deleted')
-    editor = models.ForeignKey(User, on_delete=models.CASCADE, related_name='%(class)s_editor')
+    delete_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.CASCADE, related_name='%(class)s_deleted')
+    editor = models.ForeignKey(User, null=True, blank=True, on_delete=models.CASCADE, related_name='%(class)s_editor')
     class  Meta:
         abstract = True
        
@@ -105,6 +105,7 @@ class Document(Base):
     date = models.DateField(null = True, blank = True)
     physical_status = models.CharField(max_length=200)
     note = models.CharField(max_length=1000)
+    files = models.FileField(upload_to='files/', null=True, blank=True)
     add_info = models.JSONField(null=True, blank=True)
     
     def __str__(self) :

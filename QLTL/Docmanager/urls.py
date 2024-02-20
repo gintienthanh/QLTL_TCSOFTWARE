@@ -3,20 +3,25 @@ from .views import*
 from django.conf import settings
 from django.conf.urls.static import static
 urlpatterns = [
-    path('folderlist', FolderList.as_view()),
-    path('folderlist/<int:pk>', FolderUpdate.as_view()),
-   
-    path('warehouselist', WarehouseList.as_view()),
-    path('warehouselist/<int:pk>', WarehouseUpdate.as_view()),
+    path('folder', FolderList.as_view()),
+    path('folder/<int:pk>', FolderUpdate.as_view()),
+    path('folder-filter/', FolderFilter.as_view()),
+    
+    path('warehouse', WarehouseList.as_view()),
+    path('warehouse/<int:pk>', WarehouseUpdate.as_view()),
+    path('warehouse-filter/', WareHouseFilter.as_view()),
     
     path('sharelist', ShareList.as_view()),
     path('sharelist/<int:pk>', ShareUpdate.as_view()),
-   
-    path('portfoliolist', PortfolioList.as_view()),
-    path('portfoliolist/<int:pk>', PortfolioUpdate.as_view()),
     
-    path('documentlist', DocumentList.as_view()),
-    path('documentlist/<int:pk>', DocumentUpdate.as_view()),
+    path('portfolio', PortfolioList.as_view()),
+    path('portfolio/<int:pk>', PortfolioUpdate.as_view()),
+    path('portfolio-filter/', PortfolioFilter.as_view()),
+    
+    path('document', DocumentList.as_view()),
+    path('document/<int:pk>', DocumentUpdate.as_view()),
+    path('document-filter/', DocumentFilter.as_view()),
+    
     
     path('watchlist', WatchList.as_view()),
     

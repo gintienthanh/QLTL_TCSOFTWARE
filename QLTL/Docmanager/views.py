@@ -1,11 +1,13 @@
 from django.shortcuts import render
 from Docmanager.permissions import CheckOwnerFactory, CheckSharedGroupdFactory
+from django.shortcuts import render
 from .model_serializers import*
 from .models import*
 from rest_framework import authentication, permissions, status, generics
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from django.http import HttpResponse
+from rest_framework import filters
 import pandas as pd
 from io import BytesIO
 import zipfile
@@ -35,10 +37,6 @@ class PortfolioUpdate(APIView):
         except Portfolio.DoesNotExist:
             raise status.HTTP_404_NOT_FOUND
 
-    def get(self, request, pk):
-        portfolio = self.get_object(pk)
-        serializer = PortfolioSerializer(portfolio)
-        return Response(serializer.data)
 
     def put(self, request, pk):
         portfolio = self.get_object(pk)
@@ -62,7 +60,11 @@ class PortfolioUpdate(APIView):
         portfolio.save()
         return Response(status=status.HTTP_204_NO_CONTENT)
     
-
+class PortfolioFilter(generics.ListAPIView):
+    queryset = Portfolio.objects.all()
+    serializer_class = PortfolioSerializer
+    filter_backends = [filters.SearchFilter]
+    search_fields = ['title']
     
     
 
@@ -83,9 +85,16 @@ class DocumentUpdate(generics.RetrieveUpdateDestroyAPIView):
         instance.is_delete = True
         instance.save()
         return Response(status=status.HTTP_204_NO_CONTENT)
+ 
+class DocumentFilter(generics.ListAPIView):
+    queryset = Document.objects.all()
+    serializer_class = DocumentSerializer
+    filter_backends = [filters.SearchFilter]
+    search_fields = ['name']   
     
-    
-@permission_classes([CheckSharedGroupdFactory(Folder(),'Chỉ xem')| CheckOwnerFactory(Folder())])
+
+
+
 class FolderList(APIView):
     def get(self, request):
         folders = Folder.objects.all()
@@ -107,10 +116,6 @@ class FolderUpdate(APIView):
         except Folder.DoesNotExist:
             raise status.HTTP_404_NOT_FOUND
 
-    def get(self, request, pk):
-        folder = self.get_object(pk)
-        serializer = FolderSerializer(folder)
-        return Response(serializer.data)
     
     def put(self, request, pk):
         folder = self.get_object(pk)
@@ -133,6 +138,15 @@ class FolderUpdate(APIView):
         folder.is_deleted = True
         folder.save()
         return Response(status=status.HTTP_204_NO_CONTENT)
+    
+class FolderFilter(generics.ListAPIView):
+    queryset = Folder.objects.all()
+    serializer_class = FolderSerializer
+    filter_backends = [filters.SearchFilter]
+    search_fields = ['name']
+
+    
+
 
 class ShareList(generics.ListCreateAPIView):
     queryset = Share.objects.all()
@@ -195,11 +209,6 @@ class WarehouseUpdate(APIView):
         except Warehouse.DoesNotExist:
             raise status.HTTP_404_NOT_FOUND
 
-    def get(self, request, pk):
-        warehouse = self.get_object(pk)
-        serializer = WarehouseSerializer(warehouse)
-        return Response(serializer.data)
-
     def put(self, request, pk):
         warehouse = self.get_object(pk)
         serializer = WarehouseSerializer(warehouse, data=request.data)
@@ -220,7 +229,11 @@ class WarehouseUpdate(APIView):
         warehouse.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
-
+class WareHouseFilter(generics.ListAPIView):
+    queryset = Warehouse.objects.all()
+    serializer_class = WarehouseSerializer
+    filter_backends = [filters.SearchFilter]
+    search_fields = ['name']
 
 class WatchList(APIView):
     def get(self, request):

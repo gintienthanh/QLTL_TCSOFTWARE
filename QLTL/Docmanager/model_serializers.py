@@ -40,3 +40,8 @@ class ShareSerializer(serializers.ModelSerializer):
         model = Share
         fields = '__all__'
         
+class ClassificationSerializer(serializers.ModelSerializer):
+    class Meta: 
+        model = ClassifyVariant
+        fields = '__all__'
+        
