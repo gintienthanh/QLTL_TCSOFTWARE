@@ -10,8 +10,8 @@ class Base(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     delete_at = models.DateTimeField(auto_now=True)
-    owner = models.ForeignKey(User, on_delete=models.CASCADE)
-    create_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='%(class)s_created')
+    owner = models.ForeignKey(User, null=True, blank=True, on_delete=models.CASCADE)
+    create_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.CASCADE, related_name='%(class)s_created')
     delete_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.CASCADE, related_name='%(class)s_deleted')
     editor = models.ForeignKey(User, null=True, blank=True, on_delete=models.CASCADE, related_name='%(class)s_editor')
     class  Meta:

@@ -2,12 +2,12 @@ from django.shortcuts import render
 from .model_serializers import*
 from .models import*
 from rest_framework import authentication, permissions, status, generics
-
+from rest_framework import filters
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from django.http import HttpResponse
-from rest_framework import filters
+from django_filters import rest_framework as filters
 import pandas as pd
 from io import BytesIO
 import zipfile
@@ -37,7 +37,10 @@ class PortfolioUpdate(APIView):
             return Portfolio.objects.get(pk=pk)
         except Portfolio.DoesNotExist:
             raise status.HTTP_404_NOT_FOUND
-
+    def get(self, request, pk):
+        portfolio = self.get_object(pk)
+        serializer = PortfolioSerializer(portfolio)
+        return Response(serializer.data)
 
     def put(self, request, pk):
         portfolio = self.get_object(pk)
@@ -65,7 +68,7 @@ class PortfolioFilter(generics.ListAPIView):
     permission_classes = [IsAuthenticated]
     queryset = Portfolio.objects.all()
     serializer_class = PortfolioSerializer
-    filter_backends = [filters.SearchFilter]
+    filter_backends = [filters.DjangoFilterBackend]
     search_fields = ['title']
     
     
@@ -94,7 +97,7 @@ class DocumentFilter(generics.ListAPIView):
     permission_classes = [IsAuthenticated]
     queryset = Document.objects.all()
     serializer_class = DocumentSerializer
-    filter_backends = [filters.SearchFilter]
+    filter_backends = [filters.DjangoFilterBackend]
     search_fields = ['name']   
     
 
@@ -115,13 +118,16 @@ class FolderList(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class FolderUpdate(APIView):
-    permission_classes = [IsAuthenticated]
+    # permission_classes = [IsAuthenticated]
     def get_object(self, pk):
         try:
             return Folder.objects.get(pk=pk)
         except Folder.DoesNotExist:
             raise status.HTTP_404_NOT_FOUND
-
+    def get(self, request, pk):
+        folder = self.get_object(pk)
+        serializer = FolderSerializer(folder)
+        return Response(serializer.data)
     
     def put(self, request, pk):
         folder = self.get_object(pk)
@@ -146,12 +152,26 @@ class FolderUpdate(APIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
     
 class FolderFilter(generics.ListAPIView):
-    permission_classes = [IsAuthenticated]
+    # permission_classes = [IsAuthenticated]
     queryset = Folder.objects.all()
     serializer_class = FolderSerializer
-    filter_backends = [filters.SearchFilter]
-    search_fields = ['name']
-
+    filter_backends = [filters.DjangoFilterBackend]
+    search_fields = ['name', 'file_size','parent_folder']
+class FolderParentView(APIView):
+    lookup_field = 'folder_parent'
+    def get(self,request,parent_folder):
+        try:
+            queryset = Folder.objects.filter(parent_folder = parent_folder)
+            serializer = FolderSerializer(queryset,many=True)
+            response = {
+                "status":200,
+                "data": {
+                    "folder": serializer.data,  
+                }
+            }
+            return Response(response,status=status.HTTP_200_OK)
+        except:
+            return Response({'status':400},status=status.HTTP_400_BAD_REQUEST)
     
 
 class WarehouseList(APIView):
@@ -189,7 +209,10 @@ class WarehouseUpdate(APIView):
             return Warehouse.objects.get(pk=pk)
         except Warehouse.DoesNotExist:
             raise status.HTTP_404_NOT_FOUND
-
+    def get(self, request, pk):
+        warehouse = self.get_object(pk)
+        serializer = WarehouseSerializer(warehouse)
+        return Response(serializer.data)
     def put(self, request, pk):
         warehouse = self.get_object(pk)
         serializer = WarehouseSerializer(warehouse, data=request.data)
@@ -214,7 +237,7 @@ class WareHouseFilter(generics.ListAPIView):
     permission_classes = [IsAuthenticated]
     queryset = Warehouse.objects.all()
     serializer_class = WarehouseSerializer
-    filter_backends = [filters.SearchFilter]
+    filter_backends = [filters.DjangoFilterBackend]
     search_fields = ['name']
 
 class WatchList(APIView):
