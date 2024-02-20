@@ -74,7 +74,7 @@ class Folder(Base):
     name = models.CharField(max_length=200)
     parent_folder = models.ForeignKey('self', on_delete=models.CASCADE, null=True, blank=True, related_name='subfolders') 
     path = models.CharField(max_length=255, null=True, blank=True)
-    files = models.FileField(upload_to='files/')
+    files = models.FileField(upload_to='files/', null= True, blank = True)
     file_size = models.BigIntegerField(default=0)
     type = models.CharField(max_length=100, choices = Choices_type.choices)
     

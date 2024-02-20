@@ -94,18 +94,12 @@ class FolderList(APIView):
 
     def post(self, request):
         serializer = FolderSerializers(data=request.data)
+        uploaded_file = request.FILES.get('files')
         if serializer.is_valid():
-            uploaded_file = request.FILES.get('file')
             if uploaded_file:
-            # Lưu tệp tin
-                item = Folder.objects.create(type='File', files=uploaded_file)
-                item.save()
-                serializer.save()
+                serializer.save(type='File', files=uploaded_file)
             else:
-                # Lưu thư mục
-                item = Folder.objects.create(type='Folder')
-                item.save()
-                serializer.save()
+                serializer.save(type='Folder')
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
