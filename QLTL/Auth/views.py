@@ -51,20 +51,15 @@ class UserLoginView(APIView):
         serializer.is_valid(raise_exception=True)
         email = serializer.data.get('username')
         password = serializer.data.get('password')
-        # checklogin
-        try: 
-            user = User.objects.get(email=email)
-            check_password(password, user.password)
-            if user.is_active is False: return Response({'message: ':'Account unable','status':'400'}, status=status.HTTP_400_BAD_REQUEST)
-
-        except:
-            return Response({'message: ':'Login fail','status':'400'}, status=status.HTTP_400_BAD_REQUEST)
+        user = User.objects.get(email=email)
+        is_True = check_password(password, user.password)
+        if is_True is False:
+            return Response({'message: ':'Password not match','status':'400'}, status=status.HTTP_400_BAD_REQUEST)
         # or use authenticate
         # user = authenticate(email=email,password=password)
         if user is not None:
-            if not user.is_active:
-                raise AuthenticationFailed('Account disabled, contact admin')
             refresh = RefreshToken.for_user(user)
+            if user.is_active is False: return Response({'message: ':'Account unable','status':'400'}, status=status.HTTP_400_BAD_REQUEST)
             if user.last_login is None:
                 return Response({
                     'status':403,
