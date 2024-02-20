@@ -1,31 +1,35 @@
 from django.shortcuts import render
-from .model_serializers import*
-from .models import*
-from rest_framework import authentication, permissions, status, generics
-from rest_framework.views import APIView
+from rest_framework import status,generics,serializers,permissions,authentication
+from rest_framework.views import APIView, View
 from rest_framework.response import Response
-from django.http import HttpResponse
+from django.http import HttpResponse,JsonResponse
+from .model_serializers import *
+from .models import *
+from django.http import FileResponse
+import mimetypes
+import shutil
+import tkinter as tk
+from tkinter import filedialog
 from rest_framework import filters
 import pandas as pd
-from io import BytesIO
 import zipfile
+from io import BytesIO
+import openpyxl
 
 # Create your views here.
 
 class PortfolioList(APIView):
     def get(self, request):
         portfolios = Portfolio.objects.all()
-        serializer = PortfolioSerializer(portfolios, many=True)
+        serializer = PortfolioSerializers(portfolios, many=True)
         return Response(serializer.data)
 
     def post(self, request):
-        serializer = PortfolioSerializer(data=request.data)
+        serializer = PortfolioSerializers(data=request.data)
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-
 
 class PortfolioUpdate(APIView):
     def get_object(self, pk):
@@ -34,10 +38,9 @@ class PortfolioUpdate(APIView):
         except Portfolio.DoesNotExist:
             raise status.HTTP_404_NOT_FOUND
 
-
     def put(self, request, pk):
         portfolio = self.get_object(pk)
-        serializer = PortfolioSerializer(portfolio, data=request.data)
+        serializer = PortfolioSerializers(portfolio, data=request.data)
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data)
@@ -45,7 +48,7 @@ class PortfolioUpdate(APIView):
 
     def patch(self, request, pk):
         portfolio = self.get_object(pk)
-        serializer = PortfolioSerializer(portfolio, data=request.data, partial=True)
+        serializer = PortfolioSerializers(portfolio, data=request.data, partial=True)
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data)
@@ -59,23 +62,17 @@ class PortfolioUpdate(APIView):
     
 class PortfolioFilter(generics.ListAPIView):
     queryset = Portfolio.objects.all()
-    serializer_class = PortfolioSerializer
+    serializer_class = PortfolioSerializers
     filter_backends = [filters.SearchFilter]
     search_fields = ['title']
     
-    
-
-    
-    
-    
 class DocumentList(generics.ListCreateAPIView):
     queryset = Document.objects.all()
-    serializer_class = DocumentSerializer
-    
+    serializer_class = DocumentSerializers
     
 class DocumentUpdate(generics.RetrieveUpdateDestroyAPIView):
     queryset = Document.objects.all()
-    serializer_class = DocumentSerializer
+    serializer_class = DocumentSerializers
     
     def destroy(self, request, *args, **kwargs):
         instance = self.get_object()
@@ -85,23 +82,32 @@ class DocumentUpdate(generics.RetrieveUpdateDestroyAPIView):
  
 class DocumentFilter(generics.ListAPIView):
     queryset = Document.objects.all()
-    serializer_class = DocumentSerializer
+    serializer_class = DocumentSerializers
     filter_backends = [filters.SearchFilter]
     search_fields = ['name']   
     
-
-
-
 class FolderList(APIView):
     def get(self, request):
-        folders = Folder.objects.all()
-        serializer = FolderSerializer(folders, many=True)
+        folders = Folder.objects.filter(is_delete = False)
+        serializer = FolderSerializers(folders, many=True)
         return Response(serializer.data)
 
     def post(self, request):
-        serializer = FolderSerializer(data=request.data)
+        serializer = FolderSerializers(data=request.data)
+        uploaded_file = request.FILES.get('files')
+        files = request.FILES.getlist('files[]')
         if serializer.is_valid():
-            serializer.save()
+            if files:
+                # Lưu danh sách các tệp tin
+                files_list = []
+                for file in files:
+                    files_list.append(file)
+                serializer.save(type='File', files=files_list)
+            elif uploaded_file:
+            # Lưu tệp tin duy nhất
+                serializer.save(type='File', files=uploaded_file)
+            else:
+                serializer.save(type='Folder')
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -111,11 +117,10 @@ class FolderUpdate(APIView):
             return Folder.objects.get(pk=pk)
         except Folder.DoesNotExist:
             raise status.HTTP_404_NOT_FOUND
-
     
     def put(self, request, pk):
         folder = self.get_object(pk)
-        serializer = FolderSerializer(folder, data=request.data)
+        serializer = FolderSerializers(folder, data=request.data)
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data)
@@ -123,7 +128,7 @@ class FolderUpdate(APIView):
 
     def patch(self, request, pk):
         folder = self.get_object(pk)
-        serializer = FolderSerializer(folder, data=request.data, partial=True)
+        serializer = FolderSerializers(folder, data=request.data, partial=True)
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data)
@@ -134,10 +139,26 @@ class FolderUpdate(APIView):
         folder.is_deleted = True
         folder.save()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+class FolderParentView(APIView):
+    def get(self,request,parent_folder):
+        try:
+            queryset_folder = Folder.objects.filter(parent_folder = parent_folder)
+            serializer_folder = FolderSerializers(queryset_folder,many=True)
+            response = {
+                "status":200,
+                "data": {
+                    "folder": serializer_folder.data,  
+                }
+            }
+            return Response(response,status=status.HTTP_200_OK)
+        except:
+            return Response({'status':400},status=status.HTTP_400_BAD_REQUEST)
+
     
 class FolderFilter(generics.ListAPIView):
     queryset = Folder.objects.all()
-    serializer_class = FolderSerializer
+    serializer_class = FolderSerializers
     filter_backends = [filters.SearchFilter]
     search_fields = ['name']
 
@@ -146,11 +167,11 @@ class FolderFilter(generics.ListAPIView):
 class WarehouseList(APIView):
     def get(self, request):
         warehouses = Warehouse.objects.all()
-        serializer = WarehouseSerializer(warehouses, many=True)
+        serializer = WarehouseSerializers(warehouses, many=True)
         return Response(serializer.data)
 
     def post(self, request):
-        serializer = WarehouseSerializer(data=request.data)
+        serializer = WarehouseSerializers(data=request.data)
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
@@ -165,7 +186,7 @@ class WarehouseUpdate(APIView):
 
     def put(self, request, pk):
         warehouse = self.get_object(pk)
-        serializer = WarehouseSerializer(warehouse, data=request.data)
+        serializer = WarehouseSerializers(warehouse, data=request.data)
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data)
@@ -173,7 +194,7 @@ class WarehouseUpdate(APIView):
 
     def patch(self, request, pk):
         warehouse = self.get_object(pk)
-        serializer = WarehouseSerializer(warehouse, data=request.data, partial=True)
+        serializer = WarehouseSerializers(warehouse, data=request.data, partial=True)
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data)
@@ -185,18 +206,18 @@ class WarehouseUpdate(APIView):
 
 class WareHouseFilter(generics.ListAPIView):
     queryset = Warehouse.objects.all()
-    serializer_class = WarehouseSerializer
+    serializer_class = WarehouseSerializers
     filter_backends = [filters.SearchFilter]
     search_fields = ['name']
 
 class WatchList(APIView):
     def get(self, request):
         watchlists = Watchlist.objects.all()
-        serializer = WatchListSerializer(watchlists, many=True)
+        serializer = WatchlistSerializers(watchlists, many=True)
         return Response(serializer.data)
 
     def post(self, request):
-        serializer = WatchListSerializer(data=request.data)
+        serializer = WatchlistSerializers(data=request.data)
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
@@ -208,7 +229,7 @@ class WatchList(APIView):
         except Watchlist.DoesNotExist:
             return Response(status=status.HTTP_404_NOT_FOUND)
 
-        serializer = WatchListSerializer(watchlist, data=request.data)
+        serializer = WatchlistSerializers(watchlist, data=request.data)
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data)
@@ -217,17 +238,15 @@ class WatchList(APIView):
     def delete(self, request, pk):
         try:
             watchlist = Watchlist.objects.get(pk=pk)
+            watchlist.is_deleted = True
         except Watchlist.DoesNotExist:
             return Response(status=status.HTTP_404_NOT_FOUND)
-        
-        watchlist.delete()
+        watchlist.save()
         return Response(status=status.HTTP_204_NO_CONTENT)
     
-
-
 class DownloadConvertAPIView(generics.RetrieveAPIView):
     queryset = Portfolio.objects.all()
-    serializer_class = PortfolioSerializer
+    serializer_class = PortfolioSerializers
 
     def retrieve(self, request, *args, **kwargs):
         portfolio = self.get_object()
@@ -294,4 +313,19 @@ class DownloadConvertAPIView(generics.RetrieveAPIView):
         
         return response
 
-                                                                                            
+class DownloadFile(APIView):
+    def get(self, request, pk,format=None):
+        file = Folder.objects.get(pk=pk)
+        file_path = file.files.path
+        content_type, encoding = mimetypes.guess_type(file_path)
+        content_type = content_type or 'application/octet-stream'
+        response = HttpResponse(open(file_path, 'rb'), content_type=content_type)
+        response['Content-Disposition'] = f'attachment; filename="{file.files.name}"'
+        # shutil.copy2(file_path, save_path)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+class Search(View):
+    def post(sefl,req):
+        searched = req.POST['searched']
+        keys = Document.objects.filter(name__contains = searched)
+        return render(req, 'home/search.html', {'searched':searched,'keys':keys})

@@ -13,7 +13,12 @@ https://docs.djangoproject.com/en/5.0/ref/settings/
 from pathlib import Path
 import os
 from decouple import config
+from os.path import join, dirname
+from dotenv import load_dotenv
+load_dotenv()
 
+dotenv_path = join(dirname(__file__), '.env')
+load_dotenv(dotenv_path)
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -28,6 +33,8 @@ SECRET_KEY = config('SECRET_KEY', default='secret')
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
+# ALLOWED_HOSTS = ['192.168.1.98','localhost']
+# CORS_ORIGIN_ALLOW_ALL = True
 
 CORS_ORIGIN_ALLOW_ALL = True
 ALLOWED_HOSTS = ['*']
@@ -38,6 +45,9 @@ CORS_ALLOWED_ORIGINS = [
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOW_HEADERS = ['*']
 
+# CORS_ORIGIN_WHITELIST = (
+#   'http://localhost:8000',
+# )
 # Application definition
 
 INSTALLED_APPS = [
@@ -62,9 +72,9 @@ INSTALLED_APPS = [
     'rest_framework.authtoken',
 
     'Auth',
-
-    'Fileprocessor',
+    'Fileprocessor',    
     'Docmanager',
+    'corsheaders',#connect
 
 ]
 
@@ -81,8 +91,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-
-    'corsheaders.middleware.CorsMiddleware',
+    'corsheaders.middleware.CorsMiddleware', #connect
     'allauth.account.middleware.AccountMiddleware',
     'social_django.middleware.SocialAuthExceptionMiddleware',  # <-- social
 ]
@@ -172,6 +181,13 @@ MEDIA_URL = '/media/'
 # https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+STATICFILES_DIRS = [
+    os.path.join(BASE_DIR, 'static'),
+]
+DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+MEDIA_URL = '/files/'
+
 REST_FRAMEWORK = {
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
     'PAGE_SIZE': 10,

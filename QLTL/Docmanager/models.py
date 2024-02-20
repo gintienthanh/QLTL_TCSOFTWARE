@@ -2,7 +2,6 @@ from django.contrib.auth.models import User
 from django.db import models
 from django.contrib.auth.models import Group
 
-
 # Create your models here.
 class Base(models.Model):
     id = models.AutoField(primary_key=True)
@@ -16,8 +15,6 @@ class Base(models.Model):
     editor = models.ForeignKey(User, null=True, blank=True, on_delete=models.CASCADE, related_name='%(class)s_editor')
     class  Meta:
         abstract = True
-       
-    
     
 class Choices_status(models.TextChoices):
     wait = 'Chờ duyệt'
@@ -38,9 +35,6 @@ class Choices_type_warehouse(models.TextChoices):
 class Choices_type(models.TextChoices):
     File = 'File'
     Folder = 'Folder'
-
-
-
 
 class Warehouse(Base):
     name = models.CharField(max_length = 255, null = True, blank = True)
@@ -80,8 +74,8 @@ class Folder(Base):
     name = models.CharField(max_length=200)
     parent_folder = models.ForeignKey('self', on_delete=models.CASCADE, null=True, blank=True, related_name='subfolders') 
     path = models.CharField(max_length=255, null=True, blank=True)
-    files = models.FileField(upload_to='files/')
-    file_size = models.BigIntegerField()
+    files = models.FileField(upload_to='files/', null= True, blank = True)
+    file_size = models.BigIntegerField(default=0)
     type = models.CharField(max_length=100, choices = Choices_type.choices)
     
     def __str__(self) :
@@ -108,7 +102,6 @@ class Document(Base):
     
     def __str__(self) :
         return  self.name
-    
     
 class Watchlist(Base): 
     folder = models.ForeignKey(Folder, on_delete=models.CASCADE , null=True, blank=True)
