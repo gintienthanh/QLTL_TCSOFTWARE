@@ -34,7 +34,6 @@ def CheckOwnerFactory(Model):
         def has_permission(self, request, view):
             try:
                 id = view.kwargs.get('pk')
-                print(id)
                 if (int(id)):
                     getObject = type(Model).objects.get(id=id)
                     if getObject.owner == request.user:
