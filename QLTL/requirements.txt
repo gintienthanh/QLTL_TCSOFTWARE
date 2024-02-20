@@ -35,3 +35,4 @@ wrapt==1.16.0
 gunicorn==21.2.0
 django-rest-swagger
 pandas
+django-filter==23.5
