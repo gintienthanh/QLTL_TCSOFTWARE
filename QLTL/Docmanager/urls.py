@@ -57,6 +57,6 @@ urlpatterns = [
     path('watchlist', WatchList.as_view()),
     
     path('download/<int:pk>/', DownloadConvertAPIView.as_view(), name='download-convert'),
-    path('document/download/<int:document_id>', DownloadFile.as_view(), name='file-download'),
+    path('file/download/<int:pk>', DownloadFile.as_view(), name='file-download'),
 
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

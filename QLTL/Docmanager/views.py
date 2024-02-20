@@ -238,10 +238,10 @@ class WatchList(APIView):
     def delete(self, request, pk):
         try:
             watchlist = Watchlist.objects.get(pk=pk)
+            watchlist.is_deleted = True
         except Watchlist.DoesNotExist:
             return Response(status=status.HTTP_404_NOT_FOUND)
-        
-        watchlist.delete()
+        watchlist.save()
         return Response(status=status.HTTP_204_NO_CONTENT)
     
 class DownloadConvertAPIView(generics.RetrieveAPIView):
@@ -314,24 +314,15 @@ class DownloadConvertAPIView(generics.RetrieveAPIView):
         return response
 
 class DownloadFile(APIView):
-    def __init__(self):
-        self.root = tk.Tk()
-        self.root.withdraw() 
-    lookup_field = 'document_id'
-    def choose_download_path(self):
-        # Hiển thị hộp thoại chọn đường dẫn lưu trữ
-        download_path = filedialog.askdirectory()
-        return download_path
-    def get(self, request, document_id,format=None):
-        file = Document.objects.get(document_id=document_id)
+    def get(self, request, pk,format=None):
+        file = Folder.objects.get(pk=pk)
         file_path = file.files.path
         content_type, encoding = mimetypes.guess_type(file_path)
         content_type = content_type or 'application/octet-stream'
-
         response = HttpResponse(open(file_path, 'rb'), content_type=content_type)
         response['Content-Disposition'] = f'attachment; filename="{file.files.name}"'
         # shutil.copy2(file_path, save_path)
-        return response
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 class Search(View):
     def post(sefl,req):

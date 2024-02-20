@@ -6,7 +6,7 @@ from rest_framework.exceptions import AuthenticationFailed
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.permissions import IsAdminUser
-from datetime import datetime
+from django.utils import timezone
 from Auth.services import google_validate_id_token, user_get_or_create
 from django.template.loader import render_to_string
 import secrets
@@ -53,13 +53,14 @@ class UserLoginView(APIView):
     def post(self,request,format=None):
         serializer = UserLoginSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        email = serializer.data.get('email')
+        email = serializer.data.get('username')
         password = serializer.data.get('password')
         # checklogin
         try: 
             user = User.objects.get(email=email)
             check_password(password, user.password)
             if user.is_active is False: return Response({'message: ':'Account unable','status':'400'}, status=status.HTTP_400_BAD_REQUEST)
+
         except:
             return Response({'message: ':'Login fail','status':'400'}, status=status.HTTP_400_BAD_REQUEST)
         # or use authenticate
@@ -69,7 +70,7 @@ class UserLoginView(APIView):
                 raise AuthenticationFailed('Account disabled, contact admin')
             token = get_tokens_for_user(user)
             if user.last_login is None:
-                return Response({'mess':'FirstTime Login','token':token}, status=status.HTTP_403_FORBIDDEN)
+                return Response({'status':403,'mess':'FirstTime Login','token':token}, status=status.HTTP_403_FORBIDDEN)
         else:
             return Response({'errors':{'non_field_errors':['Email or Password is not Valid']}}, status=status.HTTP_404_NOT_FOUND)
         user.last_login = timezone.now()
@@ -122,7 +123,7 @@ class GoogleLoginApi( APIView):
         serializer = self.InputSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user, _ = user_get_or_create(**serializer.validated_data)
-        user.last_login(datetime.now())
+        user.last_login = timezone.now()
         user.save()
         refresh_token = RefreshToken.for_user(user)
         response = {
@@ -140,7 +141,7 @@ class FacebookSocialAuthView(APIView):
         serializer = self.serializer_class(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = ((serializer.validated_data)['auth_token'])
-        user.last_login(datetime.now())
+        user.last_login = timezone.now()
         user.save()
         refresh_token = RefreshToken.for_user(user)
         response = {
