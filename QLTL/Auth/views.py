@@ -6,8 +6,6 @@ from rest_framework.permissions import IsAuthenticated
 from django.utils import timezone
 from Auth.services import google_validate_id_token, user_get_or_create
 from django.template.loader import render_to_string
-import secrets
-import string
 import json
 from django.utils import timezone
 from django.contrib.auth.hashers import check_password
@@ -19,6 +17,7 @@ from django.contrib.auth.models import User
 from Auth.serializers import FacebookSocialAuthSerializer,UserRegistrationSerializer,UserLoginSerializer,UserChangePasswordSerializer,SendPasswordResetEmailSerializer,UserPasswordResetSerializer,LogoutSerializer,UserSerializer
 from Auth.renderers import UserRenderer
 from .utils import Util
+from .services import generate_strong_password
 
 
 class UserRegistrationView(APIView):
@@ -30,10 +29,8 @@ class UserRegistrationView(APIView):
             serializer.is_valid(raise_exception=True)
             user = serializer.save()
             user_data = serializer.data
-            characters = string.ascii_letters + string.digits + string.punctuation
-            password = ''.join(secrets.choice(characters) for _ in range(12))
-            password_json = json.dumps(password)
-            user.set_password(password_json)
+            password = generate_strong_password(12)
+            user.set_password(password)
             user.save() 
             context = {'password':password}
             html_message = render_to_string('Inform_password.html', context )
@@ -51,8 +48,7 @@ class UserLoginView(APIView):
         email = serializer.data.get('username')
         password = serializer.data.get('password')
         user = User.objects.get(email=email)
-        is_True = check_password(password, user.password)
-        if is_True is False:
+        if user.check_password(password) is False:
             return Response({'message: ':'Password not match','status':'400'}, status=status.HTTP_400_BAD_REQUEST)
         if user is not None:
             refresh = RefreshToken.for_user(user)
