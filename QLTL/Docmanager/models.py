@@ -9,8 +9,8 @@ class Base(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     delete_at = models.DateTimeField(auto_now=True)
-    owner = models.ForeignKey(User, on_delete=models.CASCADE)
-    create_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='%(class)s_created')
+    owner = models.ForeignKey(User, null=True, blank=True, on_delete=models.CASCADE)
+    create_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.CASCADE, related_name='%(class)s_created')
     delete_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.CASCADE, related_name='%(class)s_deleted')
     editor = models.ForeignKey(User, null=True, blank=True, on_delete=models.CASCADE, related_name='%(class)s_editor')
     class  Meta:
@@ -35,6 +35,11 @@ class Choices_type_warehouse(models.TextChoices):
 class Choices_type(models.TextChoices):
     File = 'File'
     Folder = 'Folder'
+
+
+class ChoicesSharingType(models.TextChoices):
+    ONLY_VIEW = 'Chỉ xem'
+    EDIT = 'Chỉnh sửa'
 
 class Warehouse(Base):
     name = models.CharField(max_length = 255, null = True, blank = True)
@@ -74,8 +79,8 @@ class Folder(Base):
     name = models.CharField(max_length=200)
     parent_folder = models.ForeignKey('self', on_delete=models.CASCADE, null=True, blank=True, related_name='subfolders') 
     path = models.CharField(max_length=255, null=True, blank=True)
-    files = models.FileField(upload_to='files/', null= True, blank = True)
-    file_size = models.BigIntegerField(default=0)
+    files = models.FileField(upload_to='files/',null=True, blank=True)
+    file_size = models.BigIntegerField()
     type = models.CharField(max_length=100, choices = Choices_type.choices)
     
     def __str__(self) :
@@ -84,10 +89,10 @@ class Folder(Base):
 class Document(Base):
     
     name = models.CharField(max_length=200)
-    box_case = models.ForeignKey(Warehouse,  on_delete=models.CASCADE)
+    box_case = models.ForeignKey(Warehouse,  on_delete=models.CASCADE, null = True, blank = True)
     path = models.CharField(max_length=200)
     folder = models.ForeignKey(Folder, on_delete=models.CASCADE, null=True, blank=True)
-    portfolio = models.ForeignKey(Portfolio, on_delete=models.CASCADE)
+    portfolio = models.ForeignKey(Portfolio, on_delete=models.CASCADE,  null = True, blank = True)
     border_frame = models.CharField(max_length=200, choices = Choices_frame.choices)
     color = models.CharField(max_length=200)
     usage_mode = models.CharField(max_length=200)
@@ -108,9 +113,8 @@ class Watchlist(Base):
     document = models.ForeignKey(Document, on_delete=models.CASCADE , null=True, blank=True)
 
 class Share(Base):
-    group = models.ForeignKey(Group, on_delete=models.CASCADE, null=True)
     document = models.ForeignKey(Document, on_delete=models.CASCADE, null=True)
     folder = models.ForeignKey(Folder, on_delete=models.CASCADE, null=True)
-    user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, related_name='shared_user')
+    type = models.CharField(max_length=100, choices=ChoicesSharingType.choices)
     
     
