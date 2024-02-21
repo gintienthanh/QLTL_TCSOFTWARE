@@ -106,7 +106,7 @@ class DocumentFilter(generics.ListAPIView):
 
 
 class FolderList(APIView):
-    # permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated]
     def get(self, request):
         folders = Folder.objects.all()
         serializer = FolderSerializer(folders, many=True)
