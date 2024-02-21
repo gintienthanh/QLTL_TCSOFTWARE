@@ -106,7 +106,7 @@ class DocumentFilter(generics.ListAPIView):
 
 
 class FolderList(APIView):
-    # permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated]
     def get(self, request):
         folders = Folder.objects.all()
         serializer = FolderSerializer(folders, many=True)
@@ -263,7 +263,10 @@ class ShareFilter(generics.ListAPIView):
     queryset = Folder.objects.all()
     serializer_class = FolderSerializer
     filter_backends = [filters.DjangoFilterBackend]
-    search_fields = ['name', 'file_size','parent_folder']
+    filterset_fields = {
+        'name': ['exact', 'icontains', 'startswith', 'endswith'],
+        'file_size': ['gt', 'lt', 'gte', 'lte']
+    }
 class FolderParentView(APIView):
     lookup_field = 'folder_parent'
     def get(self,request,parent_folder):
