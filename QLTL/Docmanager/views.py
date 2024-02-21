@@ -12,8 +12,11 @@ import tkinter as tk
 from tkinter import filedialog
 from rest_framework import filters
 import pandas as pd
+import os
 import zipfile
+import tempfile
 from io import BytesIO
+from django.core.files.storage import default_storage
 import openpyxl
 
 # Create your views here.
@@ -102,11 +105,13 @@ class FolderList(APIView):
                 # Lưu danh sách các tệp tin
                 files_list = []
                 for file in files:
+                    file_path = default_storage.save(file.name, file)
                     files_list.append(file)
-                serializer.save(type='File', files=files_list)
+                serializer.save(type='File', files=files_list,file_size = file.size,path = file_path)
             elif uploaded_file:
             # Lưu tệp tin duy nhất
-                serializer.save(type='File', files=uploaded_file)
+                file_path = default_storage.save(uploaded_file.name, uploaded_file)
+                serializer.save(type='File', files=uploaded_file,file_size = uploaded_file.size, path = file_path)
             else:
                 serializer.save(type='Folder')
             return Response(serializer.data, status=status.HTTP_201_CREATED)
@@ -167,7 +172,7 @@ class FolderFilter(generics.ListAPIView):
     queryset = Folder.objects.all()
     serializer_class = FolderSerializers
     filter_backends = [filters.SearchFilter]
-    search_fields = ['name']
+    search_fields = ['name','parent_folder']
 
     
 
@@ -208,7 +213,8 @@ class WarehouseUpdate(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     def delete(self, request, pk):
         warehouse = self.get_object(pk)
-        warehouse.delete()
+        warehouse.is_delete = True
+        warehouse.save()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 class WareHouseFilter(generics.ListAPIView):
@@ -325,11 +331,39 @@ class DownloadFile(APIView):
         file = Folder.objects.get(pk=pk)
         file_path = file.files.path
         content_type, encoding = mimetypes.guess_type(file_path)
+         
         content_type = content_type or 'application/octet-stream'
         response = HttpResponse(open(file_path, 'rb'), content_type=content_type)
         response['Content-Disposition'] = f'attachment; filename="{file.files.name}"'
+        print(file_path)
         # shutil.copy2(file_path, save_path)
         return response
+
+class DownloadFolder(APIView):
+    def get(self,request,pk):
+        try:
+            folder = Folder.objects.get(pk=pk)
+        except Folder.DoesNotExist:
+            return HttpResponse('Thư mục không tồn tại')
+        zip_file_name = folder.name + '.zip'
+        print(123123)
+        with tempfile.NamedTemporaryFile(delete=False) as temp_zip_file:
+            with zipfile.ZipFile(temp_zip_file, 'w') as zipf:
+                self.add_folder_to_zip(zipf, folder,pk)
+
+            with open(temp_zip_file.name, 'rb') as zip_file:
+                response = HttpResponse(zip_file.read(), content_type='application/zip')
+                response['Content-Disposition'] = f'attachment; filename="{zip_file_name}"'
+                return response
+            
+    def add_folder_to_zip(self, zipf, folder,pk):
+        queryset = Folder.objects.filter(parent_folder = pk)
+        serializer = FolderSerializers(queryset,many=True)
+        for i in serializer.data:
+            folder = i['file_path']
+            print(folder)
+            # file_path = file.get_absolute_file_path()  # Đường dẫn tới tệp tin
+            # zipf.write(file_path, os.path.relpath(file_path, folder.get_absolute_folder_path()))
 
 class Search(View):
     def post(sefl,req):
