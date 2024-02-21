@@ -2,6 +2,7 @@ from django.urls import path, include
 from .views import*
 from django.conf import settings
 from django.conf.urls.static import static
+
 urlpatterns = [
     path('folder', FolderList.as_view()),
     path('folder/<int:pk>', FolderUpdate.as_view()),
@@ -25,6 +26,7 @@ urlpatterns = [
     
     
     path('watchlist', WatchList.as_view()),
+    path('watchlist/<int:pk>', WatchListUpdate.as_view()),
     
     path('download/<int:pk>/', DownloadConvertAPIView.as_view(), name='download-convert'),
     
