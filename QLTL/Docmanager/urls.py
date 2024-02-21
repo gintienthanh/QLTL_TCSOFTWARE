@@ -6,9 +6,12 @@ urlpatterns = [
     path('folderlist', FolderList.as_view()),
     path('folderlist/<int:pk>', FolderUpdate.as_view()),
    
-    path('warehouselist', WarehouseList.as_view()),
-    path('warehouselist/<int:pk>', WarehouseUpdate.as_view()),
-   
+    path('warehouses/', WarehouseList.as_view(), name='warehouse-list'),
+    path('warehouses/<int:pk>/', WarehouseDetail.as_view(), name='warehouse-detail'),
+    path('warehouses/bulk-delete/', WarehouseBulkDelete.as_view(), name='warehouse-bulk-delete'),
+    
+    
+       
     path('portfoliolist', PortfolioList.as_view()),
     path('portfoliolist/<int:pk>', PortfolioUpdate.as_view()),
     path('portfolio_bulk_delete/<str:portfolio_ids>/', PortfolioBulkDelete.as_view(), name='portfolio_bulk_delete'),

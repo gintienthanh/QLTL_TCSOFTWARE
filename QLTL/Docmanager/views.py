@@ -124,53 +124,28 @@ class FolderUpdate(APIView):
 
 
     
+class WarehouseList(generics.ListCreateAPIView):
+    serializer_class = WarehouseSerializer
 
-class WarehouseList(APIView):
-    def get(self, request):
-        warehouses = Warehouse.objects.all()
-        serializer = WarehouseSerializer(warehouses, many=True)
-        return Response(serializer.data)
+    def get_queryset(self):
+        return Warehouse.objects.all()
+    
 
-    def post(self, request):
-        serializer = WarehouseSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+class WarehouseDetail(generics.RetrieveUpdateDestroyAPIView):
+    queryset = Warehouse.objects.all()
+    serializer_class = WarehouseSerializer
 
-class WarehouseUpdate(APIView):
-    def get_object(self, pk):
-        try:
-            return Warehouse.objects.get(pk=pk)
-        except Warehouse.DoesNotExist:
-            raise status.HTTP_404_NOT_FOUND
 
-    def get(self, request, pk):
-        warehouse = self.get_object(pk)
-        serializer = WarehouseSerializer(warehouse)
-        return Response(serializer.data)
-
-    def put(self, request, pk):
-        warehouse = self.get_object(pk)
-        serializer = WarehouseSerializer(warehouse, data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-    def patch(self, request, pk):
-        warehouse = self.get_object(pk)
-        serializer = WarehouseSerializer(warehouse, data=request.data, partial=True)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    def delete(self, request, pk):
-        warehouse = self.get_object(pk)
-        warehouse.delete()
+class WarehouseBulkDelete(APIView):
+    def delete(self, request, warehouse_ids, *args, **kwargs):
+        warehouse_ids_list = warehouse_ids.split(',')
+        for warehouse_id in warehouse_ids_list:
+            try:
+                warehouse = Warehouse.objects.get(id=int(warehouse_id))
+                warehouse.delete()
+            except Warehouse.DoesNotExist:
+                pass
         return Response(status=status.HTTP_204_NO_CONTENT)
-
-
 
 class WatchList(APIView):
     def get(self, request):
