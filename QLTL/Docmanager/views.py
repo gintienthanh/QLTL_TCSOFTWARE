@@ -111,7 +111,6 @@ class FolderList(APIView):
         folders = Folder.objects.filter(is_delete = False)
         serializer = FolderSerializer(folders, many=True)
         # return Response(serializer.data)
-        
         return render(request, 'Docmanager/index.html')
 
     def post(self, request):
@@ -134,6 +133,16 @@ class FolderList(APIView):
                 serializer.save(type='Folder')
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+    def get_order(self,request):
+        queryset = Folder.objects.filter(parent_folder = request.parent_folder)
+        serializer = FolderSerializer(queryset,many=True)
+        for i in serializer.data:
+            folder = i['id']
+            print(folder)
+            pk = folder
+            self.get_order(self,request,pk)
+            
 
 # @permission_classes([CheckSharedGroupdFactory(Folder(),'Chỉnh sửa') | CheckOwnerFactory(Folder())])
 class FolderUpdate(APIView):
@@ -522,7 +531,7 @@ class DownloadFolder(APIView):
             folder = i['id']
             print(folder)
             if i['type'] == 'File':
-                    file_path = 'files\\' + i['path']
+                    file_path = 'files' + i['path']
                     name = i['name']
                     print(file_path)
                     content_type, encoding = mimetypes.guess_type(file_path)
