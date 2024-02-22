@@ -106,11 +106,12 @@ class DocumentFilter(generics.ListAPIView):
 
 
 class FolderList(APIView):
-    permission_classes = [IsAuthenticated]
+    # permission_classes = [IsAuthenticated]
     def get(self, request):
         folders = Folder.objects.filter(is_delete = False)
         serializer = FolderSerializer(folders, many=True)
         # return Response(serializer.data)
+        
         return render(request, 'Docmanager/index.html')
 
     def post(self, request):
@@ -414,7 +415,7 @@ class WatchList(APIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
     
 class DownloadConvertAPIView(generics.RetrieveAPIView):
-    permission_classes = [IsAuthenticated]
+    # permission_classes = [IsAuthenticated]
     queryset = Portfolio.objects.all()
     serializer_class = PortfolioSerializer
 
@@ -484,25 +485,21 @@ class DownloadConvertAPIView(generics.RetrieveAPIView):
         return response
     
 class DownloadFile(APIView):
-    def __init__(self):
-        self.root = tk.Tk()
-        self.root.withdraw() 
     lookup_field = 'folder_id'
-    def choose_download_path(self):
-        # Hiển thị hộp thoại chọn đường dẫn lưu trữ
-        download_path = filedialog.askdirectory()
-        return download_path
-    def get(self, request, pk,format=None):
-        file = Folder.objects.get(pk=pk)
-        file_path = file.files.path
-        content_type, encoding = mimetypes.guess_type(file_path)
-         
-        content_type = content_type or 'application/octet-stream'
-        response = HttpResponse(open(file_path, 'rb'), content_type=content_type)
-        response['Content-Disposition'] = f'attachment; filename="{file.files.name}"'
-        print(file_path)
-        # shutil.copy2(file_path, save_path)
-        return response
+    def get(self, request, folder_id,format=None):
+        try:
+            file = Folder.objects.get(pk=folder_id)
+            file_path = file.files.path
+            content_type, encoding = mimetypes.guess_type(file_path)
+            content_type = content_type or 'application/octet-stream'
+            response = HttpResponse(open(file_path, 'rb'), content_type=content_type)
+            # Tạo response từ tệp tin
+            response['Content-Disposition'] = f'attachment; filename="{file.files.name}"'
+            print(file_path)
+            # shutil.copy2(file_path, save_path)
+            return response
+        except Folder.DoesNotExist:
+            raise status.HTTP_404_NOT_FOUND
 
 class DownloadFolder(APIView):
     def get(self,request,pk):
@@ -511,22 +508,63 @@ class DownloadFolder(APIView):
         except Folder.DoesNotExist:
             return HttpResponse('Thư mục không tồn tại')
         zip_file_name = folder.name + '.zip'
-        print(123123)
-        with tempfile.NamedTemporaryFile(delete=False) as temp_zip_file:
-            with zipfile.ZipFile(temp_zip_file, 'w') as zipf:
-                self.add_folder_to_zip(zipf, folder,pk)
+        # with tempfile.NamedTemporaryFile(delete=False) as temp_zip_file:
+        #     with zipfile.ZipFile(temp_zip_file, 'w') as zipf:
+            # self.add_folder_to_zip(zipf, folder,pk)
+        # with open(temp_zip_file.name, 'rb') as zip_file:
+        #     response = HttpResponse(zip_file.read(), content_type='application/zip')
+        #     response['Content-Disposition'] = f'attachment; filename="{zip_file_name}"'
+        #     return response
+        zip_buffer = zipfile.ZipFile(zip_file_name, 'w', zipfile.ZIP_DEFLATED)
+        folderchild = Folder.objects.filter(parent_folder = pk)
+        serializer = FolderSerializer(folderchild,many=True)
+        for i in serializer.data:
+            folder = i['id']
+            print(folder)
+            if i['type'] == 'File':
+                    file_path = 'files\\' + i['path']
+                    name = i['name']
+                    print(file_path)
+                    content_type, encoding = mimetypes.guess_type(file_path)
+                    content_type = content_type or 'application/octet-stream'
+                    response = HttpResponse(open(file_path, 'rb'), content_type=content_type)
+                    # Tạo response từ tệp tin
+                    response['Content-Disposition'] = f'attachment; filename="{name}"'
+                    # shutil.copy2(file_path, save_path)
+                    
+        zip_buffer.close()
 
-            with open(temp_zip_file.name, 'rb') as zip_file:
-                response = HttpResponse(zip_file.read(), content_type='application/zip')
-                response['Content-Disposition'] = f'attachment; filename="{zip_file_name}"'
-                return response
-            
+        with open(zip_file_name, 'rb') as zip_file:
+            response = HttpResponse(zip_file.read(), content_type='application/zip')
+            response['Content-Disposition'] = f'attachment; filename="{zip_file_name}"'
+            return response
+
+        
     def add_folder_to_zip(self, zipf, folder,pk):
         queryset = Folder.objects.filter(parent_folder = pk)
         serializer = FolderSerializer(queryset,many=True)
         for i in serializer.data:
-            folder = i['file_path']
+            folder = i['id']
             print(folder)
+            try:
+                if i['type'] == 'File':
+                    file = Folder.objects.get(pk=pk)
+                    file_path = file.files.path
+                    content_type, encoding = mimetypes.guess_type(file_path)
+                    content_type = content_type or 'application/octet-stream'
+                    response = HttpResponse(open(file_path, 'rb'), content_type=content_type)
+                    # Tạo response từ tệp tin
+                    response['Content-Disposition'] = f'attachment; filename="{file.files.name}"'
+                    print(file_path)
+                    # shutil.copy2(file_path, save_path)
+                    pk = folder
+                    self.add_folder_to_zip(zipf,folder,pk)
+                else:
+                    pk = folder
+                    self.add_folder_to_zip(zipf,folder,pk)
+            except:
+                pass
+
             # file_path = file.get_absolute_file_path()  # Đường dẫn tới tệp tin
             # zipf.write(file_path, os.path.relpath(file_path, folder.get_absolute_folder_path()))
 
