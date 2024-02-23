@@ -119,12 +119,40 @@ class FolderList(APIView):
         folders = Folder.objects.filter(is_delete=False)
         serializer = FolderSerializer(folders, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
+    def extract_and_convert_to_integer(self,name,data):
+        # Tìm vị trí của dấu mở ngoặc và đóng ngoặc
+        start_index = name.find('(')
+        end_index = name.find(')')
 
+        if start_index != -1 and end_index != -1:
+            # Tách chuỗi trong dấu ngoặc
+            substring = name[start_index+1:end_index]
+            try:
+                if start_index != -1 and end_index != -1:
+                    name_list = []
+                    for i in data:
+                        name_list.append(i['name'])
+                    for newname in name_list:
+                        if name in name_list:
+                            substring = name[start_index+1:end_index]
+                            integer_value = int(substring)
+                            integer_value += 1
+                            replaced_string = name.replace(substring, str(integer_value))
+                            name = replaced_string
+                    return name
+                else:
+                    return name
+            except ValueError:
+                # Xử lý ngoại lệ nếu không thể chuyển đổi thành số nguyên
+                return name
+        
+        return None
     def post(self, request):
         serializer = FolderSerializer(data=request.data)
         uploaded_file = request.FILES.get('files')
         files = request.FILES.getlist('files[]')
         name = request.POST.get('name')
+        name = name.rstrip()
         parent_folder = request.POST.get('parent_folder')
         if serializer.is_valid():
             if files:
@@ -141,48 +169,35 @@ class FolderList(APIView):
                     else:
                         serializer.save(type='File', files=uploaded_file,file_size = uploaded_file.size, path = file_path, name = file_path)
             else:
-                if parent_folder is not None:
+                if parent_folder:
             # Lưu tệp tin duy nhất
-                    print(123109890823)
                     queryset = Folder.objects.filter(parent_folder = parent_folder)
-                  
-
-                    print(queryset)
+                    serializer_db = FolderSerializer(queryset,many=True)
+                    data = serializer_db.data
                     if "(" in name and ")" in name:
-                        name_add = self.extract_and_convert_to_integer(name)
-                        print(name_add)
-                    # else:
-                    #     for i in serializer_12.data:
-                    #         if name == i['name']:
-                    #             name = name + "(1)"
-                    #             print(name)
-                    #             break
-                    serializer.save(type='Folder')
+                        newname = self.extract_and_convert_to_integer(name,data)
+                        serializer.save(type='Folder',file_size = 0,name = newname)
+                    else:
+                        for i in data:
+                            if name == i['name']:
+                                name = name + " (1)"
+                                newname = self.extract_and_convert_to_integer(name,data)
+                                serializer.save(type='Folder',file_size = 0,name = newname)
                 else:
-                    print(123123)
-                    serializer.save(type='Folder')
-                # serializer.save(type='Folder')
+                    queryset = Folder.objects.filter(parent_folder = parent_folder)
+                    serializer_db = FolderSerializer(queryset,many=True)
+                    data = serializer_db.data
+                    if "(" in name and ")" in name:
+                        newname = self.extract_and_convert_to_integer(name,data)
+                        serializer.save(type='Folder',file_size = 0,name = newname)
+                    else:
+                        for i in data:
+                            if name == i['name']:
+                                name = name + " (1)"
+                                newname = self.extract_and_convert_to_integer(name,data)
+                                serializer.save(type='Folder',file_size = 0,name = newname)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    
-    def extract_and_convert_to_integer(string):
-        # Tìm vị trí của dấu mở ngoặc và đóng ngoặc
-        start_index = string.find('(')
-        end_index = string.find(')')
-
-        if start_index != -1 and end_index != -1:
-            # Tách chuỗi trong dấu ngoặc
-            substring = string[start_index+1:end_index]
-
-            try:
-                # Chuyển đổi chuỗi thành số nguyên
-                integer_value = int(substring)
-                return integer_value
-            except ValueError:
-                # Xử lý ngoại lệ nếu không thể chuyển đổi thành số nguyên
-                print("Không thể chuyển đổi chuỗi thành số nguyên.")
-        
-        return None
             
 
 @permission_classes([CheckSharedGroupdFactory(Folder(),'Chỉnh sửa') | CheckOwnerFactory(Folder())])

@@ -80,7 +80,7 @@ class Folder(Base):
     parent_folder = models.ForeignKey('self', on_delete=models.CASCADE, null=True, blank=True, related_name='subfolders') 
     path = models.CharField(max_length=255, null=True, blank=True)
     files = models.FileField(upload_to='files/',null=True, blank=True)
-    file_size = models.BigIntegerField()
+    file_size = models.BigIntegerField(null=True, blank=True)
     type = models.CharField(max_length=100, choices = Choices_type.choices)
     
     def __str__(self) :
