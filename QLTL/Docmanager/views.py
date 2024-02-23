@@ -239,7 +239,7 @@ class WarehouseList(APIView):
             warehouse = Warehouse.objects.filter(type_warehouse='Giá Kệ')
         elif type_warehouse == 'Kho':
             warehouse = Warehouse.objects.filter(type_warehouse='Kho')
-        elif type_warehouse == 'Hộp Cặp':
+        elif type_warehouse == 'Hộp cặp':
             warehouse = Warehouse.objects.filter(type_warehouse='Hộp cặp')
         else:
             return Response({"error": "Invalid type_warehouse value"}, status=status.HTTP_400_BAD_REQUEST)
@@ -296,7 +296,7 @@ class WarehouseFilter(generics.ListAPIView):
     queryset = Warehouse.objects.all()
     serializer_class = WarehouseSerializer
     filter_backends = [filters.DjangoFilterBackend]
-    filterset_fields = ['name','type']
+    filterset_fields = ['name','type_warehouse', 'parent_warehouse']
 
 
 
