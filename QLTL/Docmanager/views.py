@@ -9,6 +9,7 @@ from rest_framework.response import Response
 from django.http import HttpResponse
 from django_filters import rest_framework as filters
 
+import mimetypes
 import pandas as pd
 from io import BytesIO
 import zipfile
@@ -421,6 +422,23 @@ class WatchListUpdate(APIView):
             serializer.save()
             return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+class DownloadFile(APIView):
+    lookup_field = 'folder_id'
+    def get(self, request, folder_id,format=None):
+        try:
+            file = Folder.objects.get(pk=folder_id)
+            file_path = file.files.path
+            content_type, encoding = mimetypes.guess_type(file_path)
+            content_type = content_type or 'application/octet-stream'
+            response = HttpResponse(open(file_path, 'rb'), content_type=content_type)
+            # Tạo response từ tệp tin
+            response['Content-Disposition'] = f'attachment; filename="{file.files.name}"'
+            print(file_path)
+            # shutil.copy2(file_path, save_path)
+            return response
+        except Folder.DoesNotExist:
+            raise status.HTTP_404_NOT_FOUND
 
 class DownloadConvertAPIView(generics.RetrieveAPIView):
     permission_classes = [IsAuthenticated]
