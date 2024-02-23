@@ -8,17 +8,16 @@ from Auth.services import google_validate_id_token, user_get_or_create
 from django.template.loader import render_to_string
 import json
 from django.utils import timezone
-from django.contrib.auth.hashers import check_password
 from allauth.socialaccount.models import SocialAccount, SocialApp
 from rest_framework.permissions import IsAdminUser
 
 
 from django.contrib.auth.models import User
-from Auth.serializers import FacebookSocialAuthSerializer,UserRegistrationSerializer,UserLoginSerializer,UserChangePasswordSerializer,SendPasswordResetEmailSerializer,UserPasswordResetSerializer,LogoutSerializer,UserSerializer
+from Auth.serializers import UserRegistrationSerializer,UserLoginSerializer,UserChangePasswordSerializer,SendPasswordResetEmailSerializer,UserPasswordResetSerializer,LogoutSerializer,UserSerializer
 from Auth.renderers import UserRenderer
 from .utils import Util
 from .services import generate_strong_password
-
+from Auth.services import  facebookValidate
 
 class UserRegistrationView(APIView):
     permission_classes = [IsAdminUser]
@@ -147,16 +146,43 @@ class GoogleLoginApi( APIView):
             'email': email,
             'refresh': str(refresh_token),
             'access': str(refresh_token.access_token),
-            'is_admin': user.is_superuser
+            'is_admin': user.is_staff
         }
         return Response(response,status=status.HTTP_200_OK)
     
 class FacebookSocialAuthView(APIView):
-    serializer_class = FacebookSocialAuthSerializer
+    class FacebookSocialAuthSerializer(serializers.Serializer):
+
+        auth_token = serializers.CharField()
+        def validate_auth_token(self, auth_token):
+            try:
+                user_data = facebookValidate(auth_token)
+                return user_data
+            except Exception as identifier:
+                raise serializers.ValidationError(
+                    'The token is invalid or expired. Please login again.'
+                )
     def post(self, request):
-        serializer = self.serializer_class(data=request.data)
+        serializer = self.FacebookSocialAuthSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        user = ((serializer.validated_data)['auth_token'])
+        user_data = ((serializer.validated_data)['auth_token'])
+        data ={ 
+                'email' : user_data['email'],
+                'username' : user_data['name']
+            }
+        user, _ = user_get_or_create(**data)
+        uid = user_data['id']
+        provider = 'facebook' 
+        social_app = SocialApp.objects.get(provider=provider)
+        social_account, created = SocialAccount.objects.get_or_create(
+            user=user,
+            provider=provider,
+            uid=uid
+        )
+        if created:
+            social_account.extra_data = {} 
+            social_account.app = social_app
+            social_account.save()        
         user.last_login = timezone.now()
         user.save()
         refresh_token = RefreshToken.for_user(user)
@@ -167,7 +193,7 @@ class FacebookSocialAuthView(APIView):
             'email': user.email,
             'refresh': str(refresh_token),
             'access': str(refresh_token.access_token),
-            'is_admin': user.is_superuser
+            'is_admin': user.is_staff
         }
         return Response(response,status=status.HTTP_200_OK)
 
