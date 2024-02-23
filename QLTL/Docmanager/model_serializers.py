@@ -7,16 +7,11 @@ class BaseSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 class FolderSerializer(serializers.ModelSerializer):
-    parent_folder = serializers.SerializerMethodField()
-
     class Meta:
         model = Folder
         fields = 'all'
 
-    def get_parent_folder(self, obj):
-        if obj.parent_folder:
-            return FolderSerializer(obj.parent_folder).data
-        return None
+   
 
 
 class DocumentSerializer(serializers.ModelSerializer):
