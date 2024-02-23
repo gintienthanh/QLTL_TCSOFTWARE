@@ -47,9 +47,9 @@ class UserLoginView(APIView):
         email = serializer.data.get('username')
         password = serializer.data.get('password')
         user = User.objects.get(email=email)
-        if user.check_password(password) is False:
-            return Response({'message: ':'Password not match','status':'400'}, status=status.HTTP_400_BAD_REQUEST)
         if user is not None:
+            if user.check_password(password) is False:
+                return Response({'message: ':'Password not match','status':'400'}, status=status.HTTP_400_BAD_REQUEST)
             refresh = RefreshToken.for_user(user)
             if user.is_active is False: return Response({'message: ':'Account unable','status':'400'}, status=status.HTTP_400_BAD_REQUEST)
             if user.last_login is None:
@@ -60,7 +60,10 @@ class UserLoginView(APIView):
                     }, status=status.HTTP_403_FORBIDDEN)
         else:
             return Response({
-                'errors':{'non_field_errors':['Email or Password is not Valid']}}, status=status.HTTP_404_NOT_FOUND)
+                'errors':'user not found',
+                'status':404
+                }, 
+                status=status.HTTP_404_NOT_FOUND)
         user.last_login = timezone.now()
         return Response({
             'status':200,
