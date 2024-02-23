@@ -106,7 +106,7 @@ class DocumentFilter(generics.ListAPIView):
 
 
 class FolderList(APIView):
-    # permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated]
     def get(self, request):
         folders = Folder.objects.filter(is_delete = False)
         serializer = FolderSerializer(folders, many=True)
@@ -135,18 +135,19 @@ class FolderList(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
     def get_order(self,request):
-        queryset = Folder.objects.filter(parent_folder = request.parent_folder)
+        queryset = Folder.objects.filter(parent_folder = request.data.parent_folder)
         serializer = FolderSerializer(queryset,many=True)
         for i in serializer.data:
-            folder = i['id']
-            print(folder)
-            pk = folder
-            self.get_order(self,request,pk)
+            if request.data.name == i['name']:
+                folder = i['id']
+                print(folder)
+                pk = folder
+                self.get_order(self,request,pk)
             
 
-# @permission_classes([CheckSharedGroupdFactory(Folder(),'Chỉnh sửa') | CheckOwnerFactory(Folder())])
+@permission_classes([CheckSharedGroupdFactory(Folder(),'Chỉnh sửa') | CheckOwnerFactory(Folder())])
 class FolderUpdate(APIView):
-    # permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated]
     def get_object(self, pk):
         try:
             return Folder.objects.get(pk=pk)
