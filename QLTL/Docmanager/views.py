@@ -1,6 +1,6 @@
 from django.shortcuts import render
 from rest_framework import status,generics,serializers,permissions,authentication
-from rest_framework.views import APIView
+from rest_framework.views import APIView, View
 from rest_framework.response import Response
 from django.http import HttpResponse,JsonResponse
 from .model_serializers import *
@@ -114,7 +114,7 @@ class DocumentFilter(generics.ListAPIView):
 
 
 class FolderList(APIView):
-    permission_classes = [IsAuthenticated]
+    # permission_classes = [IsAuthenticated]
     def get(self, request):
         folders = Folder.objects.filter(is_delete=False)
         serializer = FolderSerializer(folders, many=True)
@@ -124,6 +124,8 @@ class FolderList(APIView):
         serializer = FolderSerializer(data=request.data)
         uploaded_file = request.FILES.get('files')
         files = request.FILES.getlist('files[]')
+        name = request.POST.get('name')
+        parent_folder = request.POST.get('parent_folder')
         if serializer.is_valid():
             if files:
                 # Lưu danh sách các tệp tin
@@ -133,23 +135,54 @@ class FolderList(APIView):
                     files_list.append(file)
                 serializer.save(type='File', files=files_list,file_size = file.size,path = file_path)
             elif uploaded_file:
-            # Lưu tệp tin duy nhất
-                file_path = default_storage.save(uploaded_file.name, uploaded_file)
-                serializer.save(type='File', files=uploaded_file,file_size = uploaded_file.size, path = file_path)
+                    file_path = default_storage.save(uploaded_file.name, uploaded_file)
+                    if name is not None:
+                        serializer.save(type='File', files=uploaded_file,file_size = uploaded_file.size, path = file_path, name = name)
+                    else:
+                        serializer.save(type='File', files=uploaded_file,file_size = uploaded_file.size, path = file_path, name = file_path)
             else:
-                serializer.save(type='Folder')
+                if parent_folder is not None:
+            # Lưu tệp tin duy nhất
+                    print(123109890823)
+                    queryset = Folder.objects.filter(parent_folder = parent_folder)
+                  
+
+                    print(queryset)
+                    if "(" in name and ")" in name:
+                        name_add = self.extract_and_convert_to_integer(name)
+                        print(name_add)
+                    # else:
+                    #     for i in serializer_12.data:
+                    #         if name == i['name']:
+                    #             name = name + "(1)"
+                    #             print(name)
+                    #             break
+                    serializer.save(type='Folder')
+                else:
+                    print(123123)
+                    serializer.save(type='Folder')
+                # serializer.save(type='Folder')
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
-    def get_order(self,request):
-        queryset = Folder.objects.filter(parent_folder = request.data.parent_folder)
-        serializer = FolderSerializer(queryset,many=True)
-        for i in serializer.data:
-            if request.data.name == i['name']:
-                folder = i['id']
-                print(folder)
-                pk = folder
-                self.get_order(self,request,pk)
+    def extract_and_convert_to_integer(string):
+        # Tìm vị trí của dấu mở ngoặc và đóng ngoặc
+        start_index = string.find('(')
+        end_index = string.find(')')
+
+        if start_index != -1 and end_index != -1:
+            # Tách chuỗi trong dấu ngoặc
+            substring = string[start_index+1:end_index]
+
+            try:
+                # Chuyển đổi chuỗi thành số nguyên
+                integer_value = int(substring)
+                return integer_value
+            except ValueError:
+                # Xử lý ngoại lệ nếu không thể chuyển đổi thành số nguyên
+                print("Không thể chuyển đổi chuỗi thành số nguyên.")
+        
+        return None
             
 
 @permission_classes([CheckSharedGroupdFactory(Folder(),'Chỉnh sửa') | CheckOwnerFactory(Folder())])

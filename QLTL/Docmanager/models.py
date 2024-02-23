@@ -76,7 +76,7 @@ class Portfolio(Base):
 
 
 class Folder(Base):
-    name = models.CharField(max_length=200)
+    name = models.CharField(max_length=255)
     parent_folder = models.ForeignKey('self', on_delete=models.CASCADE, null=True, blank=True, related_name='subfolders') 
     path = models.CharField(max_length=255, null=True, blank=True)
     files = models.FileField(upload_to='files/',null=True, blank=True)

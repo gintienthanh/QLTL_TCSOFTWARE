@@ -39,7 +39,7 @@ urlpatterns = [
     path('folder', FolderList.as_view(), name='folder'),
     path('folder/<int:pk>', FolderUpdate.as_view()),
     path('folder-filter/', FolderFilter.as_view()),
-    path('folderparent/<int:parent_folder>', FolderParentView.as_view()),
+    # path('folderparent/<int:parent_folder>', FolderParentView.as_view()),
     
     path('warehouse', WarehouseList.as_view()),
     path('warehouse/<int:pk>', WarehouseUpdate.as_view()),
