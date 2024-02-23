@@ -21,7 +21,7 @@ from .services import generate_strong_password
 
 
 class UserRegistrationView(APIView):
-    permission_classes = [IsAdminUser]
+    #permission_classes = [IsAdminUser]
     renderer_classes = [UserRenderer]
     def post(self,request,format=None):
         try:
