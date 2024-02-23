@@ -118,9 +118,11 @@ class GoogleLoginApi( APIView):
 
         serializer = self.InputSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
+        email = serializer.validated_data['email']
+        username = serializer.validated_data['username']
         data = {
-            'email':serializer.validated_data['email'],
-            'username':serializer.validated_data['username']
+            'email':email,
+            'username':username
         }
         user, _ = user_get_or_create(**data)
         uid = serializer.validated_data['id']
@@ -141,8 +143,8 @@ class GoogleLoginApi( APIView):
         response = {
             'status':200,
             'id': user.id,
-            'name': user.username,
-            'email': user.email,
+            'name': username,
+            'email': email,
             'refresh': str(refresh_token),
             'access': str(refresh_token.access_token),
             'is_admin': user.is_superuser
