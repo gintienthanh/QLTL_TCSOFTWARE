@@ -34,7 +34,8 @@ def CheckOwnerFactory(Model):
         def has_permission(self, request, view):
             try:
                 id = view.kwargs.get('pk')
-                if (int(id)):
+                
+                if(id):
                     getObject = type(Model).objects.get(id=id)
                     if getObject.owner == request.user:
                         return True 
@@ -66,7 +67,6 @@ def CheckSharedGroupdFactory(Model, type):
         def has_permission(self, request, view):
             try:
                 id = view.kwargs.get('pk')
-                
                 if isinstance(Model, Folder):
                     obj = Model.objects.get(id=id)
                     if Share.objects.filter(owner=request.user, folder=obj, type=type).exists():
