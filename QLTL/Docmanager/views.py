@@ -1,6 +1,5 @@
 import os
 from django.shortcuts import render
-
 from QLTL import settings
 from .model_serializers import*
 from .models import*
@@ -14,6 +13,13 @@ import zipfile
 from rest_framework import status
 from rest_framework.response import Response
 from django.http import Http404
+from rest_framework.pagination import PageNumberPagination
+
+
+class WarehousePagination(PageNumberPagination):
+    page_size = 2 # Số lượng phần tử trên mỗi trang
+    page_size_query_param = 'page_size'
+    max_page_size = 100
 
 # Create your views here.
 class PortfolioList(generics.ListCreateAPIView):
@@ -130,10 +136,21 @@ class FolderUpdate(APIView):
 class WarehouseList(APIView):
     def get(self, request):
         warehouses = Warehouse.objects.filter(is_delete=False)
-        serializer = WarehouseSerializer(warehouses, many=True)
+
+        # Phân trang kết quả
+        paginator = WarehousePagination()
+        result_page = paginator.paginate_queryset(warehouses, request)
+        serializer = WarehouseSerializer(result_page, many=True)
+
         data = {
             'status': '200',
-            'data': serializer.data
+            'data': serializer.data,
+            'pagination': {
+                'total_pages': paginator.page.paginator.num_pages,
+                'current_page': paginator.page.number,
+                'next_page': paginator.get_next_link(),
+                'previous_page': paginator.get_previous_link(),
+            }
         }
         return Response(data, status=status.HTTP_200_OK)
 
