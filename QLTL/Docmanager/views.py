@@ -7,21 +7,61 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from django.http import HttpResponse
 from django_filters import rest_framework as filters
-
+from rest_framework.pagination import PageNumberPagination
 import mimetypes
 import pandas as pd
 from io import BytesIO
 import zipfile
-from django_filters import rest_framework as filters
+from django.db.models import Q
 # Create your views here.
+
+class PortfolioSetPagination(PageNumberPagination):
+    page_size = 5
+    page_size_query_param = 'page_size'
+    max_page_size = 1000  
+class FolderSetPagination(PageNumberPagination):
+    page_size = 5
+    page_size_query_param = 'page_size'
+    max_page_size = 1000  
+class WarehouseSetPagination(PageNumberPagination):
+    page_size = 5
+    page_size_query_param = 'page_size'
+    max_page_size = 1000  
+class ShareSetPagination(PageNumberPagination):
+    page_size = 5
+    page_size_query_param = 'page_size'
+    max_page_size = 1000  
+
+class WatchlistSetPagination(PageNumberPagination):
+    page_size = 5
+    page_size_query_param = 'page_size'
+    max_page_size = 1000  
+
+
+
 
 class PortfolioList(APIView):
     permission_classes = [permissions.IsAuthenticated]
+   
+    def get(self, request, *args, **kwargs):
+        paginator = PortfolioSetPagination()
+        title_query = request.GET.get('title', None)  
+        usage_policy_query = request.GET.get('usage_policy', None) 
+        portfolio = Portfolio.objects.filter(is_delete=False)
     
-    def get(self, request):
-        portfolios = Portfolio.objects.filter(is_delete=False)
-        serializer = PortfolioSerializer(portfolios, many=True)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        if title_query and usage_policy_query:
+            # Tạo một Q object kết hợp tìm kiếm cho cả title và usage_policy
+             portfolio = portfolio.filter(Q(title__icontains=title_query) | Q(usage_policy__icontains=usage_policy_query))
+        elif title_query:
+        # Nếu chỉ có tìm kiếm theo title
+             portfolio = portfolio.filter(title__icontains=title_query)
+        elif usage_policy_query:
+        # Nếu chỉ có tìm kiếm theo usage_policy
+             portfolio = portfolio.filter(usage_policy__icontains=usage_policy_query)
+    
+        result_page = paginator.paginate_queryset(portfolio, request)
+        serializer = PortfolioSerializer(result_page, many=True)
+        return paginator.get_paginated_response(serializer.data)
 
     def post(self, request):
         serializer = PortfolioSerializer(data=request.data)
@@ -114,7 +154,8 @@ class DocumentFilter(generics.ListAPIView):
 
 class FolderList(APIView):
     permission_classes = [permissions.IsAuthenticated]
-    def get(self, request):
+    def get(self, request, *args, **kwargs):
+        paginator = FolderSetPagination
         folders = Folder.objects.filter(is_delete=False)
         serializer = FolderSerializer(folders, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
@@ -187,6 +228,7 @@ class ShareList(generics.ListCreateAPIView):
         return super().get_permissions()
         
     def get(self, request):
+        paginator = ShareSetPagination
         share = Share.objects.filter(is_delete=False)
         # share = Share.objects.all()
         serializer = ShareSerializer(share, many=True)
@@ -233,14 +275,15 @@ class ShareFilter(generics.ListAPIView):
 class WarehouseList(APIView):
     permission_classes = [permissions.IsAuthenticated]
     def get(self, request, *args, **kwargs):
+        paginator = WatchlistSetPagination
         type_warehouse = request.GET.get('type_warehouse')
 
-        if type_warehouse == 'Giá Kệ':
-            warehouse = Warehouse.objects.filter(type_warehouse='Giá Kệ')
-        elif type_warehouse == 'Kho':
-            warehouse = Warehouse.objects.filter(type_warehouse='Kho')
-        elif type_warehouse == 'Hộp cặp':
-            warehouse = Warehouse.objects.filter(type_warehouse='Hộp cặp')
+        if type_warehouse == 'shelf':
+            warehouse = Warehouse.objects.filter(type_warehouse='shelf',is_delete=False)
+        elif type_warehouse == 'warehouse':
+            warehouse = Warehouse.objects.filter(type_warehouse='warehouse', is_delete=False)
+        elif type_warehouse == 'boxcase':
+            warehouse = Warehouse.objects.filter(type_warehouse='boxcase', is_delete=False)
         else:
             return Response({"error": "Invalid type_warehouse value"}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -266,7 +309,13 @@ class WarehouseUpdate(APIView):
         return Response(serializer.data)
     def put(self, request, pk):
         warehouse = self.get_object(pk)
-        serializer = WarehouseSerializer(warehouse, data=request.data)
+    
+        # Copy request data to remove 'type_warehouse' field
+        modified_data = request.data.copy()
+        if 'type_warehouse' in modified_data:
+            del modified_data['type_warehouse']
+    
+        serializer = WarehouseSerializer(warehouse, data=modified_data)
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data)
@@ -274,7 +323,13 @@ class WarehouseUpdate(APIView):
 
     def patch(self, request, pk):
         warehouse = self.get_object(pk)
-        serializer = WarehouseSerializer(warehouse, data=request.data, partial=True)
+    
+        # Copy request data to remove 'type_warehouse' field
+        modified_data = request.data.copy()
+        if 'type_warehouse' in modified_data:
+            del modified_data['type_warehouse']
+    
+        serializer = WarehouseSerializer(warehouse, data=modified_data, partial=True)
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data)
@@ -303,6 +358,7 @@ class WarehouseFilter(generics.ListAPIView):
 class WatchList(APIView):
     permission_classes = [permissions.IsAuthenticated]
     def get(self, request):
+        paginator = WatchlistSetPagination
         watchlist = Watchlist.objects.filter(is_delete=False)
         serializer = WatchListSerializer(watchlist, many=True)
         return Response(serializer.data)
