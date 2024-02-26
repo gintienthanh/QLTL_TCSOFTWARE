@@ -204,8 +204,6 @@ class ShareList(generics.ListCreateAPIView):
                         owner=serializer.validated_data.get('owner'),
                         type=serializer.validated_data.get('type')
                     )
-                    share.create_by = request.user
-                    share.save()
                     serializer = ShareSerializer(share)
                     return Response(serializer.data, status=status.HTTP_200_OK)
                 except Share.DoesNotExist:
