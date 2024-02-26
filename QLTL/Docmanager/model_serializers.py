@@ -30,8 +30,25 @@ class WatchListSerializer(serializers.ModelSerializer):
 
         
 
+
+# chặn thay đổi trường type_warehouse
+
+from django.db.models import Max
+
 class WarehouseSerializer(serializers.ModelSerializer):
     class Meta:
         model = Warehouse
         fields = '__all__'
+        
+    def validate_name(self, value):
+        existing_names = Warehouse.objects.filter(name__startswith=value)
+        if self.instance:  # Đối tượng đang được cập nhật
+            existing_names = existing_names.exclude(pk=self.instance.pk)
+        similar_names = existing_names.filter(name__regex=r'^{}(\((\d+)\))?$'.format(value))
+        if similar_names.exists():
+            counter = 1
+            while similar_names.filter(name='{}({})'.format(value, counter)).exists():
+                counter += 1
+            value = '{}({})'.format(value, counter)
+        return value
         

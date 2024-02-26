@@ -1,5 +1,7 @@
+import os
 from django.shortcuts import render
-from django.shortcuts import render
+
+from QLTL import settings
 from .model_serializers import*
 from .models import*
 from rest_framework import authentication, permissions, status, generics
@@ -9,68 +11,48 @@ from django.http import HttpResponse
 import pandas as pd
 from io import BytesIO
 import zipfile
+from rest_framework import status
+from rest_framework.response import Response
+from django.http import Http404
 
 # Create your views here.
+class PortfolioList(generics.ListCreateAPIView):
+    serializer_class = PortfolioSerializer
 
-class PortfolioList(APIView):
-    def get(self, request):
-        portfolios = Portfolio.objects.all()
-        serializer = PortfolioSerializer(portfolios, many=True)
-        return Response(serializer.data)
-
-    def post(self, request):
-        serializer = PortfolioSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    def get_queryset(self):
+        return Portfolio.objects.filter(is_delete=False)
 
 
+class PortfolioUpdate(generics.RetrieveUpdateDestroyAPIView):
+    # queryset = Portfolio.objects.all()
+    
+    queryset = Portfolio.objects.filter(is_delete=False)
+    serializer_class = PortfolioSerializer
 
-class PortfolioUpdate(APIView):
-    def get_object(self, pk):
-        try:
-            return Portfolio.objects.get(pk=pk)
-        except Portfolio.DoesNotExist:
-            raise status.HTTP_404_NOT_FOUND
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        instance.is_delete = True
+        instance.save()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
-    def get(self, request, pk):
-        portfolio = self.get_object(pk)
-        serializer = PortfolioSerializer(portfolio)
-        return Response(serializer.data)
 
-    def put(self, request, pk):
-        portfolio = self.get_object(pk)
-        serializer = PortfolioSerializer(portfolio, data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-    def patch(self, request, pk):
-        portfolio = self.get_object(pk)
-        serializer = PortfolioSerializer(portfolio, data=request.data, partial=True)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-    def delete(self, request, pk):
-        portfolio = self.get_object(pk)
-        portfolio.is_deleted = True
-        portfolio.save()
+class PortfolioBulkDelete(APIView):
+    def delete(self, request, portfolio_ids, *args, **kwargs):
+        portfolio_ids_list = portfolio_ids.split(',')
+        for portfolio_id in portfolio_ids_list:
+            try:
+                portfolio = Portfolio.objects.get(id=int(portfolio_id))
+                portfolio.is_delete = True
+                portfolio.save()
+            except Portfolio.DoesNotExist:
+                pass
         return Response(status=status.HTTP_204_NO_CONTENT)
     
-
-    
-    
-
-    
-    
-    
 class DocumentList(generics.ListCreateAPIView):
-    queryset = Document.objects.all()
     serializer_class = DocumentSerializer
+
+    def get_queryset(self):
+        return Document.objects.filter(is_delete=False)
     
     
 class DocumentUpdate(generics.RetrieveUpdateDestroyAPIView):
@@ -82,8 +64,18 @@ class DocumentUpdate(generics.RetrieveUpdateDestroyAPIView):
         instance.is_delete = True
         instance.save()
         return Response(status=status.HTTP_204_NO_CONTENT)
-    
-    
+# xoá hàng loạt
+class DocumentBulkDelete(APIView):
+    def delete(self, request, document_ids, *args, **kwargs):
+        document_ids_list = document_ids.split(',')
+        for document_id in document_ids_list:
+            try:
+                document = Document.objects.get(id=int(document_id))
+                document.is_delete = True
+                document.save()
+            except Document.DoesNotExist:
+                pass
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 class FolderList(APIView):
     def get(self, request):
@@ -133,54 +125,96 @@ class FolderUpdate(APIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
-    
+
 
 class WarehouseList(APIView):
     def get(self, request):
-        warehouses = Warehouse.objects.all()
+        warehouses = Warehouse.objects.filter(is_delete=False)
         serializer = WarehouseSerializer(warehouses, many=True)
-        return Response(serializer.data)
+        data = {
+            'status': '200',
+            'data': serializer.data
+        }
+        return Response(data, status=status.HTTP_200_OK)
 
     def post(self, request):
         serializer = WarehouseSerializer(data=request.data)
         if serializer.is_valid():
             serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            data = {
+                'status': '200',
+                'data': serializer.data
+            }
+            return Response(data, status=status.HTTP_201_CREATED)
+        else:
+            data = {
+                'status': '400',
+                'errors': serializer.errors
+            }
+            return Response(data, status=status.HTTP_400_BAD_REQUEST)
 
 class WarehouseUpdate(APIView):
     def get_object(self, pk):
         try:
-            return Warehouse.objects.get(pk=pk)
+            return Warehouse.objects.get(pk=pk, is_delete=False)
         except Warehouse.DoesNotExist:
-            raise status.HTTP_404_NOT_FOUND
+            raise Http404("Warehouse not found")
 
     def get(self, request, pk):
-        warehouse = self.get_object(pk)
-        serializer = WarehouseSerializer(warehouse)
-        return Response(serializer.data)
+        try:
+            warehouse = self.get_object(pk)
+            serializer = WarehouseSerializer(warehouse)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except Http404 as e:
+            data = {
+                'status': '400',
+                'error': str(e)
+            }
+            return Response(data, status=status.HTTP_404_NOT_FOUND)
 
     def put(self, request, pk):
         warehouse = self.get_object(pk)
         serializer = WarehouseSerializer(warehouse, data=request.data)
         if serializer.is_valid():
+            if 'type_warehouse' in serializer.validated_data:
+                return Response({'error': 'Changing type warehouse is not allowed.'}, status=status.HTTP_400_BAD_REQUEST)
             serializer.save()
-            return Response(serializer.data)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            data = {
+                'status': 'success',
+                'data': serializer.data
+            }
+            return Response(data, status=status.HTTP_200_OK)
+        else:
+            data = {
+                'status': 'error',
+                'errors': serializer.errors
+            }
+            return Response(data, status=status.HTTP_400_BAD_REQUEST)
 
     def patch(self, request, pk):
         warehouse = self.get_object(pk)
         serializer = WarehouseSerializer(warehouse, data=request.data, partial=True)
         if serializer.is_valid():
+            if 'type_warehouse' in serializer.validated_data:
+                return Response({'error': 'Changing type warehouse is not allowed.'}, status=status.HTTP_400_BAD_REQUEST)
             serializer.save()
-            return Response(serializer.data)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            data = {
+                'status': 'success',
+                'data': serializer.data
+            }
+            return Response(data, status=status.HTTP_200_OK)
+        else:
+            data = {
+                'status': 'error',
+                'errors': serializer.errors
+            }
+            return Response(data, status=status.HTTP_400_BAD_REQUEST)
+
     def delete(self, request, pk):
-        warehouse = self.get_object(pk)
-        warehouse.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
-
-
+            warehouse = self.get_object(pk)
+            warehouse.is_deleted = True
+            warehouse.save()
+            return Response(status=status.HTTP_204_NO_CONTENT)
 
 class WatchList(APIView):
     def get(self, request):
@@ -218,7 +252,7 @@ class WatchList(APIView):
     
 
 
-class DownloadConvertAPIView(generics.RetrieveAPIView):
+class portfolio_DownloadConvertAPIView(generics.RetrieveAPIView):
     queryset = Portfolio.objects.all()
     serializer_class = PortfolioSerializer
 
@@ -255,7 +289,7 @@ class DownloadConvertAPIView(generics.RetrieveAPIView):
         for document in documents:
             document_data = {
                 'name': document.name,
-                'box_case': document.box_case.name,
+                # 'box_case': document.box_case.name,
                 'path': document.path,
                 'folder': document.folder.name if document.folder else None,
                 'border_frame': document.border_frame,
@@ -280,6 +314,15 @@ class DownloadConvertAPIView(generics.RetrieveAPIView):
         with zipfile.ZipFile(zip_file, 'w') as zf:
             zf.writestr('portfolio_info.xlsx', portfolio_excel_file.getvalue())
             zf.writestr('documents_info.xlsx', documents_excel_file.getvalue())
+
+            # Thêm trường files vào file zip
+            documents = Document.objects.filter(portfolio=portfolio)
+            documents_data = []
+            for document in documents:
+                file_path = os.path.join(settings.MEDIA_ROOT, str(document.files))
+                arcname = os.path.basename(str(document.files))
+                zf.write(file_path, arcname=arcname)
+
         zip_file.seek(0)
 
         response = HttpResponse(zip_file.getvalue(), content_type='application/zip')

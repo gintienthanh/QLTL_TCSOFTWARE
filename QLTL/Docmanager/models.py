@@ -43,7 +43,7 @@ class Choices_type(models.TextChoices):
 
 
 class Warehouse(Base):
-    name = models.CharField(max_length = 255, null = True, blank = True)
+    name = models.CharField(max_length = 255, null = True, blank = True )
     code = models.CharField(max_length = 255, null = True, blank = True)
     description = models.CharField(max_length = 255)
     type_warehouse = models.CharField(max_length=100, choices = Choices_type_warehouse.choices)
