@@ -123,31 +123,3 @@ class LogoutSerializer(serializers.Serializer):
         except TokenError:
             self.fail('bad_token')
 
-class FacebookSocialAuthSerializer(serializers.Serializer):
-    """Handles serialization of facebook related data"""
-    auth_token = serializers.CharField()
-    def validate_auth_token(self, auth_token):
-        user_data = facebookValidate(auth_token)
-        try:
-            data ={ 
-                'email' : user_data['email'],
-                'username' : user_data['name']
-            }
-            user, _ = user_get_or_create(**data)
-            uid = user_data['id']
-            provider = 'facebook' 
-            social_app = SocialApp.objects.get(provider=provider)
-            social_account, created = SocialAccount.objects.get_or_create(
-                user=user,
-                provider=provider,
-                uid=uid
-            )
-            if created:
-                social_account.extra_data = {} 
-                social_account.app = social_app
-                social_account.save()
-            return user
-        except Exception as identifier:
-            raise serializers.ValidationError(
-                'The token is invalid or expired. Please login again.'
-            )

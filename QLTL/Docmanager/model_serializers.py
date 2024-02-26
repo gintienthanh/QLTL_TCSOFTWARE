@@ -10,6 +10,7 @@ class FolderSerializer(serializers.ModelSerializer):
     class Meta:
         model = Folder
         fields = '__all__'
+   
 
 
 class DocumentSerializer(serializers.ModelSerializer):
@@ -31,9 +32,14 @@ class WatchListSerializer(serializers.ModelSerializer):
         
 
 class WarehouseSerializer(serializers.ModelSerializer):
+    parent_warehouse = serializers.SerializerMethodField()
     class Meta:
         model = Warehouse
         fields = '__all__'
+    def get_parent_warehouse(self, obj):
+        if obj.parent_warehouse:
+            return WarehouseSerializer(obj.parent_warehouse).data
+        return None
         
 class ShareSerializer(serializers.ModelSerializer):
     class Meta:
