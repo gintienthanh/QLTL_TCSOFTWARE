@@ -237,7 +237,7 @@ class FolderUpdate(APIView):
                     serializer.save(type='Folder',file_size = 0,name = name)
                 elif name + " (1)" in name_list and name in name_list:
                     name = name + " (1)"
-                    newname = self.extract_and_convert_to_integer(name,data)
+                    newname = FolderList.extract_and_convert_to_integer(name,data)
                     serializer.save(type='Folder',file_size = 0,name = newname)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
