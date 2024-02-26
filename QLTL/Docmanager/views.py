@@ -17,7 +17,7 @@ from rest_framework.pagination import PageNumberPagination
 
 
 class WarehousePagination(PageNumberPagination):
-    page_size = 2 # Số lượng phần tử trên mỗi trang
+    page_size = 4 # Số lượng phần tử trên mỗi trang
     page_size_query_param = 'page_size'
     max_page_size = 100
 
@@ -232,6 +232,19 @@ class WarehouseUpdate(APIView):
             warehouse.is_deleted = True
             warehouse.save()
             return Response(status=status.HTTP_204_NO_CONTENT)
+
+class WarehouseBulkDelete(APIView):
+    def delete(self, request, warehouse_ids, *args, **kwargs):
+        warehouse_ids_list = warehouse_ids.split(',')
+        for warehouse_id in warehouse_ids_list:
+            try:
+                warehouse = Warehouse.objects.get(id=int(warehouse_id))
+                warehouse.is_delete = True
+                warehouse.save()
+            except Warehouse.DoesNotExist:
+                pass
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
 
 class WatchList(APIView):
     def get(self, request):

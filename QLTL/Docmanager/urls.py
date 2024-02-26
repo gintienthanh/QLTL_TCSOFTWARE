@@ -8,7 +8,8 @@ urlpatterns = [
    
     path('warehouselist', WarehouseList.as_view()),
     path('warehouselist/<int:pk>', WarehouseUpdate.as_view()),
-   
+    path('warehouse_bulk_delete/<str:warehouse_ids>/', WarehouseBulkDelete.as_view(), name='warehouse_bulk_delete'),
+       
     path('portfoliolist', PortfolioList.as_view()),
     path('portfoliolist/<int:pk>', PortfolioUpdate.as_view()),
     path('portfolio_bulk_delete/<str:portfolio_ids>/', PortfolioBulkDelete.as_view(), name='portfolio_bulk_delete'),
