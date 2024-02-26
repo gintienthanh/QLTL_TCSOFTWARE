@@ -39,6 +39,7 @@ urlpatterns = [
     path('folder', FolderList.as_view(), name='folder'),
     path('folder/<int:pk>', FolderUpdate.as_view()),
     path('folder-filter/', FolderFilter.as_view()),
+    # path('folder-filter/', FolderDeletes.as_view()),
     # path('folderparent/<int:parent_folder>', FolderParentView.as_view()),
     
     path('warehouse', WarehouseList.as_view()),
@@ -62,7 +63,7 @@ urlpatterns = [
     path('watchlist/<int:pk>', WatchListUpdate.as_view()),
     
     path('download/<int:pk>/', DownloadConvertAPIView.as_view(), name='download-convert'),
-    path('file/download/<int:folder_id>', DownloadFile.as_view(), name='file-download'),
-    path('folder/download/<int:pk>', DownloadFolder.as_view(), name='folder-download'),
+    path('file/download/<int:folder_id>/', DownloadFile.as_view(), name='file-download'),
+    path('folder/download/<int:pk>/', DownloadFolder.as_view(), name='folder-download'),
 
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

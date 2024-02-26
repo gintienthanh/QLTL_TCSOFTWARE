@@ -121,27 +121,25 @@ class FolderList(APIView):
         return Response(serializer.data, status=status.HTTP_200_OK)
     def extract_and_convert_to_integer(self,name,data):
         # Tìm vị trí của dấu mở ngoặc và đóng ngoặc
-        start_index = name.find('(')
-        end_index = name.find(')')
-
-        if start_index != -1 and end_index != -1:
+        start_index = name.rfind('(')
+        end_index = name.rfind(')')
+        if start_index != -1 and end_index != -1 and start_index < end_index:
             # Tách chuỗi trong dấu ngoặc
-            substring = name[start_index+1:end_index]
             try:
-                if start_index != -1 and end_index != -1:
-                    name_list = []
-                    for i in data:
-                        name_list.append(i['name'])
-                    for newname in name_list:
-                        if name in name_list:
-                            substring = name[start_index+1:end_index]
-                            integer_value = int(substring)
-                            integer_value += 1
-                            replaced_string = name.replace(substring, str(integer_value))
-                            name = replaced_string
-                    return name
-                else:
-                    return name
+                name_list = []
+                for i in data:
+                    name_list.append(i['name'])
+                print(name_list)
+                for i in name_list:
+                    if name in name_list:
+                        substring = name[start_index+1:end_index]
+                        integer_value = int(substring)
+                        integer_value += 1
+                        name_lst = list(name)
+                        name_lst[start_index + 1] = str(integer_value)
+                        new_name = ''.join(name_lst)
+                        name = new_name
+                return name
             except ValueError:
                 # Xử lý ngoại lệ nếu không thể chuyển đổi thành số nguyên
                 return name
@@ -169,33 +167,22 @@ class FolderList(APIView):
                     else:
                         serializer.save(type='File', files=uploaded_file,file_size = uploaded_file.size, path = file_path, name = file_path)
             else:
-                if parent_folder:
-            # Lưu tệp tin duy nhất
-                    queryset = Folder.objects.filter(parent_folder = parent_folder)
-                    serializer_db = FolderSerializer(queryset,many=True)
-                    data = serializer_db.data
-                    if "(" in name and ")" in name:
-                        newname = self.extract_and_convert_to_integer(name,data)
-                        serializer.save(type='Folder',file_size = 0,name = newname)
-                    else:
-                        for i in data:
-                            if name == i['name']:
-                                name = name + " (1)"
-                                newname = self.extract_and_convert_to_integer(name,data)
-                                serializer.save(type='Folder',file_size = 0,name = newname)
-                else:
-                    queryset = Folder.objects.filter(parent_folder = parent_folder)
-                    serializer_db = FolderSerializer(queryset,many=True)
-                    data = serializer_db.data
-                    if "(" in name and ")" in name:
-                        newname = self.extract_and_convert_to_integer(name,data)
-                        serializer.save(type='Folder',file_size = 0,name = newname)
-                    else:
-                        for i in data:
-                            if name == i['name']:
-                                name = name + " (1)"
-                                newname = self.extract_and_convert_to_integer(name,data)
-                                serializer.save(type='Folder',file_size = 0,name = newname)
+                queryset = Folder.objects.filter(parent_folder = parent_folder)
+                serializer_db = FolderSerializer(queryset,many=True)
+                data = serializer_db.data
+                name_list = []
+                for i in data:
+                    name_list.append(i['name'])
+                if name not in name_list: 
+                    serializer.save(type='Folder',file_size = 0,name = name)
+                    print("không có " + name + " trong db")
+                elif name + " (1)" not in name_list and name in name_list:
+                    print("không có name + 1")
+                    serializer.save(type='Folder',file_size = 0,name = name)
+                elif name + " (1)" in name_list and name in name_list:
+                    name = name + " (1)"
+                    newname = self.extract_and_convert_to_integer(name,data)
+                    serializer.save(type='Folder',file_size = 0,name = newname)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
             
@@ -216,9 +203,43 @@ class FolderUpdate(APIView):
     def put(self, request, pk):
         folder = self.get_object(pk)
         serializer = FolderSerializer(folder, data=request.data)
+        uploaded_file = request.FILES.get('files')
+        files = request.FILES.getlist('files[]')
+        name = request.POST.get('name')
+        name = name.rstrip()
+        parent_folder = request.POST.get('parent_folder')
         if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data)
+            if files:
+                # Lưu danh sách các tệp tin
+                files_list = []
+                for file in files:
+                    file_path = default_storage.save(file.name, file)
+                    files_list.append(file)
+                serializer.save(type='File', files=files_list,file_size = file.size,path = file_path)
+            elif uploaded_file:
+                    file_path = default_storage.save(uploaded_file.name, uploaded_file)
+                    if name is not None:
+                        serializer.save(type='File', files=uploaded_file,file_size = uploaded_file.size, path = file_path, name = name)
+                    else:
+                        serializer.save(type='File', files=uploaded_file,file_size = uploaded_file.size, path = file_path, name = file_path)
+            else:
+                queryset = Folder.objects.filter(parent_folder = parent_folder)
+                serializer_db = FolderSerializer(queryset,many=True)
+                data = serializer_db.data
+                name_list = []
+                for i in data:
+                    name_list.append(i['name'])
+                if name not in name_list: 
+                    serializer.save(type='Folder',file_size = 0,name = name)
+                    print("không có " + name + " trong db")
+                elif name + " (1)" not in name_list and name in name_list:
+                    print("không có name + 1")
+                    serializer.save(type='Folder',file_size = 0,name = name)
+                elif name + " (1)" in name_list and name in name_list:
+                    name = name + " (1)"
+                    newname = self.extract_and_convert_to_integer(name,data)
+                    serializer.save(type='Folder',file_size = 0,name = newname)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def patch(self, request, pk):
@@ -242,6 +263,17 @@ class FolderUpdate(APIView):
             return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+# class FolderDeletes(APIView):
+#     def delete(self, request,pk, *args, **kwargs):
+#         folder_list = folder_id.split(',')
+#         for folder_id in folder_list:
+#             try:
+#                 folder = Folder.objects.get(id=int(folder_id))
+#                 folder.is_delete = True
+#                 folder.save()
+#             except Folder.DoesNotExist:
+#                 pass
+#         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class FolderFilter(generics.ListAPIView):
