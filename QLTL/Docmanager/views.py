@@ -18,24 +18,24 @@ from django.db.models import Q
 # Create your views here.
 
 class PortfolioSetPagination(PageNumberPagination):
-    page_size = 5
+    page_size = 12
     page_size_query_param = 'page_size'
     max_page_size = 1000  
 class FolderSetPagination(PageNumberPagination):
-    page_size = 5
+    page_size = 12
     page_size_query_param = 'page_size'
     max_page_size = 1000  
 class WarehouseSetPagination(PageNumberPagination):
-    page_size = 5
+    page_size = 12
     page_size_query_param = 'page_size'
     max_page_size = 1000  
 class ShareSetPagination(PageNumberPagination):
-    page_size = 5
+    page_size = 12
     page_size_query_param = 'page_size'
     max_page_size = 1000  
 
 class WatchlistSetPagination(PageNumberPagination):
-    page_size = 5
+    page_size = 12
     page_size_query_param = 'page_size'
     max_page_size = 1000  
 
@@ -63,13 +63,16 @@ class PortfolioList(APIView):
         serializer = PortfolioSerializer(data=request.data)
         if serializer.is_valid():
             serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
+            return Response({'status':201,
+                             'message':'created successfully',
+                             'data':serializer.data}, 
+                             status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 
 class PortfolioUpdate(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+    #permission_classes = [permissions.IsAuthenticated]
     def get_object(self, pk):
         try:
             return Portfolio.objects.get(pk=pk)
@@ -78,23 +81,32 @@ class PortfolioUpdate(APIView):
     def get(self, request, pk):
         portfolio = self.get_object(pk)
         serializer = PortfolioSerializer(portfolio)
-        return Response(serializer.data)
+        return Response({'status':201,
+                        'message':'found',
+                        'data':serializer.data},status=status.HTTP_302_FOUND)
 
     def put(self, request, pk):
         portfolio = self.get_object(pk)
         serializer = PortfolioSerializer(portfolio, data=request.data)
         if serializer.is_valid():
             serializer.save()
-            return Response(serializer.data)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'status':200,
+                             'message':'update successfully',
+                             'data':serializer.data},status=status.HTTP_200_OK)
+        return Response({'status':400,
+                        'message':serializer.errors
+                        }, status=status.HTTP_400_BAD_REQUEST)
 
     def patch(self, request, pk):
         portfolio = self.get_object(pk)
         serializer = PortfolioSerializer(portfolio, data=request.data, partial=True)
         if serializer.is_valid():
             serializer.save()
-            return Response(serializer.data)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'status':201,
+                             'message':'created successfully',
+                             'data':serializer.data},status=status.HTTP_200_OK)
+        return Response({'status':400,
+                        'message':serializer.errors},status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self, request, pk):
         portfolio = self.get_object(pk)
@@ -106,8 +118,12 @@ class PortfolioUpdate(APIView):
             }, partial=True)
         if serializer.is_valid():
             serializer.save()
-            return Response(serializer.data)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'status':200,
+                             'message':'delete successfully'
+                            })
+        return Response({'status':400,
+                        'message':'delete Fail',
+                        },status=status.HTTP_400_BAD_REQUEST)
     
 class PortfolioFilter(generics.ListAPIView):
     queryset = Portfolio.objects.all()
@@ -121,15 +137,15 @@ class DocumentList(generics.ListCreateAPIView):
  
     queryset = Document.objects.all()
     serializer_class = DocumentSerializer
-    def get_permissions(self):
-        if self.request.method == 'POST':
-            return [permissions.IsAuthenticated()]
-        elif self.request.method == 'GET':
-            return [permissions.IsAdminUser()]
-        return super().get_permissions()
+    # def get_permissions(self):
+    #     if self.request.method == 'POST':
+    #         return [permissions.IsAuthenticated()]
+    #     elif self.request.method == 'GET':
+    #         return [permissions.IsAdminUser()]
+    #     return super().get_permissions()
 
 class DocumentUpdate(generics.RetrieveUpdateDestroyAPIView):
-    permission_classes = [CheckSharedGroupdFactory(Document(),'Chỉnh sửa') | CheckOwnerFactory(Document())]
+    permission_classes = [CheckSharedGroupdFactory(Document(),'edit') | CheckOwnerFactory(Document())]
     queryset = Document.objects.all()
     serializer_class = DocumentSerializer
     
@@ -137,7 +153,7 @@ class DocumentUpdate(generics.RetrieveUpdateDestroyAPIView):
         instance = self.get_object()
         instance.is_delete = True
         instance.save()
-        return Response(status=status.HTTP_204_NO_CONTENT)
+        return Response({'status':200,'message':'destroyed'},status=status.HTTP_204_NO_CONTENT)
  
 class DocumentFilter(generics.ListAPIView):
     queryset = Document.objects.all()
@@ -162,6 +178,7 @@ class FolderList(APIView):
         result_page = paginator.paginate_queryset(folder, request)
         serializer = FolderSerializer(result_page, many=True)
         return paginator.get_paginated_response(serializer.data)
+        #return Response({'status':200,'message':'found','data':response.data}, status=response.status_code)
     def extract_and_convert_to_integer(self,name,data):
         # Tìm vị trí của dấu mở ngoặc và đóng ngoặc
         start_index = name.rfind('(')
@@ -225,11 +242,15 @@ class FolderList(APIView):
                     name = name + " (1)"
                     newname = self.extract_and_convert_to_integer(name,data)
                     serializer.save(type='Folder',file_size = 0,name = newname)
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'status':201,
+                             'message':'created successfully',
+                             'data':serializer.data},status=status.HTTP_201_CREATED)
+        return Response({'status':400,
+                             'message':'created fail',
+                             'data':serializer.data},status=status.HTTP_400_BAD_REQUEST)
 
 # @permission_classes([CheckSharedGroupdFactory(Folder(),'Chỉnh sửa') | CheckOwnerFactory(Folder())])
-class FolderUpdate(APIView):
+class FolderUpdate(generics.RetrieveUpdateDestroyAPIView):
     # permission_classes = [permissions.IsAuthenticated]
     def get_object(self, pk):
         try:
@@ -239,15 +260,21 @@ class FolderUpdate(APIView):
     def get(self, request, pk):
         folder = self.get_object(pk)
         serializer = FolderSerializer(folder)
-        return Response(serializer.data)
+        return Response({'status':302,
+                             'message':'found successfully',
+                             'data':serializer.data},status=status.HTTP_302_FOUND)
     
     def put(self, request, pk):
         folder = self.get_object(pk)
         serializer = FolderSerializer(folder, data=request.data)
         if serializer.is_valid():
             serializer.save()
-            return Response(serializer.data)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'status':200,
+                             'message':'update successfully'
+                             },status=status.HTTP_200_OK)
+        return Response({'status':400,
+                             'message':'update fail'
+                             },status=status.HTTP_400_BAD_REQUEST)
 
     def patch(self, request, pk):
         folder = self.get_object(pk)
@@ -267,8 +294,11 @@ class FolderUpdate(APIView):
             }, partial=True)
         if serializer.is_valid():
             serializer.save()
-            return Response(serializer.data)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'status':200,
+                             'message':'delete successfully'},status=status.HTTP_200_OK)
+        return Response({'status':400,
+                            'message':serializer.errors,
+                             },status=status.HTTP_400_BAD_REQUEST)
     
 class FolderFilter(generics.ListAPIView):
     queryset = Folder.objects.all()
@@ -321,7 +351,7 @@ class ShareList(generics.ListCreateAPIView):
             serializer.save(create_by=request.user)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         except Exception as e:
-            return Response(str(e), status=status.HTTP_400_BAD_REQUEST)
+            return Response({'status':400,'error':str(e)}, status=status.HTTP_400_BAD_REQUEST)
         
 
 class ShareUpdate(generics.RetrieveUpdateDestroyAPIView):
@@ -350,9 +380,9 @@ class ShareUpdate(generics.RetrieveUpdateDestroyAPIView):
 class WarehouseList(APIView):
     permission_classes = [permissions.IsAuthenticated]
     def get(self, request, *args, **kwargs):
-        paginator = WatchlistSetPagination
+        paginator = WarehouseSetPagination()
         type_warehouse = request.GET.get('type_warehouse')
-
+        warehouse = Warehouse.objects.filter(is_delete=False)
         if type_warehouse == 'shelf':
             warehouse = Warehouse.objects.filter(type_warehouse='shelf',is_delete=False)
         elif type_warehouse == 'warehouse':
@@ -361,17 +391,24 @@ class WarehouseList(APIView):
             warehouse = Warehouse.objects.filter(type_warehouse='boxcase', is_delete=False)
         else:
             return Response({"error": "Invalid type_warehouse value"}, status=status.HTTP_400_BAD_REQUEST)
-
+        
         serializer = WarehouseSerializer(warehouse, many=True)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response({'status':200,
+                             'message':'found successfully',
+                             'data':serializer.data},status=status.HTTP_200_OK)
     def post(self, request):
         serializer = WarehouseSerializer(data=request.data)
+        id = request.data.get('parent_warehouse_id')
         if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            parent_warehouse =Warehouse.objects.get(id=id)    
+            serializer.save(parent_warehouse=parent_warehouse)
+            return Response({'status':201,
+                             'message':'created successfully',
+                             'data':serializer.data},status=status.HTTP_201_CREATED)
+        return Response({'status':400,
+                        'message':'created fail'},status=status.HTTP_400_BAD_REQUEST)
 
-class WarehouseUpdate(APIView):
+class WarehouseUpdate(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [permissions.IsAuthenticated]
     def get_object(self, pk):
         try:
@@ -381,7 +418,9 @@ class WarehouseUpdate(APIView):
     def get(self, request, pk):
         warehouse = self.get_object(pk)
         serializer = WarehouseSerializer(warehouse)
-        return Response(serializer.data)
+        return Response({'status':200,
+                             'message':'found successfully',
+                             'data':serializer.data},status=status.HTTP_200_OK)
     def put(self, request, pk):
         warehouse = self.get_object(pk)
     
@@ -393,8 +432,12 @@ class WarehouseUpdate(APIView):
         serializer = WarehouseSerializer(warehouse, data=modified_data)
         if serializer.is_valid():
             serializer.save()
-            return Response(serializer.data)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'status':200,
+                             'message':'update successfully'
+                             },status=status.HTTP_200_OK)
+        return Response({'status':400,
+                             'message':'update fail'
+                             },status=status.HTTP_400_BAD_REQUEST)
 
     def patch(self, request, pk):
         warehouse = self.get_object(pk)
@@ -433,11 +476,12 @@ class WarehouseFilter(generics.ListAPIView):
 class WatchList(APIView):
     permission_classes = [permissions.IsAuthenticated]
     def get(self, request):
-        paginator = WatchlistSetPagination
+        paginator = WatchlistSetPagination()
         watchlist = Watchlist.objects.filter(is_delete=False)
-        serializer = WatchListSerializer(watchlist, many=True)
-        return Response(serializer.data)
-
+        result_page = paginator.paginate_queryset(watchlist, request)
+        serializer = WatchListSerializer(result_page, many=True)
+        return paginator.get_paginated_response(serializer.data)
+       
     def post(self, request):
         serializer = WatchListSerializer(data=request.data)
         if serializer.is_valid():
@@ -460,8 +504,12 @@ class WatchListUpdate(APIView):
         serializer = WatchListSerializer(watchlist, data=request.data)
         if serializer.is_valid():
             serializer.save()
-            return Response(serializer.data)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'status':200,
+                             'message':'update successfully'
+                             },status=status.HTTP_200_OK)
+        return Response({'status':400,
+                             'message':'update fail'
+                             },status=status.HTTP_400_BAD_REQUEST)
 
     def patch(self, request, pk):
         watchlist = self.get_object(pk)
@@ -481,8 +529,11 @@ class WatchListUpdate(APIView):
             }, partial=True)
         if serializer.is_valid():
             serializer.save()
-            return Response(serializer.data)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'status':200,
+                             'message':'delete successfully'},status=status.HTTP_200_OK)
+        return Response({'status':400,
+                             'message':serializer.errors
+                             },status=status.HTTP_400_BAD_REQUEST)
 
 class DownloadFile(APIView):
     lookup_field = 'folder_id'
@@ -513,7 +564,7 @@ class DownloadConvertAPIView(generics.RetrieveAPIView):
         portfolio_data = {
             'title': portfolio.title,
             'identification_code': portfolio.identification_code,
-            'classification_id': portfolio.classification_id,
+            'classification': portfolio.classification,
             'retention_period': portfolio.retention_period,
             'usage_policy': portfolio.usage_policy,
             'start_date': portfolio.start_date,
