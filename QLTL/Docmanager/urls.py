@@ -48,7 +48,7 @@ urlpatterns = [
     
     path('share', ShareList.as_view()),
     path('share/<int:pk>', ShareUpdate.as_view()),
-    path('share-filter/', ShareFilter.as_view()),
+ 
     
     path('portfolio', PortfolioList.as_view()),
     path('portfolio/<int:pk>', PortfolioUpdate.as_view()),

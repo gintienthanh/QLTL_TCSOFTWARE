@@ -5,16 +5,22 @@ class BaseSerializer(serializers.ModelSerializer):
     class Meta:
         model = Base
         fields = '__all__'
-    # def create(self):
-    #     Base.objects.create()
+        read_only_fields = ['created_at', 'updated_at','is_visibale','is_delete']
 
+class FolderSerializer(serializers.ModelSerializer):
+    parent_folder = serializers.SerializerMethodField()
 
-class WarehouseSerializer(serializers.ModelSerializer):
     class Meta:
-        model = Warehouse
+        model = Folder
         fields = '__all__'
         read_only_fields = ['created_at', 'updated_at','is_visibale','is_delete']
-    
+
+    def get_parent_folder(self, obj):
+        if obj.parent_folder:
+            return FolderSerializer(obj.parent_folder).data
+        return None
+
+
 class DocumentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Document
@@ -26,18 +32,29 @@ class PortfolioSerializer(serializers.ModelSerializer):
         model = Portfolio
         fields = '__all__'
         read_only_fields = ['created_at', 'updated_at','is_visibale','is_delete']
-
-class FolderSerializer(serializers.ModelSerializer):
+class WatchListSerializer(serializers.ModelSerializer):
     class Meta:
-        model = Folder
+        model = Watchlist
         fields = '__all__'
         read_only_fields = ['created_at', 'updated_at','is_visibale','is_delete']
-# ,'create_by','delete_by','editor','owner'
+        
+
+class WarehouseSerializer(serializers.ModelSerializer):
+    parent_warehouse = serializers.SerializerMethodField()
+    class Meta:
+        model = Warehouse
+        fields = '__all__'
+        read_only_fields = ['created_at', 'updated_at','is_visibale','is_delete']
+    def get_parent_warehouse(self, obj):
+        if obj.parent_warehouse:
+            return WarehouseSerializer(obj.parent_warehouse).data
+        return None
         
 class ShareSerializer(serializers.ModelSerializer):
     class Meta:
         model = Share
         fields = '__all__'
+        read_only_fields = ['created_at', 'updated_at','is_visibale','is_delete']
         
 class WatchlistSerializer(serializers.ModelSerializer):
     class Meta:
@@ -49,3 +66,4 @@ class ClassificationSerializer(serializers.ModelSerializer):
     class Meta: 
         model = ClassifyVariant
         fields = '__all__'
+        read_only_fields = ['created_at', 'updated_at','is_visibale','is_delete']
