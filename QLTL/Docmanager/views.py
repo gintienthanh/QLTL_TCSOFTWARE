@@ -31,7 +31,7 @@ class FolderSetPagination(PageNumberPagination):
     page_size_query_param = 'page_size'
     max_page_size = 1000  
 class WarehouseSetPagination(PageNumberPagination):
-    page_size = 2
+    page_size = 5
     page_size_query_param = 'page_size'
     max_page_size = 1000  
 class ShareSetPagination(PageNumberPagination):
@@ -39,13 +39,14 @@ class ShareSetPagination(PageNumberPagination):
     page_size_query_param = 'page_size'
     max_page_size = 1000  
 
+
 class WatchlistSetPagination(PageNumberPagination):
     page_size = 5
     page_size_query_param = 'page_size'
     max_page_size = 1000  
 
-
-
+from rest_framework import status
+from rest_framework.response import Response
 
 class PortfolioList(APIView):
     # permission_classes = [permissions.IsAuthenticated]
@@ -57,26 +58,31 @@ class PortfolioList(APIView):
         portfolio = Portfolio.objects.filter(is_delete=False)
     
         if title_query: 
-             portfolio = portfolio.filter(title__icontains=title_query)
+            portfolio = portfolio.filter(title__icontains=title_query)
         
-    
         result_page = paginator.paginate_queryset(portfolio, request)
         serializer = PortfolioSerializer(result_page, many=True)
-        return paginator.get_paginated_response(serializer.data)
+
+        data = {
+            'status': '200',
+            'data': serializer.data
+        }
+        return paginator.get_paginated_response(data)
 
     def post(self, request):
         serializer = PortfolioSerializer(data=request.data)
         if serializer.is_valid():
             serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-
-class PortfolioUpdate(generics.RetrieveUpdateDestroyAPIView):
-    # queryset = Portfolio.objects.all()
-    
-    queryset = Portfolio.objects.filter(is_delete=False)
-    serializer_class = PortfolioSerializer
+            data = {
+                'status': '201',
+                'data': serializer.data
+            }
+            return Response(data, status=status.HTTP_201_CREATED)
+        data = {
+            'status': '400',
+            'errors': serializer.errors
+        }
+        return Response(data, status=status.HTTP_400_BAD_REQUEST)
 
 class PortfolioUpdate(APIView):
     # permission_classes = [permissions.IsAuthenticated]
@@ -84,46 +90,79 @@ class PortfolioUpdate(APIView):
         try:
             return Portfolio.objects.get(pk=pk)
         except Portfolio.DoesNotExist:
-            raise status.HTTP_404_NOT_FOUND
+            data = {
+                'status': '404',
+                'error': 'Portfolio not found'
+            }
+            return Response(data, status=status.HTTP_404_NOT_FOUND)
+
     def get(self, request, pk):
         portfolio = self.get_object(pk)
         serializer = PortfolioSerializer(portfolio)
-        return Response(serializer.data)
+        data = {
+            'status': '200',
+            'data': serializer.data
+        }
+        return Response(data)
 
     def put(self, request, pk):
         portfolio = self.get_object(pk)
         serializer = PortfolioSerializer(portfolio, data=request.data)
         if serializer.is_valid():
             serializer.save()
-            return Response(serializer.data)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            data = {
+                'status': '200',
+                'data': serializer.data
+            }
+            return Response(data)
+        data = {
+            'status': '400',
+            'errors': serializer.errors
+        }
+        return Response(data, status=status.HTTP_400_BAD_REQUEST)
 
     def patch(self, request, pk):
         portfolio = self.get_object(pk)
         serializer = PortfolioSerializer(portfolio, data=request.data, partial=True)
         if serializer.is_valid():
             serializer.save()
-            return Response(serializer.data)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            data = {
+                'status': '200',
+                'data': serializer.data
+            }
+            return Response(data)
+        data = {
+            'status': '400',
+            'errors': serializer.errors
+        }
+        return Response(data, status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self, request, pk):
         portfolio = self.get_object(pk)
         serializer = PortfolioSerializer(portfolio, 
-            data =
-            {
+            data={
                 'is_delete': True,
-                
             }, partial=True)
         if serializer.is_valid():
             serializer.save()
-            return Response(serializer.data)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    
+            data = {
+                'status': '200',
+                'message': 'Portfolio deleted successfully'
+            }
+            return Response(data)
+        data = {
+            'status': '400',
+            'errors': serializer.errors
+        }
+        return Response(data, status=status.HTTP_400_BAD_REQUEST)
+
+
 class PortfolioFilter(generics.ListAPIView):
     queryset = Portfolio.objects.all()
     serializer_class = PortfolioSerializer
     filter_backends = [filters.DjangoFilterBackend]
     filterset_fields = ['title']
+
 
 class PortfolioBulkUpdate(APIView):
     def put(self, request, portfolio_ids, *args, **kwargs):
@@ -133,11 +172,18 @@ class PortfolioBulkUpdate(APIView):
                 portfolio = Portfolio.objects.get(id=int(portfolio_id))
                 portfolio.is_delete = True
                 portfolio.save()
-            except Warehouse.DoesNotExist:
-                pass
-        return Response(status=status.HTTP_204_NO_CONTENT)
-
-    
+            except Portfolio.DoesNotExist:
+                data = {
+                    'status': '404',
+                    'error': f'Portfolio with ID {portfolio_id} does not exist'
+                }
+                return Response(data, status=status.HTTP_404_NOT_FOUND)
+        
+        data = {
+            'status': '200',
+            'message': 'Portfolios deleted successfully'
+        }
+        return Response(data, status=status.HTTP_204_NO_CONTENT)
 class DocumentList(generics.ListCreateAPIView):
  
     queryset = Document.objects.all()
@@ -289,8 +335,6 @@ class FolderUpdate(APIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
-
-
 class ShareList(generics.ListCreateAPIView):
     queryset = Share.objects.all()
     serializer_class = ShareSerializer
@@ -361,29 +405,28 @@ class ShareUpdate(generics.RetrieveUpdateDestroyAPIView):
 class WarehouseList(APIView):
     # permission_classes = [permissions.IsAuthenticated]
 
-
     def get(self, request, *args, **kwargs):
         paginator = WarehouseSetPagination()
         type_warehouse = request.GET.get('type_warehouse')
 
-        if type_warehouse == 'shelf':
-            warehouse = Warehouse.objects.filter(type_warehouse='shelf', is_delete=False)
-        elif type_warehouse == 'warehouse':
-            warehouse = Warehouse.objects.filter(type_warehouse='warehouse', is_delete=False)
-        elif type_warehouse == 'boxcase':
-            warehouse = Warehouse.objects.filter(type_warehouse='boxcase', is_delete=False)
-        else:
+        if type_warehouse not in ['shelf', 'warehouse', 'boxcase']:
             return Response({"error": "Invalid type_warehouse value"}, status=status.HTTP_400_BAD_REQUEST)
 
-        paginated_queryset = paginator.paginate_queryset(warehouse, request)
+        warehouses = Warehouse.objects.filter(type_warehouse=type_warehouse, is_delete=False)
+        paginated_queryset = paginator.paginate_queryset(warehouses, request)
         serializer = WarehouseSerializer(paginated_queryset, many=True)
+
         data = {
             'status': '200',
-            'data': serializer.data
+            'data': serializer.data,
+            'pagination': {
+                'total_pages': paginator.page.paginator.num_pages,
+                'current_page': paginator.page.number,
+                'next_page': paginator.get_next_link(),
+                'previous_page': paginator.get_previous_link(),
+            }
         }
-        return paginator.get_paginated_response(data)
-
-
+        return Response(data, status=status.HTTP_200_OK)
     def post(self, request):
         serializer = WarehouseSerializer(data=request.data)
         if serializer.is_valid():
@@ -597,7 +640,6 @@ class portfolio_DownloadConvertAPIView(generics.RetrieveAPIView):
         for document in documents:
             document_data = {
                 'name': document.name,
-                # 'box_case': document.box_case.name,
                 'path': document.path,
                 'folder': document.folder.name if document.folder else None,
                 'border_frame': document.border_frame,
