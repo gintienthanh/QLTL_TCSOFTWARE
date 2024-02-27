@@ -32,7 +32,7 @@ class ShareSetPagination(PageNumberPagination):
     page_size = 12
     page_size_query_param = 'page_size'
     max_page_size = 1000  
-
+    
 class WatchlistSetPagination(PageNumberPagination):
     page_size = 12
     page_size_query_param = 'page_size'
@@ -176,7 +176,18 @@ class FolderList(APIView):
     
         result_page = paginator.paginate_queryset(folder, request)
         serializer = FolderSerializer(result_page, many=True)
-        return paginator.get_paginated_response(serializer.data)
+        data = {
+            'status': '200',
+            'pagination': {
+                'total_pages': paginator.page.paginator.num_pages,
+                'current_page': paginator.page.number,
+                'next_page': paginator.get_next_link(),
+                'previous_page': paginator.get_previous_link(),
+            },
+            'data': serializer.data,
+            
+        }
+        return Response(data, status=status.HTTP_200_OK)
         #return Response({'status':200,'message':'found','data':response.data}, status=response.status_code)
     def extract_and_convert_to_integer(self,name,data):
         # Tìm vị trí của dấu mở ngoặc và đóng ngoặc
