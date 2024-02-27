@@ -1,3 +1,4 @@
+from datetime import datetime
 from django.shortcuts import render
 from Docmanager.permissions import CheckOwnerFactory, CheckSharedGroupdFactory
 from .model_serializers import*
@@ -275,11 +276,23 @@ class FolderFilter(generics.ListAPIView):
     filter_backends = [filters.DjangoFilterBackend]
     filterset_fields = ['name','file_size','parent_folder']
 
+class ShareFilter(filters.FilterSet):
+    class Meta:
+        model = Share
+        fields = ['owner','create_by','document','folder']
+   
 class ShareList(generics.ListCreateAPIView):
     queryset = Share.objects.all()
     serializer_class = ShareSerializer
     filter_backends = (filters.DjangoFilterBackend,)
-    filterset_fields = ('owner','create_by','document','folder')
+    # filterset_fields = ('owner','create_by','document','folder')
+    filterset_class = ShareFilter
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        user = self.request.user
+        if user.is_authenticated:  # Check if user is authenticated
+            queryset = queryset.filter(create_by=user)
+        return queryset
     def get_permissions(self):
         if self.request.method == 'POST':
             return [permissions.IsAuthenticated()]
@@ -287,44 +300,51 @@ class ShareList(generics.ListCreateAPIView):
             return [permissions.IsAuthenticated()]
         return super().get_permissions()
         
-    def get(self, request):
-        paginator = ShareSetPagination
-        share = Share.objects.filter(is_delete=False)
-        # share = Share.objects.all()
-        serializer = ShareSerializer(share, many=True)
-        return Response(serializer.data)
+    
 
     def post(self, request):
         try:
             serializer = ShareSerializer(data=request.data)
             if serializer.is_valid():
-                try:
-                    share = Share.objects.get(
-                        folder=serializer.validated_data.get('folder'),
-                        document=serializer.validated_data.get('document'),
-                        create_by=request.user,
-                        owner=serializer.validated_data.get('owner'),
-                        type=serializer.validated_data.get('type')
+                share = Share.objects.get(
+                    folder=serializer.validated_data.get('folder'),
+                    document=serializer.validated_data.get('document'),
+                    create_by=request.user,
+                    owner=serializer.validated_data.get('owner'),
+                    type=serializer.validated_data.get('type')
                     )
-                    serializer = ShareSerializer(share)
-                    return Response(serializer.data, status=status.HTTP_200_OK)
-                except Share.DoesNotExist:
-                    serializer.save(create_by=request.user)
-                    return Response(serializer.data, status=status.HTTP_201_CREATED)
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+                serializer = ShareSerializer(share)
+                return Response(serializer.data, status=status.HTTP_201_CREATED)
+                
+                
+        except Share.DoesNotExist:
+            serializer.save(create_by=request.user)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
         except Exception as e:
             return Response(str(e), status=status.HTTP_400_BAD_REQUEST)
         
 
 class ShareUpdate(generics.RetrieveUpdateDestroyAPIView):
-    permission_classes = [CheckSharedGroupdFactory(Share(),'Chỉnh sửa') | CheckOwnerFactory(Share())]
+    permission_classes = [CheckSharedGroupdFactory(Share(),'edit') | CheckOwnerFactory(Share())]
     queryset = Share.objects.all()
     serializer_class = ShareSerializer
+
     
+    def update(self, request, *args, **kwargs):
+        instance = self.get_object()
+        instance.updated_at = datetime.now()
+        instance.editor = request.user
+        serializer = self.get_serializer(instance, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+        return Response(serializer.data)
+
     def destroy(self, request, *args, **kwargs):
         instance = self.get_object()
-        instance.is_delete = True
-        instance.save()
+        instance.is_delete=True
+        instance.delete_at=datetime.now() 
+        instance.delete_by=request.user
+        self.perform_update(instance)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 class WarehouseList(APIView):
