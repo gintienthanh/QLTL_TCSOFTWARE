@@ -12,6 +12,7 @@ import mimetypes
 import pandas as pd
 from io import BytesIO
 import zipfile
+from django.core.files.storage import default_storage
 from django.db.models import Q
 # Create your views here.
 
@@ -46,18 +47,12 @@ class PortfolioList(APIView):
     def get(self, request, *args, **kwargs):
         paginator = PortfolioSetPagination()
         title_query = request.GET.get('title', None)  
-        usage_policy_query = request.GET.get('usage_policy', None) 
+       
         portfolio = Portfolio.objects.filter(is_delete=False)
     
-        if title_query and usage_policy_query:
-            # Tạo một Q object kết hợp tìm kiếm cho cả title và usage_policy
-             portfolio = portfolio.filter(Q(title__icontains=title_query) | Q(usage_policy__icontains=usage_policy_query))
-        elif title_query:
-        # Nếu chỉ có tìm kiếm theo title
+        if title_query: 
              portfolio = portfolio.filter(title__icontains=title_query)
-        elif usage_policy_query:
-        # Nếu chỉ có tìm kiếm theo usage_policy
-             portfolio = portfolio.filter(usage_policy__icontains=usage_policy_query)
+        
     
         result_page = paginator.paginate_queryset(portfolio, request)
         serializer = PortfolioSerializer(result_page, many=True)
@@ -151,25 +146,90 @@ class DocumentFilter(generics.ListAPIView):
 
 
 
-
 class FolderList(APIView):
-    permission_classes = [permissions.IsAuthenticated]
-    def get(self, request, *args, **kwargs):
-        paginator = FolderSetPagination
-        folders = Folder.objects.filter(is_delete=False)
-        serializer = FolderSerializer(folders, many=True)
-        return Response(serializer.data, status=status.HTTP_200_OK)
-
+    # permission_classes = [IsAuthenticated]
+    def get(self, request):
+        paginator=FolderSetPagination()
+        name_query = request.GET.get('name', None)  
+       
+        folder = Folder.objects.filter(is_delete=False, parent_folder=None)
+    
+        if name_query: 
+             folder = folder.filter(name__icontains=name_query)
+        
+    
+        result_page = paginator.paginate_queryset(folder, request)
+        serializer = FolderSerializer(result_page, many=True)
+        return paginator.get_paginated_response(serializer.data)
+    def extract_and_convert_to_integer(self,name,data):
+        # Tìm vị trí của dấu mở ngoặc và đóng ngoặc
+        start_index = name.rfind('(')
+        end_index = name.rfind(')')
+        if start_index != -1 and end_index != -1 and start_index < end_index:
+            # Tách chuỗi trong dấu ngoặc
+            try:
+                name_list = []
+                for i in data:
+                    name_list.append(i['name'])
+                print(name_list)
+                for i in name_list:
+                    if name in name_list:
+                        substring = name[start_index+1:end_index]
+                        integer_value = int(substring)
+                        integer_value += 1
+                        name_lst = list(name)
+                        name_lst[start_index + 1] = str(integer_value)
+                        new_name = ''.join(name_lst)
+                        name = new_name
+                return name
+            except ValueError:
+                # Xử lý ngoại lệ nếu không thể chuyển đổi thành số nguyên
+                return name
+        
+        return None
     def post(self, request):
         serializer = FolderSerializer(data=request.data)
+        uploaded_file = request.FILES.get('files')
+        files = request.FILES.getlist('files[]')
+        name = request.POST.get('name')
+        name = name.rstrip()
+        parent_folder = request.POST.get('parent_folder')
         if serializer.is_valid():
-            serializer.save()
+            if files:
+                # Lưu danh sách các tệp tin
+                files_list = []
+                for file in files:
+                    file_path = default_storage.save(file.name, file)
+                    files_list.append(file)
+                serializer.save(type='File', files=files_list,file_size = file.size,path = file_path)
+            elif uploaded_file:
+                    file_path = default_storage.save(uploaded_file.name, uploaded_file)
+                    if name is not None:
+                        serializer.save(type='File', files=uploaded_file,file_size = uploaded_file.size, path = file_path, name = name)
+                    else:
+                        serializer.save(type='File', files=uploaded_file,file_size = uploaded_file.size, path = file_path, name = file_path)
+            else:
+                queryset = Folder.objects.filter(parent_folder = parent_folder)
+                serializer_db = FolderSerializer(queryset,many=True)
+                data = serializer_db.data
+                name_list = []
+                for i in data:
+                    name_list.append(i['name'])
+                if name not in name_list: 
+                    serializer.save(type='Folder',file_size = 0,name = name)
+                elif name + " (1)" not in name_list and name in name_list:
+                    name = name + " (1)"
+                    serializer.save(type='Folder',file_size = 0,name = name)
+                elif name + " (1)" in name_list and name in name_list:
+                    name = name + " (1)"
+                    newname = self.extract_and_convert_to_integer(name,data)
+                    serializer.save(type='Folder',file_size = 0,name = newname)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 # @permission_classes([CheckSharedGroupdFactory(Folder(),'Chỉnh sửa') | CheckOwnerFactory(Folder())])
 class FolderUpdate(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+    # permission_classes = [permissions.IsAuthenticated]
     def get_object(self, pk):
         try:
             return Folder.objects.get(pk=pk)
