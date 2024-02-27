@@ -7,10 +7,9 @@ from django.template.loader import render_to_string
 from decouple import config
 from django.contrib.auth.models import User
 from Auth.services import  facebookValidate
-from .register import register_social_user
 from .utils import Util
 from Auth.services import  user_get_or_create
-
+from allauth.socialaccount.models import SocialAccount, SocialApp
 from django.utils import timezone
 
 class UserSerializer(serializers.ModelSerializer):
@@ -33,10 +32,10 @@ class EmailVerificationSerializer(serializers.ModelSerializer):
         fields = ['token']
 
 class UserLoginSerializer(serializers.ModelSerializer):
-    email = serializers.EmailField(max_length=255)
+    username = serializers.CharField(max_length=255)
     class Meta:
         model = User
-        fields = ['email', 'password']   
+        fields = ['username', 'password']   
 class UserChangePasswordSerializer(serializers.Serializer):
   password = serializers.CharField(max_length=255, style={'input_type':'password'}, write_only=True)
   password2 = serializers.CharField(max_length=255, style={'input_type':'password'}, write_only=True)
@@ -124,23 +123,3 @@ class LogoutSerializer(serializers.Serializer):
         except TokenError:
             self.fail('bad_token')
 
-class FacebookSocialAuthSerializer(serializers.Serializer):
-    """Handles serialization of facebook related data"""
-    auth_token = serializers.CharField()
-
-    def validate_auth_token(self, auth_token):
-        user_data = facebookValidate(auth_token)
-        try:
-            data ={ 
-                'user_id' : user_data['id'],
-                'email' : user_data.get('email'),
-                'username' : user_data['name']
-            }
-            
-            
-            user, _ = user_get_or_create(**data)
-            return user
-        except Exception as identifier:
-            raise serializers.ValidationError(
-                'The token is invalid or expired. Please login again.'
-            )
