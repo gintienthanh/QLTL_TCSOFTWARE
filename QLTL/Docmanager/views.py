@@ -150,24 +150,27 @@ class DocumentFilter(generics.ListAPIView):
 class FolderList(APIView):
     # permission_classes = [IsAuthenticated]
     def get(self, request):
-        paginator=FolderSetPagination()
-        name_query = request.GET.get('name', None)  
-       
-        folder = Folder.objects.filter(is_delete=False, parent_folder=None)
-    
-        if name_query: 
-             folder = folder.filter(name__icontains=name_query)
-        
-    
-        result_page = paginator.paginate_queryset(folder, request)
-        serializer = FolderSerializer(result_page, many=True)
-        return paginator.get_paginated_response(serializer.data)
+        try:
+            paginator=FolderSetPagination()
+            name_query = request.GET.get('name', None)  
+            folder = Folder.objects.filter(is_delete=False, parent_folder=None)
+            if name_query:
+                folder = folder.filter(name__icontains=name_query)
+            result_page = paginator.paginate_queryset(folder, request)
+            serializer = FolderSerializer(result_page, many=True)
+            response = {
+                    "status":200,
+                    "data": {
+                        "folder": serializer.data,  
+                    }
+                }
+            return paginator.get_paginated_response(response)
+        except:
+            return Response({'status':400},status=status.HTTP_400_BAD_REQUEST)
     def extract_and_convert_to_integer(self,name,data):
-        # Tìm vị trí của dấu mở ngoặc và đóng ngoặc
         start_index = name.rfind('(')
         end_index = name.rfind(')')
         if start_index != -1 and end_index != -1 and start_index < end_index:
-            # Tách chuỗi trong dấu ngoặc
             try:
                 name_list = []
                 for i in data:
@@ -183,66 +186,44 @@ class FolderList(APIView):
                         name = new_name
                 return name
             except ValueError:
-                # Xử lý ngoại lệ nếu không thể chuyển đổi thành số nguyên
                 return name
-        
-        return None
     def post(self, request):
         serializer = FolderSerializer(data=request.data)
-        uploaded_file = request.FILES.get('files')
-        files = request.FILES.getlist('files[]')
+        files = request.FILES.getlist('files')
         name = request.POST.get('name')
         name = name.rstrip()
         parent_folder = request.POST.get('parent_folder')
         if serializer.is_valid():
             if parent_folder:
                 queryset = Folder.objects.filter(parent_folder = parent_folder)
-                serializer_db = FolderSerializer(queryset,many=True)
-                data = serializer_db.data
             else:
                 queryset = Folder.objects.filter(parent_folder = None)
-                serializer_db = FolderSerializer(queryset,many=True)
-                data = serializer_db.data
+            serializer_db = FolderSerializer(queryset,many=True)
+            data = serializer_db.data
             if files:
-                # Lưu danh sách các tệp tin
                 files_list = []
+                name_list = []
+                file_name_list = []
+                for i in data:
+                    name_list.append(i['name'])
                 for file in files:
                     name = file.name
+                    for i in name_list:
+                        file_name_list.append(i)
+                    start_index = name.rfind('.')
+                    name_default = name[:start_index] + "(1)" + name[start_index:]
                     files_list.append(file)
-                    for i in data:
-                        name_list.append(i['name'])
                     if name not in name_list: 
-                        serializer.save(type='File', files=file,file_size = uploaded_file.size, path = uploaded_file, name = name)
-                    elif name + "(1)" not in name_list and name in name_list:
-                        start_index = name.rfind('.')
-                        new_filename = name[:start_index] + "(1)" + name[start_index:]
-                        serializer.save(type='File', files=file,file_size = uploaded_file.size, path = uploaded_file, name = new_filename)
-                    elif name + "(1)" in name_list and name in name_list:
-                        start_index = name.rfind('.')
-                        new_filename = name[:start_index] + "(1)" + name[start_index:]
-                        newname = self.extract_and_convert_to_integer(new_filename,data)
-                        serializer.save(type='File', files=file,file_size = uploaded_file.size, path = uploaded_file, name = newname)
-            if uploaded_file:
-                    # file_path = default_storage.save(uploaded_file, uploaded_file)
-                    name = uploaded_file.name
-                    name_list = []
-                    for i in data:
-                        name_list.append(i['name'])
-                    if name not in name_list: 
-                        serializer.save(type='File', files=uploaded_file,file_size = uploaded_file.size, path = uploaded_file, name = name)
-                    elif name + "(1)" not in name_list and name in name_list:
-                        start_index = name.rfind('.')
-                        new_filename = name[:start_index] + "(1)" + name[start_index:]
-                        serializer.save(type='File', files=uploaded_file,file_size = uploaded_file.size, path = uploaded_file, name = new_filename)
-                    elif name + "(1)" in name_list and name in name_list:
-                        start_index = name.rfind('.')
-                        new_filename = name[:start_index] + "(1)" + name[start_index:]
-                        newname = self.extract_and_convert_to_integer(new_filename,data)
-                        serializer.save(type='File', files=uploaded_file,file_size = uploaded_file.size, path = uploaded_file, name = newname)
+                        print(1)
+                        serializer.save(type='File', files=file,file_size = file.size, path = file, name = name)
+                    elif name_default not in name_list and name in name_list:
+                        print(2)
+                        serializer.save(type='File', files=file,file_size = file.size, path = file, name = name_default)
+                    elif name_default in name_list and name in name_list:
+                        newname = self.extract_and_convert_to_integer(name_default,data)
+                        print(newname)
+                        serializer.save(type='File', files=file,file_size = file.size, path = file, name = newname)
             else:
-                queryset = Folder.objects.filter(parent_folder = parent_folder)
-                serializer_db = FolderSerializer(queryset,many=True)
-                data = serializer_db.data
                 name_list = []
                 for i in data:
                     name_list.append(i['name'])
@@ -255,8 +236,14 @@ class FolderList(APIView):
                     name = name + " (1)"
                     newname = self.extract_and_convert_to_integer(name,data)
                     serializer.save(type='Folder',file_size = 0,name = newname)
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            response = {
+                "status":200,
+                "data": {
+                    "folder": serializer.data,  
+                }
+            }
+            return Response(response, status=status.HTTP_201_CREATED)
+        return Response({'status':400}, status=status.HTTP_400_BAD_REQUEST)
             
 
 class FolderUpdate(APIView):
