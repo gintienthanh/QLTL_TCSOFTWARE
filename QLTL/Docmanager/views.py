@@ -387,11 +387,10 @@ class WarehouseList(APIView):
                              'data':serializer.data},status=status.HTTP_200_OK)
     def post(self, request):
         serializer = WarehouseSerializer(data=request.data)
-        id = request.data.get('parent_warehouse').get('id')
+        id = request.data.get('parent_warehouse_id')
         if serializer.is_valid():
             parent_warehouse =Warehouse.objects.get(id=id)    
             serializer.save(parent_warehouse=parent_warehouse)
-            serializer.save()
             return Response({'status':201,
                              'message':'created successfully',
                              'data':serializer.data},status=status.HTTP_201_CREATED)
