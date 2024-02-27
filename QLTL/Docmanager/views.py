@@ -17,24 +17,24 @@ from django.db.models import Q
 # Create your views here.
 
 class PortfolioSetPagination(PageNumberPagination):
-    page_size = 5
+    page_size = 12
     page_size_query_param = 'page_size'
     max_page_size = 1000  
 class FolderSetPagination(PageNumberPagination):
-    page_size = 5
+    page_size = 12
     page_size_query_param = 'page_size'
     max_page_size = 1000  
 class WarehouseSetPagination(PageNumberPagination):
-    page_size = 5
+    page_size = 12
     page_size_query_param = 'page_size'
     max_page_size = 1000  
 class ShareSetPagination(PageNumberPagination):
-    page_size = 5
+    page_size = 12
     page_size_query_param = 'page_size'
     max_page_size = 1000  
 
 class WatchlistSetPagination(PageNumberPagination):
-    page_size = 5
+    page_size = 12
     page_size_query_param = 'page_size'
     max_page_size = 1000  
 
@@ -128,7 +128,7 @@ class DocumentList(generics.ListCreateAPIView):
         return super().get_permissions()
 
 class DocumentUpdate(generics.RetrieveUpdateDestroyAPIView):
-    permission_classes = [CheckSharedGroupdFactory(Document(),'Chỉnh sửa') | CheckOwnerFactory(Document())]
+    permission_classes = [CheckSharedGroupdFactory(Document(),'edit') | CheckOwnerFactory(Document())]
     queryset = Document.objects.all()
     serializer_class = DocumentSerializer
     
@@ -319,7 +319,7 @@ class ShareList(generics.ListCreateAPIView):
         
 
 class ShareUpdate(generics.RetrieveUpdateDestroyAPIView):
-    permission_classes = [CheckSharedGroupdFactory(Share(),'Chỉnh sửa') | CheckOwnerFactory(Share())]
+    permission_classes = [CheckSharedGroupdFactory(Share(),'edit') | CheckOwnerFactory(Share())]
     queryset = Share.objects.all()
     serializer_class = ShareSerializer
     
@@ -332,7 +332,7 @@ class ShareUpdate(generics.RetrieveUpdateDestroyAPIView):
 class WarehouseList(APIView):
     permission_classes = [permissions.IsAuthenticated]
     def get(self, request, *args, **kwargs):
-        paginator = WatchlistSetPagination
+       
         type_warehouse = request.GET.get('type_warehouse')
 
         if type_warehouse == 'shelf':
@@ -415,11 +415,12 @@ class WarehouseFilter(generics.ListAPIView):
 class WatchList(APIView):
     permission_classes = [permissions.IsAuthenticated]
     def get(self, request):
-        paginator = WatchlistSetPagination
+        paginator = WatchlistSetPagination()
         watchlist = Watchlist.objects.filter(is_delete=False)
-        serializer = WatchListSerializer(watchlist, many=True)
-        return Response(serializer.data)
-
+        result_page = paginator.paginate_queryset(watchlist, request)
+        serializer = WatchListSerializer(result_page, many=True)
+        return paginator.get_paginated_response(serializer.data)
+       
     def post(self, request):
         serializer = WatchListSerializer(data=request.data)
         if serializer.is_valid():
