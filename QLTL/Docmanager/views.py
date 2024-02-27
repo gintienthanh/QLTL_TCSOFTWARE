@@ -41,34 +41,25 @@ class WatchlistSetPagination(PageNumberPagination):
 
 
 
-class PortfolioList(APIView):
-    permission_classes = [permissions.IsAuthenticated]
-   
-    def get(self, request, *args, **kwargs):
-        paginator = PortfolioSetPagination()
-        title_query = request.GET.get('title', None)  
-       
-        portfolio = Portfolio.objects.filter(is_delete=False)
-    
-        if title_query: 
-             portfolio = portfolio.filter(title__icontains=title_query)
-        
-    
-        result_page = paginator.paginate_queryset(portfolio, request)
-        serializer = PortfolioSerializer(result_page, many=True)
-        return paginator.get_paginated_response(serializer.data)
+class PortfolioList(generics.ListCreateAPIView):
+    #permission_classes = [permissions.IsAuthenticated]
+    queryset = Portfolio.objects.filter(is_delete=False)
+    serializer_class = PortfolioSerializer
+    filter_backends = (filters.DjangoFilterBackend,)
+    filterset_fields = ('owner','create_by','title')
+    def get(self, request):
+        paginator = PortfolioSerializer()
+        share = Share.objects.filter(is_delete=False)
+        # share = Share.objects.all()
+        serializer = ShareSerializer(share, many=True)
+        return Response(serializer.data)
 
-    def post(self, request):
-        serializer = PortfolioSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+   
 
 
 
 class PortfolioUpdate(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+    #permission_classes = [permissions.IsAuthenticated]
     def get_object(self, pk):
         try:
             return Portfolio.objects.get(pk=pk)
@@ -120,12 +111,12 @@ class DocumentList(generics.ListCreateAPIView):
  
     queryset = Document.objects.all()
     serializer_class = DocumentSerializer
-    def get_permissions(self):
-        if self.request.method == 'POST':
-            return [permissions.IsAuthenticated()]
-        elif self.request.method == 'GET':
-            return [permissions.IsAdminUser()]
-        return super().get_permissions()
+    # def get_permissions(self):
+    #     if self.request.method == 'POST':
+    #         return [permissions.IsAuthenticated()]
+    #     elif self.request.method == 'GET':
+    #         return [permissions.IsAdminUser()]
+    #     return super().get_permissions()
 
 class DocumentUpdate(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [CheckSharedGroupdFactory(Document(),'edit') | CheckOwnerFactory(Document())]
@@ -146,21 +137,48 @@ class DocumentFilter(generics.ListAPIView):
 
 
 
-class FolderList(APIView):
+class FolderList(generics.ListCreateAPIView):
     # permission_classes = [IsAuthenticated]
+    
+    filter_backends = (filters.DjangoFilterBackend)
+    filterset_fields = ('owner','create_by','name','parent_folder')
     def get(self, request):
-        paginator=FolderSetPagination()
-        name_query = request.GET.get('name', None)  
-       
-        folder = Folder.objects.filter(is_delete=False, parent_folder=None)
-    
-        if name_query: 
-             folder = folder.filter(name__icontains=name_query)
-        
-    
-        result_page = paginator.paginate_queryset(folder, request)
+        paginator = FolderSetPagination()
+        # share = Share.objects.filter(is_delete=False,create_by=request.user)
+        # share = Share.objects.all()
+        create_by = request.user
+        queryset = self.filter_queryset(self.get_queryset().filter(create_by=create_by, is_delete=False))
+        result_page = paginator.paginate_queryset(queryset, request)
         serializer = FolderSerializer(result_page, many=True)
         return paginator.get_paginated_response(serializer.data)
+        # serializer = ShareSerializer(share, many=True)
+        # return Response(serializer.data)
+
+    # def get(self, request):
+    #     paginator=FolderSetPagination()
+    #     name_query = request.GET.get('name', None)  
+    #     parent_folder_query = request.GET.get('parent_folder', None)  
+        
+    #     folder = Folder.objects.filter(is_delete=False, parent_folder=None)
+    #     if name_query and parent_folder_query:
+    #         # Tạo một Q object kết hợp tìm kiếm cho cả title và usage_policy
+    #          folder = folder.filter(Q(name__icontains=name_query) | Q(parent_folder=parent_folder_query))
+    #     elif name_query:
+    #     # Nếu chỉ có tìm kiếm theo title
+    #          folder = folder.filter(name__icontains=name_query)
+    #     elif parent_folder_query:
+    #     # Nếu chỉ có tìm kiếm theo usage_policy
+    #          folder = folder.filter(parent_folder=parent_folder_query)
+       
+    
+    #     result_page = paginator.paginate_queryset(folder, request)
+    #     serializer = FolderSerializer(result_page, many=True)
+    #     data = {
+    #         'status': '200',
+    #         'data': serializer.data,
+    #     }
+    #     return paginator.get_paginated_response(data)
+        
     def extract_and_convert_to_integer(self,name,data):
         # Tìm vị trí của dấu mở ngoặc và đóng ngoặc
         start_index = name.rfind('(')
@@ -228,7 +246,7 @@ class FolderList(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 # @permission_classes([CheckSharedGroupdFactory(Folder(),'Chỉnh sửa') | CheckOwnerFactory(Folder())])
-class FolderUpdate(APIView):
+class FolderUpdate(generics.RetrieveUpdateDestroyAPIView):
     # permission_classes = [permissions.IsAuthenticated]
     def get_object(self, pk):
         try:
@@ -329,12 +347,13 @@ class ShareUpdate(generics.RetrieveUpdateDestroyAPIView):
         instance.save()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
-class WarehouseList(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+class WarehouseList(generics.ListCreateAPIView):
+    #permission_classes = [permissions.IsAuthenticated]
+    
     def get(self, request, *args, **kwargs):
-       
+        paginator = WarehouseSetPagination()
         type_warehouse = request.GET.get('type_warehouse')
-
+        warehouse = Warehouse.objects.filter(is_delete=False)
         if type_warehouse == 'shelf':
             warehouse = Warehouse.objects.filter(type_warehouse='shelf',is_delete=False)
         elif type_warehouse == 'warehouse':
@@ -343,17 +362,28 @@ class WarehouseList(APIView):
             warehouse = Warehouse.objects.filter(type_warehouse='boxcase', is_delete=False)
         else:
             return Response({"error": "Invalid type_warehouse value"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        result_page = paginator.paginate_queryset(warehouse, request)
+        serializer = WarehouseSerializer(result_page, many=True)
 
-        serializer = WarehouseSerializer(warehouse, many=True)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        data = {
+            'status': '200',
+    
+            'data': serializer.data,
+        }
+        return paginator.get_paginated_response(data)
+        # serializer = WarehouseSerializer(warehouse, many=True)
+        # return Response(serializer.data, status=status.HTTP_200_OK)
     def post(self, request):
         serializer = WarehouseSerializer(data=request.data)
+        id = request.data.get('parent_warehouse').get('id')
         if serializer.is_valid():
-            serializer.save()
+            parent_warehouse =Warehouse.objects.get(id=id)    
+            serializer.save(parent_warehouse=parent_warehouse)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-class WarehouseUpdate(APIView):
+class WarehouseUpdate(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [permissions.IsAuthenticated]
     def get_object(self, pk):
         try:
@@ -496,7 +526,7 @@ class DownloadConvertAPIView(generics.RetrieveAPIView):
         portfolio_data = {
             'title': portfolio.title,
             'identification_code': portfolio.identification_code,
-            'classification_id': portfolio.classification_id,
+            'classification': portfolio.classification,
             'retention_period': portfolio.retention_period,
             'usage_policy': portfolio.usage_policy,
             'start_date': portfolio.start_date,
