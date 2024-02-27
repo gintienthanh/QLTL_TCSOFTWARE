@@ -162,21 +162,22 @@ class DocumentFilter(generics.ListAPIView):
 
 
 
-class FolderList(generics.ListCreateAPIView):
+class FolderList(APIView):
     # permission_classes = [IsAuthenticated]
-    
-    filter_backends = (filters.DjangoFilterBackend)
-    filterset_fields = ('owner','create_by','name','parent_folder')
     def get(self, request):
-        paginator = FolderSetPagination()
-        # share = Share.objects.filter(is_delete=False,create_by=request.user)
-        # share = Share.objects.all()
-        create_by = request.user
-        queryset = self.filter_queryset(self.get_queryset().filter(create_by=create_by, is_delete=False))
-        result_page = paginator.paginate_queryset(queryset, request)
+        paginator=FolderSetPagination()
+        name_query = request.GET.get('name', None)  
+       
+        folder = Folder.objects.filter(is_delete=False, parent_folder=None)
+    
+        if name_query: 
+             folder = folder.filter(name__icontains=name_query)
+        
+    
+        result_page = paginator.paginate_queryset(folder, request)
         serializer = FolderSerializer(result_page, many=True)
-        response = paginator.get_paginated_response(serializer.data)
-        return Response({'status':200,'message':'found','data':response.data}, status=response.status_code)
+        return paginator.get_paginated_response(serializer.data)
+        #return Response({'status':200,'message':'found','data':response.data}, status=response.status_code)
     def extract_and_convert_to_integer(self,name,data):
         # Tìm vị trí của dấu mở ngoặc và đóng ngoặc
         start_index = name.rfind('(')
@@ -380,7 +381,7 @@ class WarehouseList(APIView):
             warehouse = Warehouse.objects.filter(type_warehouse='boxcase', is_delete=False)
         else:
             return Response({"error": "Invalid type_warehouse value"}, status=status.HTTP_400_BAD_REQUEST)
-
+        
         serializer = WarehouseSerializer(warehouse, many=True)
         return Response({'status':200,
                              'message':'found successfully',
