@@ -149,7 +149,7 @@ class DocumentList(generics.ListCreateAPIView):
         document = Document.objects.filter(is_delete=False)
         document = document.order_by('-id')
         result_page = paginator.paginate_queryset(document, request)
-        serializer = PortfolioSerializer(result_page, many=True)
+        serializer = DocumentSerializer(result_page, many=True)
         
         data = {
             'status': '200',
