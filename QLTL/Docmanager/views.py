@@ -1,4 +1,4 @@
-from datetime import UTC
+from datetime import UTC, timezone
 import os
 from django.shortcuts import render
 import pytz
@@ -18,6 +18,9 @@ from io import BytesIO
 import zipfile
 from django.core.files.storage import default_storage
 from django.db.models import *
+from django_filters.rest_framework import DjangoFilterBackend
+import django_filters
+
 # Create your views here.
 class PortfolioList(generics.ListCreateAPIView):
     serializer_class = PortfolioSerializer
@@ -50,6 +53,7 @@ class WatchlistSetPagination(PageNumberPagination):
 
 from rest_framework import status
 from rest_framework.response import Response
+from rest_framework.pagination import PageNumberPagination
 
 class PortfolioList(APIView):
     # permission_classes = [permissions.IsAuthenticated]
@@ -66,11 +70,18 @@ class PortfolioList(APIView):
         serializer = PortfolioSerializer(result_page, many=True)
 
         data = {
-            'status': '200',
-            'data': serializer.data
-        }
-        return paginator.get_paginated_response(data)
-
+                'status': '200',
+                'message':' found successfully',
+                'pagination': {
+                    'total_pages': paginator.page.paginator.num_pages,
+                    'current_page': paginator.page.number,
+                    'next_page': paginator.get_next_link(),
+                    'previous_page': paginator.get_previous_link(),
+                },
+                'data': serializer.data,
+                
+            }
+        return Response(data, status=status.HTTP_200_OK)
     def post(self, request):
         serializer = PortfolioSerializer(data=request.data)
         if serializer.is_valid():
@@ -85,7 +96,6 @@ class PortfolioList(APIView):
             'errors': serializer.errors
         }
         return Response(data, status=status.HTTP_400_BAD_REQUEST)
-
 class PortfolioUpdate(APIView):
     # permission_classes = [permissions.IsAuthenticated]
     def get_object(self, pk):
@@ -255,6 +265,7 @@ class FolderList(APIView):
                 'status': '200',
                 'message':' found successfully',
                 'pagination': {
+                    
                     'total_pages': paginator.page.paginator.num_pages,
                     'current_page': paginator.page.number,
                     'next_page': paginator.get_next_link(),
@@ -380,11 +391,29 @@ class FolderUpdate(APIView):
                             'message':serializer.errors,
                              },status=status.HTTP_400_BAD_REQUEST)
     
+
+class FolderFilter1(django_filters.FilterSet):
+    parent_folder = django_filters.Filter(field_name='parent_folder', method='filter_parent_folder')
+
+    class Meta:
+        model = Folder
+        fields = ['name', 'file_size', 'parent_folder']
+
+    def filter_parent_folder(self, queryset, name, value):
+        if value=='null':
+            return queryset.filter(parent_folder__isnull=True)
+        elif value.lower() == 'false':
+            return queryset.exclude(parent_folder__isnull=True)
+        elif value.isdigit():
+            return queryset.filter(parent_folder=int(value))
+        else:
+            return queryset.none()
+
 class FolderFilter(generics.ListAPIView):
     queryset = Folder.objects.all()
     serializer_class = FolderSerializer
     filter_backends = [filters.DjangoFilterBackend]
-    filterset_fields = ['name','file_size','parent_folder']
+    filterset_class = FolderFilter1
 
 class ShareList(generics.ListCreateAPIView):
     queryset = Share.objects.all()
@@ -570,11 +599,45 @@ class WarehouseUpdate(APIView):
             }
             return Response(data, status=status.HTTP_400_BAD_REQUEST)
 
+    
     def delete(self, request, pk):
-            warehouse = self.get_object(pk)
-            warehouse.is_deleted = True
+        warehouse = self.get_object(pk)
+        
+        if warehouse.type_warehouse == Choices_type_warehouse.Shelf.value:
+            # Soft delete the shelf and its associated boxcases
+            warehouse.is_delete = True
+            warehouse.delete_at = timezone.now()  # Cập nhật delete_at với ngày và giờ hiện tại
             warehouse.save()
-            return Response(status=status.HTTP_204_NO_CONTENT)
+            
+            shelf_boxcases = Warehouse.objects.filter(parent_warehouse=warehouse)
+            shelf_boxcases.update(is_delete=True, delete_at=timezone.now())  # Cập nhật delete_at cho các boxcase
+            
+        elif warehouse.type_warehouse == Choices_type_warehouse.BoxCase.value:
+            # Soft delete the boxcase and its associated shelf
+            warehouse.is_delete = True
+            warehouse.delete_at = timezone.now()  # Cập nhật delete_at với ngày và giờ hiện tại
+            warehouse.save()
+            
+            shelf = warehouse.parent_warehouse
+            shelf.is_delete = True
+            shelf.delete_at = timezone.now()  # Cập nhật delete_at cho shelf
+            shelf.save()
+        
+        else:
+            # Soft delete the warehouse and its associated shelves and boxcases
+            subwarehouses = warehouse.subwarehouse.all()
+            for subwarehouse in subwarehouses:
+                subwarehouse.is_delete = True
+                subwarehouse.delete_at = timezone.now()  # Cập nhật delete_at cho các warehouse con
+                subwarehouse.save()
+            
+            warehouse.is_delete = True
+            warehouse.delete_at = timezone.now()  # Cập nhật delete_at với ngày và giờ hiện tại
+            warehouse.save()
+        
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+from django.utils import timezone
 
 class WarehouseBulkDelete(APIView):
     def delete(self, request, warehouse_ids, *args, **kwargs):
@@ -582,13 +645,43 @@ class WarehouseBulkDelete(APIView):
         for warehouse_id in warehouse_ids_list:
             try:
                 warehouse = Warehouse.objects.get(id=int(warehouse_id))
-                warehouse.is_delete = True
-                warehouse.save()
+
+                if warehouse.type_warehouse == Choices_type_warehouse.Shelf.value:
+                    # Soft delete the shelf and its associated boxcases
+                    warehouse.is_delete = True
+                    warehouse.delete_at = timezone.now()
+                    warehouse.save()
+
+                    shelf_boxcases = Warehouse.objects.filter(parent_warehouse=warehouse)
+                    shelf_boxcases.update(is_delete=True, delete_at=timezone.now())
+
+                elif warehouse.type_warehouse == Choices_type_warehouse.BoxCase.value:
+                    # Soft delete the boxcase and its associated shelf
+                    warehouse.is_delete = True
+                    warehouse.delete_at = timezone.now()
+                    warehouse.save()
+
+                    shelf = warehouse.parent_warehouse
+                    shelf.is_delete = True
+                    shelf.delete_at = timezone.now()
+                    shelf.save()
+
+                else:
+                    # Soft delete the warehouse and its associated shelves and boxcases
+                    subwarehouses = warehouse.subwarehouse.all()
+                    for subwarehouse in subwarehouses:
+                        subwarehouse.is_delete = True
+                        subwarehouse.delete_at = timezone.now()
+                        subwarehouse.save()
+
+                    warehouse.is_delete = True
+                    warehouse.delete_at = timezone.now()
+                    warehouse.save()
+
             except Warehouse.DoesNotExist:
                 pass
+
         return Response(status=status.HTTP_204_NO_CONTENT)
-
-
 class WatchList(APIView):
     # permission_classes = [permissions.IsAuthenticated]
     def get(self, request):

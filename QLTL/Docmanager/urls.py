@@ -6,13 +6,13 @@ from django.conf.urls.static import static
 urlpatterns = [
     path('folder', FolderList.as_view()),
     path('folder/<int:pk>', FolderUpdate.as_view()),
-    path('folder-filter/', FolderList.as_view()),
+    path('folder-filter/', FolderFilter.as_view(), name='folder-filter'),
+
     
     path('warehouse', WarehouseList.as_view()),
     path('warehouse/<int:pk>', WarehouseUpdate.as_view()),
     path('warehouse-filter/', WarehouseList.as_view()),
-    path('WarehouseBulkDelete/<str:id>/', WarehouseBulkDelete.as_view(), name='WarehouseBulkDelete'),
-
+    path('WarehouseBulkDelete/<str:warehouse_ids>/', WarehouseBulkDelete.as_view(), name='WarehouseBulkDelete'),
     
     path('share', ShareList.as_view()),
     path('share/<int:pk>', ShareUpdate.as_view()),
@@ -31,8 +31,8 @@ urlpatterns = [
     path('document-filter/', DocumentList.as_view()),
     
     
-    path('watchlist', WatchList.as_view()),
-    path('watchlist/<int:pk>', WatchListUpdate.as_view()),
+    # path('watchlist', Watchlist.as_view()),
+    # path('watchlist/<int:pk>', WatchListUpdate.as_view()),
     
     path('file/download/<int:folder_id>', DownloadFile.as_view(), name='file-download'),
     
