@@ -1,3 +1,4 @@
+import datetime
 from django.shortcuts import render
 from Docmanager.permissions import CheckOwnerFactory, CheckSharedGroupdFactory
 from .model_serializers import*
@@ -63,6 +64,7 @@ class PortfolioList(APIView):
             'status': '200',
             'message':' found successfully',
             'pagination': {
+                'count':paginator.page.paginator.count,
                 'total_pages': paginator.page.paginator.num_pages,
                 'current_page': paginator.page.number,
                 'next_page': paginator.get_next_link(),
@@ -85,7 +87,7 @@ class PortfolioList(APIView):
 
 
 class PortfolioUpdate(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+    #permission_classes = [permissions.IsAuthenticated]
     def get_object(self, pk):
         try:
             return Portfolio.objects.get(pk=pk)
@@ -114,11 +116,12 @@ class PortfolioUpdate(APIView):
         portfolio = self.get_object(pk)
         serializer = PortfolioSerializer(portfolio, 
             data =
-            {
+            {   
                 'is_delete': True,
                 
             }, partial=True)
         if serializer.is_valid():
+            serializer.validated_data['delete_at'] = datetime.datetime.now()
             serializer.save()
             return Response({'status':200,
                              'message':'delete successfully'
@@ -155,6 +158,7 @@ class DocumentList(generics.ListCreateAPIView):
             'status': '200',
             'message':'successfully',
             'pagination': {
+                'count':paginator.page.paginator.count,
                 'total_pages': paginator.page.paginator.num_pages,
                 'current_page': paginator.page.number,
                 'next_page': paginator.get_next_link(),
@@ -202,6 +206,7 @@ class FolderList(APIView):
                 'status': '200',
                 'message':' found successfully',
                 'pagination': {
+                    'count':paginator.page.paginator.count,
                     'total_pages': paginator.page.paginator.num_pages,
                     'current_page': paginator.page.number,
                     'next_page': paginator.get_next_link(),
@@ -354,6 +359,7 @@ class ShareList(generics.ListCreateAPIView):
             'status': '200',
             'message':'successfully',
             'pagination': {
+                'count':paginator.page.paginator.count,
                 'total_pages': paginator.page.paginator.num_pages,
                 'current_page': paginator.page.number,
                 'next_page': paginator.get_next_link(),
@@ -437,16 +443,30 @@ class WarehouseList(APIView):
         }
         return Response(data, status=status.HTTP_200_OK)
     def post(self, request):
-        serializer = WarehouseSerializer(data=request.data)
-        id = request.data.get('parent_warehouse_id')
-        if serializer.is_valid():
-            parent_warehouse =Warehouse.objects.get(id=id)    
-            serializer.save(parent_warehouse=parent_warehouse)
+        try:
+            serializer = WarehouseSerializer(data=request.data)
+            id = request.data.get('parent_warehouse_id')
+            if serializer.is_valid():
+                 
+                parent_warehouse =Warehouse.objects.get(id=id)    
+                serializer.save(parent_warehouse=parent_warehouse)
+                return Response({'status':201,
+                                'message':'created successfully',
+                                'data':serializer.data},status=status.HTTP_201_CREATED)
+            return Response({'status':400,
+                            'message':'created fail'},status=status.HTTP_400_BAD_REQUEST)
+        except Warehouse.DoesNotExist:
+            serializer.save()
             return Response({'status':201,
-                             'message':'created successfully',
-                             'data':serializer.data},status=status.HTTP_201_CREATED)
-        return Response({'status':400,
-                        'message':'created fail'},status=status.HTTP_400_BAD_REQUEST)
+                            'message':'created successfully',
+                            'data':serializer.data},status=status.HTTP_201_CREATED)
+        except Exception as e:
+            return Response({'status':400,
+                            'message':'created fail'},status=status.HTTP_400_BAD_REQUEST)
+            
+            
+            
+            
 
 class WarehouseUpdate(APIView):
     permission_classes = [permissions.IsAuthenticated]
@@ -662,4 +682,5 @@ class DownloadConvertAPIView(generics.RetrieveAPIView):
         
         return response
 
-                                                                                            
+# class DocumentFolder(APIView)
+                                                                                           
