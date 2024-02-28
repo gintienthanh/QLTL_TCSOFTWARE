@@ -5,7 +5,7 @@ class BaseSerializer(serializers.ModelSerializer):
     class Meta:
         model = Base
         fields = '__all__'
-        read_only_fields = ['created_at', 'updated_at','is_visibale','is_delete']
+    
 
 class FolderSerializer(serializers.ModelSerializer):
     parent_folder = serializers.SerializerMethodField()
@@ -13,7 +13,7 @@ class FolderSerializer(serializers.ModelSerializer):
     class Meta:
         model = Folder
         fields = '__all__'
-        read_only_fields = ['created_at', 'updated_at','is_visibale','is_delete']
+        
 
     def get_parent_folder(self, obj):
         if obj.parent_folder:
@@ -25,18 +25,18 @@ class DocumentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Document
         fields = '__all__'
-        read_only_fields = ['created_at', 'updated_at','is_visibale']
+        
 
 class PortfolioSerializer(serializers.ModelSerializer):
     class Meta:
         model = Portfolio
         fields = '__all__'
-        read_only_fields = ['created_at', 'updated_at','is_visibale']
+        
 class WatchListSerializer(serializers.ModelSerializer):
     class Meta:
         model = Watchlist
         fields = '__all__'
-        read_only_fields = ['created_at', 'updated_at','is_visibale']
+        
         
 
 class WarehouseSerializer(serializers.ModelSerializer):
@@ -44,7 +44,7 @@ class WarehouseSerializer(serializers.ModelSerializer):
     class Meta:
         model = Warehouse
         fields = '__all__'
-        read_only_fields = ['created_at', 'updated_at','is_visibale']
+        
     def get_parent_warehouse(self, obj):
         if obj.parent_warehouse:
             return WarehouseSerializer(obj.parent_warehouse).data
@@ -54,10 +54,9 @@ class ShareSerializer(serializers.ModelSerializer):
     class Meta:
         model = Share
         fields = '__all__'
-        read_only_fields = ['created_at', 'updated_at','is_visibale']
         
 class ClassificationSerializer(serializers.ModelSerializer):
     class Meta: 
         model = ClassifyVariant
         fields = '__all__'
-        read_only_fields = ['created_at', 'updated_at','is_visibale']
+        

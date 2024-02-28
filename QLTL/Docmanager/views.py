@@ -18,9 +18,23 @@ from django.db.models import Q
 # Create your views here.
 
 class PortfolioSetPagination(PageNumberPagination):
-    page_size = 12
+    page_size = 2
     page_size_query_param = 'page_size'
     max_page_size = 1000  
+    def get_paginated_response(self, data):
+        next_page = self.get_next_link()
+        previous_page = self.get_previous_link()
+        total_pages = self.page.paginator.num_pages
+        current_page = self.page.number
+        total_count = self.page.paginator.count
+        return Response({
+            'next_page': next_page,
+            'previous_page': previous_page,
+            'total_pages': total_pages,
+            'current_page': current_page,
+            'total_count': total_count,
+            'results': data
+        }) 
 class FolderSetPagination(PageNumberPagination):
     page_size = 12
     page_size_query_param = 'page_size'
@@ -45,35 +59,31 @@ class WatchlistSetPagination(PageNumberPagination):
 
 
 
-
-class PortfolioList(APIView):
-    #permission_classes = [permissions.IsAuthenticated]
-   
-    def get(self, request, *args, **kwargs):
-        paginator = PortfolioSetPagination()
-        title_query = request.GET.get('title', None)  
-        
-        portfolio = Portfolio.objects.filter(is_delete=False)
-        if title_query: 
-             portfolio = portfolio.filter(title__icontains=title_query)
-        portfolio = portfolio.order_by('-id')
+class PortfolioFilter(filters.FilterSet):
+    title = filters.CharFilter(field_name='title', lookup_expr='icontains')
+    usage_policy = filters.CharFilter(field_name='usage_policy', lookup_expr='icontains')
     
-        result_page = paginator.paginate_queryset(portfolio, request)
-        serializer = PortfolioSerializer(result_page, many=True)
-        data = {
-            'status': '200',
-            'message':' found successfully',
-            'pagination': {
-                'count':paginator.page.paginator.count,
-                'total_pages': paginator.page.paginator.num_pages,
-                'current_page': paginator.page.number,
-                'next_page': paginator.get_next_link(),
-                'previous_page': paginator.get_previous_link(),
-            },
-            'data': serializer.data,
-            
-        }
-        return Response(data, status=status.HTTP_200_OK)
+    class Meta:
+        model = Portfolio
+        fields = ['title', 'usage_policy']
+
+class PortfolioList(generics.ListCreateAPIView):
+    # permission_classes = [permissions.IsAuthenticated]
+    queryset = Portfolio.objects.order_by('-updated_at')
+    serializer_class = PortfolioSerializer
+    filter_backends = [filters.DjangoFilterBackend]
+    filterset_class = PortfolioFilter
+    paginator = PortfolioSetPagination()
+   
+    
+    def get_queryset(self):
+        
+        queryset = super().get_queryset()
+        user = self.request.user
+        if user.is_authenticated:  # Check if user is authenticated
+            queryset = queryset.filter(create_by=user)
+        return queryset 
+    
     def post(self, request):
         serializer = PortfolioSerializer(data=request.data)
         if serializer.is_valid():
@@ -83,8 +93,6 @@ class PortfolioList(APIView):
                              'data':serializer.data}, 
                              status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-
 
 class PortfolioUpdate(APIView):
     #permission_classes = [permissions.IsAuthenticated]
@@ -170,7 +178,7 @@ class DocumentList(generics.ListCreateAPIView):
         return Response(data, status=status.HTTP_200_OK)
 
 class DocumentUpdate(generics.RetrieveUpdateDestroyAPIView):
-    permission_classes = [CheckSharedGroupdFactory(Document(),'edit') | CheckOwnerFactory(Document())]
+    #permission_classes = [CheckSharedGroupdFactory(Document(),'edit') | CheckOwnerFactory(Document())]
     queryset = Document.objects.all()
     serializer_class = DocumentSerializer
     
@@ -189,7 +197,7 @@ class DocumentFilter(generics.ListAPIView):
 
 
 class FolderList(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+    # permission_classes = [permissions.IsAuthenticated]
     def get(self, request):
         paginator=FolderSetPagination()
         name_query = request.GET.get('name', None)  
@@ -289,7 +297,7 @@ class FolderList(APIView):
 
 # @permission_classes([CheckSharedGroupdFactory(Folder(),'Chỉnh sửa') | CheckOwnerFactory(Folder())])
 class FolderUpdate(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+    # permission_classes = [permissions.IsAuthenticated]
     def get_object(self, pk):
         try:
             return Folder.objects.get(pk=pk)
