@@ -46,16 +46,16 @@ class WatchlistSetPagination(PageNumberPagination):
 
 
 class PortfolioList(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+    #permission_classes = [permissions.IsAuthenticated]
    
     def get(self, request, *args, **kwargs):
         paginator = PortfolioSetPagination()
         title_query = request.GET.get('title', None)  
-       
+        
         portfolio = Portfolio.objects.filter(is_delete=False)
         if title_query: 
              portfolio = portfolio.filter(title__icontains=title_query)
-        
+        portfolio = portfolio.order_by('-id')
     
         result_page = paginator.paginate_queryset(portfolio, request)
         serializer = PortfolioSerializer(result_page, many=True)
@@ -138,17 +138,19 @@ class PortfolioFilter(generics.ListAPIView):
 class DocumentList(generics.ListCreateAPIView):
     
     
-    def get_permissions(self):
-        if self.request.method == 'POST':
-            return [permissions.IsAuthenticated()]
-        elif self.request.method == 'GET':
-            return [permissions.IsAdminUser()]
-        return super().get_permissions()
+    # def get_permissions(self):
+    #     if self.request.method == 'POST':
+    #         return [permissions.IsAuthenticated()]
+    #     elif self.request.method == 'GET':
+    #         return [permissions.IsAdminUser()]
+    #     return super().get_permissions()
     def get(self, request , *args, **kwargs):
         paginator = DocumentSetPagination()
         document = Document.objects.filter(is_delete=False)
+        document = document.order_by('-id')
         result_page = paginator.paginate_queryset(document, request)
         serializer = PortfolioSerializer(result_page, many=True)
+        
         data = {
             'status': '200',
             'message':'successfully',
@@ -336,12 +338,12 @@ class ShareList(generics.ListCreateAPIView):
     serializer_class = ShareSerializer
     filter_backends = (filters.DjangoFilterBackend,)
     filterset_fields = ('owner','create_by','document','folder')
-    def get_permissions(self):
-        if self.request.method == 'POST':
-            return [permissions.IsAuthenticated()]
-        elif self.request.method == 'GET':
-            return [permissions.IsAuthenticated()]
-        return super().get_permissions()
+    # def get_permissions(self):
+    #     if self.request.method == 'POST':
+    #         return [permissions.IsAuthenticated()]
+    #     elif self.request.method == 'GET':
+    #         return [permissions.IsAuthenticated()]
+    #     return super().get_permissions()
         
     def get(self, request):
         paginator = ShareSetPagination()
