@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from .models import *
-
+from django_filters import rest_framework as filters
+import django_filters
 class BaseSerializer(serializers.ModelSerializer):
     class Meta:
         model = Base
@@ -8,7 +9,7 @@ class BaseSerializer(serializers.ModelSerializer):
         read_only_fields = ['created_at', 'updated_at','is_visibale','is_delete']
 
 class FolderSerializer(serializers.ModelSerializer):
-    parent_folder = serializers.SerializerMethodField()
+    parent_folder = serializers.PrimaryKeyRelatedField(required =False,read_only=True)
 
     class Meta:
         model = Folder
@@ -19,6 +20,7 @@ class FolderSerializer(serializers.ModelSerializer):
         if obj.parent_folder:
             return FolderSerializer(obj.parent_folder).data
         return None
+
 
 
 class DocumentSerializer(serializers.ModelSerializer):

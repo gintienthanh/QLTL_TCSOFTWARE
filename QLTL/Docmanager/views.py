@@ -205,11 +205,15 @@ class FolderList(APIView):
         files = request.FILES.getlist('files')
         name = request.POST.get('name')
         name = name.rstrip()
-        parent_folder = request.POST.get('parent_folder')
+        parent_folder_id = request.POST.get('parent_folder')
         if serializer.is_valid():
-            if parent_folder:
+            if parent_folder_id:
+                parent_folder = Folder.objects.get(id=parent_folder_id)
                 queryset = Folder.objects.filter(parent_folder = parent_folder)
+                path = parent_folder.path + '/'
             else:
+                parent_folder = None
+                path = '/'
                 queryset = Folder.objects.filter(parent_folder = None)
             serializer_db = FolderSerializer(queryset,many=True)
             data = serializer_db.data
@@ -227,28 +231,25 @@ class FolderList(APIView):
                     name_default = name[:start_index] + "(1)" + name[start_index:]
                     files_list.append(file)
                     if name not in name_list: 
-                        print(1)
-                        serializer.save(type='File', files=file,file_size = file.size, path = file, name = name)
+                        serializer.save(type='File', files=file,file_size = file.size, path = path + name, name = name,parent_folder=parent_folder)
                     elif name_default not in name_list and name in name_list:
-                        print(2)
-                        serializer.save(type='File', files=file,file_size = file.size, path = file, name = name_default)
+                        serializer.save(type='File', files=file,file_size = file.size, path = path + name_default, name = name_default,parent_folder=parent_folder)
                     elif name_default in name_list and name in name_list:
                         newname = self.extract_and_convert_to_integer(name_default,data)
-                        print(newname)
-                        serializer.save(type='File', files=file,file_size = file.size, path = file, name = newname)
+                        serializer.save(type='File', files=file,file_size = file.size, path = path + newname, name = newname,parent_folder=parent_folder)
             else:
                 name_list = []
                 for i in data:
                     name_list.append(i['name'])
                 if name not in name_list: 
-                    serializer.save(type='Folder',file_size = 0,name = name)
+                    serializer.save(type='Folder',file_size = 0,path = path + name,name = name)
                 elif name + " (1)" not in name_list and name in name_list:
                     name = name + " (1)"
-                    serializer.save(type='Folder',file_size = 0,name = name)
+                    serializer.save(type='Folder',file_size = 0,path = path + name,name = name)
                 elif name + " (1)" in name_list and name in name_list:
                     name = name + " (1)"
                     newname = self.extract_and_convert_to_integer(name,data)
-                    serializer.save(type='Folder',file_size = 0,name = newname)
+                    serializer.save(type='Folder',file_size = 0,path = path + newname,name = newname)
             response = {
                 "status":200,
                 "data": {
@@ -271,80 +272,66 @@ class FolderUpdate(APIView):
         serializer = FolderSerializer(folder)
         return Response(serializer.data)
     
-    def put(self, request, pk):
+    def patch(self, request, pk):
         folder = self.get_object(pk)
         serializer = FolderSerializer(folder, data=request.data)
-        uploaded_file = request.FILES.get('files')
-        files = request.FILES.getlist('files[]')
+        files = request.FILES.getlist('files')
         name = request.POST.get('name')
         name = name.rstrip()
-        parent_folder = request.POST.get('parent_folder')
+        parent_folder_id = request.POST.get('parent_folder')
+        parent_folder = Folder.objects.get(id=parent_folder_id)
         if serializer.is_valid():
-            if files:
-                # Lưu danh sách các tệp tin
+            if parent_folder_id:
+                parent_folder = Folder.objects.get(id=parent_folder_id)
                 queryset = Folder.objects.filter(parent_folder = parent_folder)
-                serializer_db = FolderSerializer(queryset,many=True)
-                data = serializer_db.data
-                files_list = []
-                for file in files:
-                    file_path = default_storage.save(file.name, file)
-                    name = file.name
-                    files_list.append(file)
-                    for i in data:
-                        name_list.append(i['name'])
-                    if name not in name_list: 
-                        serializer.save(type='File', files=uploaded_file,file_size = uploaded_file.size, path = file_path, name = name)
-                    elif name + " (1)" not in name_list and name in name_list:
-                        name = name + " (1)"
-                        serializer.save(type='File', files=uploaded_file,file_size = uploaded_file.size, path = file_path, name = name)
-                    elif name + " (1)" in name_list and name in name_list:
-                        name = name + " (1)"
-                        newname = self.extract_and_convert_to_integer(name,data)
-                        serializer.save(type='File', files=uploaded_file,file_size = uploaded_file.size, path = file_path, name = name)
-            elif uploaded_file:
-                    queryset = Folder.objects.filter(parent_folder = parent_folder)
-                    serializer_db = FolderSerializer(queryset,many=True)
-                    data = serializer_db.data
-                    file_path = default_storage.save(uploaded_file.name, uploaded_file)
-                    name = uploaded_file.name
-                    name_list = []
-                    for i in data:
-                        name_list.append(i['name'])
-                    if name not in name_list: 
-                        serializer.save(type='File', files=uploaded_file,file_size = uploaded_file.size, path = file_path, name = name)
-                    elif name + " (1)" not in name_list and name in name_list:
-                        name = name + " (1)"
-                        serializer.save(type='File', files=uploaded_file,file_size = uploaded_file.size, path = file_path, name = name)
-                    elif name + " (1)" in name_list and name in name_list:
-                        name = name + " (1)"
-                        newname = self.extract_and_convert_to_integer(name,data)
-                        serializer.save(type='File', files=uploaded_file,file_size = uploaded_file.size, path = file_path, name = name)
+                path = parent_folder.path + '/'
             else:
-                queryset = Folder.objects.filter(parent_folder = parent_folder)
-                serializer_db = FolderSerializer(queryset,many=True)
-                data = serializer_db.data
+                parent_folder = None
+                path = '/'
+                queryset = Folder.objects.filter(parent_folder = None)
+            serializer_db = FolderSerializer(queryset,many=True)
+            data = serializer_db.data
+            if files:
+                files_list = []
+                name_list = []
+                file_name_list = []
+                for i in data:
+                    name_list.append(i['name'])
+                for file in files:
+                    name = file.name
+                    for i in name_list:
+                        file_name_list.append(i)
+                    start_index = name.rfind('.')
+                    name_default = name[:start_index] + "(1)" + name[start_index:]
+                    files_list.append(file)
+                    if name not in name_list: 
+                        serializer.save(type='File', files=file,file_size = file.size, path = path + name, name = name,parent_folder=parent_folder)
+                    elif name_default not in name_list and name in name_list:
+                        serializer.save(type='File', files=file,file_size = file.size, path = path + name_default, name = name_default,parent_folder=parent_folder)
+                    elif name_default in name_list and name in name_list:
+                        newname = self.extract_and_convert_to_integer(name_default,data)
+                        serializer.save(type='File', files=file,file_size = file.size, path = path + newname, name = newname,parent_folder=parent_folder)
+            else:
                 name_list = []
                 for i in data:
                     name_list.append(i['name'])
                 if name not in name_list: 
-                    serializer.save(type='Folder',file_size = 0,name = name)
+                    serializer.save(type='Folder',file_size = 0,path = path + name,name = name)
                 elif name + " (1)" not in name_list and name in name_list:
                     name = name + " (1)"
-                    serializer.save(type='Folder',file_size = 0,name = name)
+                    serializer.save(type='Folder',file_size = 0,path = path + name,name = name)
                 elif name + " (1)" in name_list and name in name_list:
                     name = name + " (1)"
                     newname = self.extract_and_convert_to_integer(name,data)
-                    serializer.save(type='Folder',file_size = 0,name = newname)
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-    def patch(self, request, pk):
-        folder = self.get_object(pk)
-        serializer = FolderSerializer(folder, data=request.data, partial=True)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+                    serializer.save(type='Folder',file_size = 0,path = path + newname,name = newname)
+            response = {
+                "status":200,
+                "data": {
+                    "folder": serializer.data,  
+                }
+            }
+            return Response(response, status=status.HTTP_200_OK)
+        return Response({'status':400}, status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self, request, pk):
         folder = self.get_object(pk)
@@ -364,25 +351,51 @@ class FolderUpdate(APIView):
             return Response({'status':200},status=status.HTTP_200_OK)
         return Response({'status':400}, status=status.HTTP_400_BAD_REQUEST)
 
-# class FolderDeletes(APIView):
-#     def delete(self, request,pk, *args, **kwargs):
-#         folder_list = folder_id.split(',')
-#         for folder_id in folder_list:
-#             try:
-#                 folder = Folder.objects.get(id=int(folder_id))
-#                 folder.is_delete = True
-#                 folder.save()
-#             except Folder.DoesNotExist:
-#                 pass
-#         return Response(status=status.HTTP_204_NO_CONTENT)
+class FolderDeletes(APIView):
+    def delete(self, request, *args, **kwargs):
+        folder_list = folder_id.split(',')
+        for folder_id in folder_list:
+            try:
+                FolderUpdate.delete(request,int(folder_id))
+            except Folder.DoesNotExist:
+                pass
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
-class FolderFilter(generics.ListAPIView):
+class FolderFilter1(filters.FilterSet):
+
+    parent_folder = django_filters.Filter(method='filter_parent_folder')
+
+    class Meta:
+        model = Folder
+        fields = ['name', 'file_size', 'parent_folder']
+
+    def filter_parent_folder(self, queryset, name, value):
+        print(value)
+        if value == 'null':
+            return queryset.filter(parent_folder__isnull=True)
+        if value == 'notnull':
+            return queryset.filter(parent_folder__isnull=False)
+        
+        elif value.isdigit():
+            return queryset.filter(parent_folder=int(value))
+        else:
+            return queryset.none()
+        
+class FolderFilter(generics.ListCreateAPIView):
     queryset = Folder.objects.all()
     serializer_class = FolderSerializer
     filter_backends = [filters.DjangoFilterBackend]
-    filterset_fields = ['name','file_size','parent_folder']
+    # filterset_fields = ['name','file_size','parent_folder']
+    filterset_class = FolderFilter1
 
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        user = self.request.user
+        if user.is_authenticated:  # Check if user is authenticated
+            queryset = queryset.filter(create_by=user)
+        return queryset
+    
 class ShareList(generics.ListCreateAPIView):
     queryset = Share.objects.all()
     serializer_class = ShareSerializer
