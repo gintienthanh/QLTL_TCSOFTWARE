@@ -107,6 +107,7 @@ class Document(Base):
     physical_status = models.CharField(max_length=200,null=True, blank=True)
     note = models.CharField(max_length=1000,null=True, blank=True)
     files = models.FileField(upload_to='files/', null=True, blank=True)
+    type = models.CharField(max_length=100, choices=[(tag.value, tag.name) for tag in Choices_type], default=Choices_type.Folder.value)
     add_info = models.JSONField(null=True, blank=True)
     
     def __str__(self) :

@@ -25,18 +25,18 @@ class DocumentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Document
         fields = '__all__'
-        read_only_fields = ['created_at', 'updated_at','is_visibale','is_delete']
+        read_only_fields = ['created_at', 'updated_at','is_visibale']
 
 class PortfolioSerializer(serializers.ModelSerializer):
     class Meta:
         model = Portfolio
         fields = '__all__'
-        read_only_fields = ['created_at', 'updated_at','is_visibale','is_delete']
+        read_only_fields = ['created_at', 'updated_at','is_visibale']
 class WatchListSerializer(serializers.ModelSerializer):
     class Meta:
         model = Watchlist
         fields = '__all__'
-        read_only_fields = ['created_at', 'updated_at','is_visibale','is_delete']
+        read_only_fields = ['created_at', 'updated_at','is_visibale']
         
 # chặn thay đổi trường type_warehouse
 
@@ -47,7 +47,7 @@ class WarehouseSerializer(serializers.ModelSerializer):
     class Meta:
         model = Warehouse
         fields = '__all__'
-        read_only_fields = ['created_at', 'updated_at','is_visibale','is_delete']
+        read_only_fields = ['created_at', 'updated_at','is_visibale']
     def get_parent_warehouse(self, obj):
         if obj.parent_warehouse:
             return WarehouseSerializer(obj.parent_warehouse).data
@@ -70,10 +70,10 @@ class ShareSerializer(serializers.ModelSerializer):
     class Meta:
         model = Share
         fields = '__all__'
-        read_only_fields = ['created_at', 'updated_at','is_visibale','is_delete']
+        read_only_fields = ['created_at', 'updated_at','is_visibale']
         
 class ClassificationSerializer(serializers.ModelSerializer):
     class Meta: 
         model = ClassifyVariant
         fields = '__all__'
-        read_only_fields = ['created_at', 'updated_at','is_visibale','is_delete']
+        read_only_fields = ['created_at', 'updated_at','is_visibale']
