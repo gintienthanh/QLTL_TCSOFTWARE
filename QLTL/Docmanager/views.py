@@ -152,26 +152,34 @@ class FolderList(APIView):
     def get(self, request):
         try:
             paginator=FolderSetPagination()
-            name_query = request.GET.get('name', None)
+            name_query = request.GET.get('name', None)  
             parent_folder = request.GET.get('parent_folder')
             folder = Folder.objects.filter(is_delete=False)
             if not parent_folder:
                 folder = Folder.objects.filter(parent_folder=None)
             else:
                 folder = Folder.objects.filter(parent_folder=parent_folder)
-            if name_query:
+            if name_query: 
                 folder = folder.filter(name__icontains=name_query)
+            
             result_page = paginator.paginate_queryset(folder, request)
             serializer = FolderSerializer(result_page, many=True)
-            response = {
-                    "status":200,
-                    "data": {
-                        "folder": serializer.data,  
-                    }
+            data = {
+                    'status': '200',
+                    'message':' found successfully',
+                    'pagination': {
+                        'total_pages': paginator.page.paginator.num_pages,
+                        'current_page': paginator.page.number,
+                        'next_page': paginator.get_next_link(),
+                        'previous_page': paginator.get_previous_link(),
+                    },
+                    'data': serializer.data,
+                    
                 }
-            return paginator.get_paginated_response(response)
+            return Response(data, status=status.HTTP_200_OK)
         except:
             return Response({'status':400},status=status.HTTP_400_BAD_REQUEST)
+        
     def extract_and_convert_to_integer(self,name,data):
         start_index = name.rfind('(')
         end_index = name.rfind(')')
