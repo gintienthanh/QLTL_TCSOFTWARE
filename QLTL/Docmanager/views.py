@@ -14,13 +14,10 @@ import pandas as pd
 from io import BytesIO
 import zipfile
 from django.core.files.storage import default_storage
-from django.db.models import Q
+
 # Create your views here.
 
-class PortfolioSetPagination(PageNumberPagination):
-    page_size = 2
-    page_size_query_param = 'page_size'
-    max_page_size = 1000  
+class CustomPagination(PageNumberPagination):
     def get_paginated_response(self, data):
         next_page = self.get_next_link()
         previous_page = self.get_previous_link()
@@ -34,29 +31,29 @@ class PortfolioSetPagination(PageNumberPagination):
             'current_page': current_page,
             'total_count': total_count,
             'results': data
-        }) 
-class FolderSetPagination(PageNumberPagination):
-    page_size = 12
-    page_size_query_param = 'page_size'
-    max_page_size = 1000  
-class WarehouseSetPagination(PageNumberPagination):
-    page_size = 12
-    page_size_query_param = 'page_size'
-    max_page_size = 1000  
-class DocumentSetPagination(PageNumberPagination):
-    page_size = 12
-    page_size_query_param = 'page_size'
-    max_page_size = 1000  
-class ShareSetPagination(PageNumberPagination):
-    page_size = 12
+        })
+class PortfolioSetPagination(CustomPagination):
+    page_size = 10
     page_size_query_param = 'page_size'
     max_page_size = 1000  
     
-class WatchlistSetPagination(PageNumberPagination):
+class FolderSetPagination(CustomPagination):
+    page_size = 12
+    page_size_query_param = 'page_size'
+    max_page_size = 1000   
+class WarehouseSetPagination(CustomPagination):
+    page_size = 12
+    page_size_query_param = 'page_size'
+    max_page_size = 1000  
+class ShareSetPagination(CustomPagination):
     page_size = 12
     page_size_query_param = 'page_size'
     max_page_size = 1000  
 
+class WatchlistSetPagination(CustomPagination):
+    page_size = 12
+    page_size_query_param = 'page_size'
+    max_page_size = 1000
 
 
 class PortfolioFilter(filters.FilterSet):
