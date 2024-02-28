@@ -36,7 +36,7 @@ from django.conf import settings
 from django.conf.urls.static import static
 
 urlpatterns = [
-    path('folder', FolderList.as_view(), name='folder'),
+    path('folder/', FolderList.as_view(), name='folder'),
     path('folder/<int:pk>', FolderUpdate.as_view()),
     path('folder-filter/', FolderFilter.as_view()),
     # path('folder-filter/', FolderDeletes.as_view()),

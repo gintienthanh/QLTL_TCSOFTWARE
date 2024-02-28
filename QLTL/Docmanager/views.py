@@ -152,8 +152,13 @@ class FolderList(APIView):
     def get(self, request):
         try:
             paginator=FolderSetPagination()
-            name_query = request.GET.get('name', None)  
-            folder = Folder.objects.filter(is_delete=False, parent_folder=None)
+            name_query = request.GET.get('name', None)
+            parent_folder = request.GET.get('parent_folder')
+            folder = Folder.objects.filter(is_delete=False)
+            if not parent_folder:
+                folder = Folder.objects.filter(parent_folder=None)
+            else:
+                folder = Folder.objects.filter(parent_folder=parent_folder)
             if name_query:
                 folder = folder.filter(name__icontains=name_query)
             result_page = paginator.paginate_queryset(folder, request)
@@ -340,7 +345,6 @@ class FolderUpdate(APIView):
             data =
             {
                 'is_delete': True,
-                
             }, partial=True)
         if serializer.is_valid():
             queryset = Folder.objects.filter(parent_folder = pk)
