@@ -14,7 +14,7 @@ import pandas as pd
 from io import BytesIO
 import zipfile
 from django.core.files.storage import default_storage
-
+import django_filters
 # Create your views here.
 
 class CustomPagination(PageNumberPagination):
@@ -51,6 +51,10 @@ class ShareSetPagination(CustomPagination):
     max_page_size = 1000  
 
 class WatchlistSetPagination(CustomPagination):
+    page_size = 12
+    page_size_query_param = 'page_size'
+    max_page_size = 1000
+class DocumentSetPagination(CustomPagination):
     page_size = 12
     page_size_query_param = 'page_size'
     max_page_size = 1000
@@ -417,7 +421,7 @@ class ShareUpdate(generics.RetrieveUpdateDestroyAPIView):
         return Response({'status':200,'message':'destroyed'},status=status.HTTP_204_NO_CONTENT)
 
 class WarehouseList(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+    # permission_classes = [permissions.IsAuthenticated]
     def get(self, request, *args, **kwargs):
         paginator = WarehouseSetPagination()
         type_warehouse = request.GET.get('type_warehouse', None)
@@ -461,7 +465,7 @@ class WarehouseList(APIView):
             return Response({'status':400,
                             'message':'created fail'},status=status.HTTP_400_BAD_REQUEST)
         except Warehouse.DoesNotExist:
-            serializer.save()
+            serializer.save(parent_warehouse=parent_warehouse)
             return Response({'status':201,
                             'message':'created successfully',
                             'data':serializer.data},status=status.HTTP_201_CREATED)
@@ -687,5 +691,26 @@ class DownloadConvertAPIView(generics.RetrieveAPIView):
         
         return response
 
-# class DocumentFolder(APIView)
+class FolderFilter1(django_filters.FilterSet):
+    parent_folder = django_filters.Filter(field_name='parent_folder', method='filter_parent_folder')
+    paginator = PortfolioSetPagination()
+    class Meta:
+        model = Folder
+        fields = ['name', 'file_size', 'parent_folder']
+
+    def filter_parent_folder(self, queryset, name, value):
+        if value=='null':
+            return queryset.filter(parent_folder__isnull=True)
+        elif value.lower() == 'false':
+            return queryset.exclude(parent_folder__isnull=True)
+        elif value.isdigit():
+            return queryset.filter(parent_folder=int(value))
+        else:
+            return queryset.none()
+
+class FolderFilter(generics.ListAPIView):
+    queryset = Folder.objects.all()
+    serializer_class = FolderSerializer
+    filter_backends = [filters.DjangoFilterBackend]
+    filterset_class = FolderFilter1
                                                                                            

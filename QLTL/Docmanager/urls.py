@@ -27,6 +27,7 @@ urlpatterns = [
     
     path('watchlist', WatchList.as_view()),
     path('watchlist/<int:pk>', WatchListUpdate.as_view()),
+    path('folder-filter/', FolderFilter.as_view(), name='folder-filter'),
     
     path('download/<int:pk>/', DownloadConvertAPIView.as_view(), name='download-convert'),
     path('file/download/<int:folder_id>', DownloadFile.as_view(), name='file-download'),
