@@ -25,12 +25,16 @@ class CustomPagination(PageNumberPagination):
         current_page = self.page.number
         total_count = self.page.paginator.count
         return Response({
-            'next_page': next_page,
-            'previous_page': previous_page,
-            'total_pages': total_pages,
-            'current_page': current_page,
-            'total_count': total_count,
-            'results': data
+            "status": "200",
+            "message": " found successfully",
+            "pagination": {
+                "count": total_count,
+                "total_pages": 6,
+                "current_page": 1,
+                "next_page": next_page,
+                "previous_page": previous_page,
+                },
+            "data": data,
         })
 class PortfolioSetPagination(CustomPagination):
     page_size = 10
@@ -70,7 +74,7 @@ class PortfolioFilter(filters.FilterSet):
 
 class PortfolioList(generics.ListCreateAPIView):
     # permission_classes = [permissions.IsAuthenticated]
-    queryset = Portfolio.objects.order_by('-updated_at')
+    queryset = Portfolio.objects.order_by('-id')
     serializer_class = PortfolioSerializer
     filter_backends = [filters.DjangoFilterBackend]
     filterset_class = PortfolioFilter
@@ -96,7 +100,7 @@ class PortfolioList(generics.ListCreateAPIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class PortfolioUpdate(APIView):
-    #permission_classes = [permissions.IsAuthenticated]
+    # permission_classes = [permissions.IsAuthenticated]
     def get_object(self, pk):
         try:
             return Portfolio.objects.get(pk=pk)
@@ -478,7 +482,7 @@ class WarehouseList(APIView):
             
 
 class WarehouseUpdate(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+    # permission_classes = [permissions.IsAuthenticated]
     def get_object(self, pk):
         try:
             return Warehouse.objects.get(pk=pk)
