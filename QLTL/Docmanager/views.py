@@ -335,6 +335,7 @@ class FolderUpdate(APIView):
 
     def delete(self, request, pk):
         folder = self.get_object(pk)
+        folder.is_delete = True
         serializer = FolderSerializer(folder, 
             data =
             {
@@ -342,9 +343,14 @@ class FolderUpdate(APIView):
                 
             }, partial=True)
         if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            queryset = Folder.objects.filter(parent_folder = pk)
+            serializer_db = FolderSerializer(queryset,many=True)
+            data = serializer_db.data
+            for i in data:
+                self.delete(request,i['id'])
+            folder.save()
+            return Response({'status':200},status=status.HTTP_200_OK)
+        return Response({'status':400}, status=status.HTTP_400_BAD_REQUEST)
 
 # class FolderDeletes(APIView):
 #     def delete(self, request,pk, *args, **kwargs):
