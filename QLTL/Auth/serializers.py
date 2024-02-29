@@ -6,11 +6,7 @@ from django.contrib.auth.tokens import PasswordResetTokenGenerator
 from django.template.loader import render_to_string
 from decouple import config
 from django.contrib.auth.models import User
-from Auth.services import  facebookValidate
-from .register import register_social_user
 from .utils import Util
-from Auth.services import  user_get_or_create
-from allauth.socialaccount.models import SocialAccount, SocialApp
 from django.utils import timezone
 
 class UserSerializer(serializers.ModelSerializer):
@@ -61,7 +57,6 @@ class SendPasswordResetEmailSerializer(serializers.Serializer):
     def validate(self, attrs):
         email = attrs.get('email')
         if User.objects.filter(email = email).exists():
-            print('ok')
             user = User.objects.get(email=email)
             uid = urlsafe_base64_encode(force_bytes(user.id))
             token = PasswordResetTokenGenerator().make_token(user)
@@ -80,7 +75,6 @@ class SendPasswordResetEmailSerializer(serializers.Serializer):
             else:
                 raise serializers.ValidationError('API_USER_URL is not set.')
         else:
-            print('kh tìm thấy')
             raise serializers.ValidationError('You are not a Registered User')
 class UserPasswordResetSerializer(serializers.Serializer):
     password = serializers.CharField(max_length=255, style={'input_type':'password'}, write_only=True)
@@ -124,31 +118,3 @@ class LogoutSerializer(serializers.Serializer):
         except TokenError:
             self.fail('bad_token')
 
-class FacebookSocialAuthSerializer(serializers.Serializer):
-    """Handles serialization of facebook related data"""
-    auth_token = serializers.CharField()
-    def validate_auth_token(self, auth_token):
-        user_data = facebookValidate(auth_token)
-        try:
-            data ={ 
-                'email' : user_data['email'],
-                'username' : user_data['name']
-            }
-            user, _ = user_get_or_create(**data)
-            uid = user_data['id']
-            provider = 'facebook' 
-            social_app = SocialApp.objects.get(provider=provider)
-            social_account, created = SocialAccount.objects.get_or_create(
-                user=user,
-                provider=provider,
-                uid=uid
-            )
-            if created:
-                social_account.extra_data = {} 
-                social_account.app = social_app
-                social_account.save()
-            return user
-        except Exception as identifier:
-            raise serializers.ValidationError(
-                'The token is invalid or expired. Please login again.'
-            )
