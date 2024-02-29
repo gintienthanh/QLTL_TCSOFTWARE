@@ -172,7 +172,7 @@ class DocumentFilter(filters.FilterSet):
 
 class DocumentList(generics.ListCreateAPIView):
 
-    # permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated]
     queryset = Document.objects.annotate(
     compare_time=Coalesce(
         Case(
@@ -197,12 +197,13 @@ class DocumentList(generics.ListCreateAPIView):
         queryset = super().get_queryset()
         user = self.request.user
         if user.is_authenticated:  # Check if user is authenticated
-            queryset = queryset.filter(create_by=user)
+            queryset = queryset.filter(create_by=user, is_delete=False)
         return queryset 
     
     def post(self, request):
         serializer = PortfolioSerializer(data=request.data)
         if serializer.is_valid():
+            serializer.validated_data['create_by'] = request.user   
             serializer.save()
             return Response({'status':201,
                              'message':'created successfully',
@@ -221,44 +222,31 @@ class DocumentUpdate(generics.RetrieveUpdateDestroyAPIView):
         instance.save()
         return Response({'status':200,'message':'destroyed'},status=status.HTTP_204_NO_CONTENT)
  
-########FOLDER#######
-class  FolderFilter(filters.FilterSet):
-    name = filters.CharFilter(field_name='name', lookup_expr='icontains')
-    
-    class Meta:
-        model = Folder
-        fields = ['name', 'parent_folder']
 
 
 
-class FolderList(generics.ListCreateAPIView):
+
+class FolderList(APIView):
      # permission_classes = [IsAuthenticated]
-    queryset = Folder.objects.annotate(
-    compare_time=Coalesce(
-        Case(
-            When(created_at__gt=F('updated_at'), then=F('created_at')),
-            default=F('updated_at'),
-            output_field=CharField()
-        ),
-        Case(
-            When(created_at__gt=F('created_at'), then=F('updated_at')),
-            default=F('created_at'),
-            output_field=CharField()
-        )
-    )
-).order_by('-compare_time')
-    serializer_class = FolderSerializer
-    filter_backends = [filters.DjangoFilterBackend]
-    filterset_class = FolderFilter
-    paginator = FolderSetPagination()
-    
-    def get_queryset(self):
-        queryset = super().get_queryset()
-        user = self.request.user
-        if user.is_authenticated:  # Check if user is authenticated
-            queryset = queryset.filter(create_by=user)
-        return queryset 
-        
+    def get(self, request):
+        try:
+            paginator=FolderSetPagination()
+            name_query = request.GET.get('name', None)  
+            parent_folder = request.GET.get('parent_folder')
+            folder = Folder.objects.filter(is_delete=False)
+            if not parent_folder:
+                folder = Folder.objects.filter(parent_folder=None)
+            else:
+                folder = Folder.objects.filter(parent_folder=parent_folder)
+            if name_query: 
+                folder = folder.filter(name__icontains=name_query)
+            
+            result_page = paginator.paginate_queryset(folder, request)
+            serializer = FolderSerializer(result_page, many=True)
+            return paginator.get_paginated_response(serializer.data)
+            
+        except:
+            return Response({'status':400},status=status.HTTP_400_BAD_REQUEST)
     def extract_and_convert_to_integer(self,name,data):
         start_index = name.rfind('(')
         end_index = name.rfind(')')
@@ -533,20 +521,12 @@ class WarehouseList(APIView):
             return Response({"error": "Invalid type_warehouse value"}, status=status.HTTP_400_BAD_REQUEST)
 
         warehouses = Warehouse.objects.filter(type_warehouse=type_warehouse, is_delete=False)
-        paginated_queryset = paginator.paginate_queryset(warehouses, request)
-        serializer = WarehouseSerializer(paginated_queryset, many=True)
-
-        data = {
-            'status': '200',
-            'data': serializer.data,
-            'pagination': {
-                'total_pages': paginator.page.paginator.num_pages,
-                'current_page': paginator.page.number,
-                'next_page': paginator.get_next_link(),
-                'previous_page': paginator.get_previous_link(),
-            }
-        }
-        return Response(data, status=status.HTTP_200_OK)
+        result_page = paginator.paginate_queryset(warehouses, request)
+    
+        
+        serializer = WarehouseSerializer(result_page, many=True)
+        return paginator.get_paginated_response(serializer.data)
+        
     def post(self, request):
         try:
             serializer = WarehouseSerializer(data=request.data)

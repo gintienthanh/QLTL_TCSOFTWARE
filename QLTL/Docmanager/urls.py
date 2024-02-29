@@ -1,7 +1,8 @@
 from django.urls import path, include
-from .views import*
+from .views import *
 from django.conf import settings
 from django.conf.urls.static import static
+
 from drf_yasg import openapi
 from drf_yasg.views import get_schema_view
 from rest_framework.permissions import AllowAny
@@ -18,38 +19,52 @@ schema_view = get_schema_view(
     public=True,
     permission_classes=[AllowAny],
 )
-urlpatterns = [
-    path('folder', FolderList.as_view()),
-    path('folder/<int:pk>', FolderUpdate.as_view()),
-    path('folder-filter/', FolderFilter.as_view()),
-    
-    path('warehouse', WarehouseList.as_view()),
-    path('warehouse/<int:pk>', WarehouseUpdate.as_view()),
-    
-    
-    path('share', ShareList.as_view()),
-    path('share/<int:pk>', ShareUpdate.as_view()),
- 
-    
-    path('portfolio', PortfolioList.as_view()),
-    path('portfolio/<int:pk>', PortfolioUpdate.as_view()),
+
+folder_urls = [
+    path('', FolderList.as_view(), name='folder-list'),
+    path('<int:pk>', FolderUpdate.as_view(), name='folder-detail'),
+]
+
+warehouse_urls = [
+    path('', WarehouseList.as_view(), name='warehouse-list'),
+    path('<int:pk>', WarehouseUpdate.as_view(), name='warehouse-detail'),
+]
+
+share_urls = [
+    path('', ShareList.as_view(), name='share-list'),
+    path('<int:pk>', ShareUpdate.as_view(), name='share-detail'),
+]
+
+portfolio_urls = [
+    path('', PortfolioList.as_view(), name='portfolio-list'),
+    path('<int:pk>', PortfolioUpdate.as_view(), name='portfolio-detail'),
+    path('multi_download/<str:ids>/', Multi_portfolio_DownloadConvertAPIView.as_view(), name='multi-portfolio-download'),
    
-    
-    path('document', DocumentList.as_view()),
-    path('document/<int:pk>', DocumentUpdate.as_view()),
-    
-    
-    
-    path('watchlist', WatchList.as_view()),
-    path('watchlist/<int:pk>', WatchListUpdate.as_view()),
-    
-    
-    
-    path('download/<int:pk>/', DownloadConvertAPIView.as_view(), name='download-convert'),
-    path('multi_download_portfolio/<str:ids>/', Multi_portfolio_DownloadConvertAPIView.as_view(), name='Multi_portfolio_DownloadConvertAPIView'),
-    path('file/download/<int:folder_id>', DownloadFile.as_view(), name='file-download'),
-    
+]
+
+document_urls = [
+    path('', DocumentList.as_view(), name='document-list'),
+    path('<int:pk>', DocumentUpdate.as_view(), name='document-detail'),
+  
+]
+
+watchlist_urls = [
+    path('', WatchList.as_view(), name='watchlist-list'),
+    path('<int:pk>', WatchListUpdate.as_view(), name='watchlist-detail'),
+]
+
+file_urls = [
+    path('download/<int:folder_id>/', DownloadFile.as_view(), name='file-download'),
+]
+
+urlpatterns = [
+    path('folder/', include((folder_urls, 'folder'))),
+    path('warehouse/', include((warehouse_urls, 'warehouse'))),
+    path('share/', include((share_urls, 'share'))),
+    path('portfolio/', include((portfolio_urls, 'portfolio'))),
+    path('document/', include((document_urls, 'document'))),
+    path('watchlist/', include((watchlist_urls, 'watchlist'))),
+    path('file/', include((file_urls, 'file'))),
     path('api/docs/swagger.json', schema_view.without_ui(cache_timeout=0), name='schema-swagger-json'),
     path('api/docs/', schema_view.with_ui('swagger', cache_timeout=0), name='schema-swagger-ui'),
-    
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
