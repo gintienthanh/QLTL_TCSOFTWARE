@@ -6,8 +6,6 @@ from decouple import config
 from typing import Tuple
 from django.db import transaction
 from django.contrib.auth.models import User
-import random
-import string
 
 GOOGLE_ID_TOKEN_INFO_URL = 'https://www.googleapis.com/oauth2/v3/tokeninfo'
 GOOGLE_ACCESS_TOKEN_OBTAIN_URL = 'https://oauth2.googleapis.com/token'
@@ -90,23 +88,5 @@ def user_create(email, password=None, **extra_fields) -> User:
     else:
         user.set_unusable_password()
     user.save()
+    print('user sau khi tạo',user)
     return user
-def generate_strong_password(length):
-    lowercase_letters = string.ascii_lowercase.replace('"', '').replace("'", '').replace('/', '')
-    uppercase_letters = string.ascii_uppercase.replace('"', '').replace("'", '').replace('/', '')
-    digits = string.digits.replace('"', '').replace("'", '').replace('/', '')
-    punctuation = string.punctuation.replace('"', '').replace("'", '').replace('/', '')
-
-    password = random.choice(lowercase_letters)
-    password += random.choice(uppercase_letters)
-    password += random.choice(digits)
-    password += random.choice(punctuation)
-
-    remaining_length = length - 4
-    password += ''.join(random.choice(lowercase_letters + uppercase_letters + digits + punctuation) for i in range(remaining_length))
-
-    password_list = list(password)
-    random.shuffle(password_list)
-    password = ''.join(password_list)
-    
-    return password
