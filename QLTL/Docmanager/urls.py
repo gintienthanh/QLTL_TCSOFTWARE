@@ -12,7 +12,9 @@ urlpatterns = [
     path('warehouse', WarehouseList.as_view()),
     path('warehouse/<int:pk>', WarehouseUpdate.as_view()),
     path('warehouse-filter/', WarehouseList.as_view()),
-    path('WarehouseBulkDelete/<str:warehouse_ids>/', WarehouseBulkDelete.as_view(), name='WarehouseBulkDelete'),
+    # path('WarehouseBulkDelete/<str:warehouse_ids>/', WarehouseBulkDelete.as_view(), name='WarehouseBulkDelete'),
+    path('WarehouseBulkDelete/', WarehouseBulkDelete.as_view(), name='WarehouseBulkDelete'),
+
     
     path('share', ShareList.as_view()),
     path('share/<int:pk>', ShareUpdate.as_view()),

@@ -641,8 +641,11 @@ from django.utils import timezone
 
 class WarehouseBulkDelete(APIView):
     def delete(self, request, warehouse_ids, *args, **kwargs):
-        warehouse_ids_list = warehouse_ids.split(',')
-        for warehouse_id in warehouse_ids_list:
+        warehouse_ids = request.data.get('warehouse_ids', [])  # Lấy danh sách ID từ phần thân yêu cầu
+        # warehouse_ids_list = warehouse_ids.split(',')
+        # for warehouse_id in warehouse_ids_list:
+        for warehouse_id in warehouse_ids:
+
             try:
                 warehouse = Warehouse.objects.get(id=int(warehouse_id))
 
