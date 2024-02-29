@@ -1,4 +1,7 @@
 from datetime import datetime
+import os
+import shutil
+import tempfile
 from django.shortcuts import render
 from Docmanager.permissions import CheckOwnerFactory, CheckSharedGroupdFactory
 from .model_serializers import*
@@ -6,7 +9,7 @@ from .models import*
 from rest_framework import authentication, permissions, status, generics
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from django.http import HttpResponse
+from django.http import FileResponse, HttpResponse
 from django_filters import rest_framework as filters
 from rest_framework.pagination import PageNumberPagination
 import mimetypes
@@ -15,6 +18,8 @@ from io import BytesIO
 import zipfile
 from django.core.files.storage import default_storage
 from django.db.models import Q
+import django_filters
+
 # Create your views here.
 
 class PortfolioSetPagination(PageNumberPagination):
@@ -267,6 +272,7 @@ class FolderUpdate(generics.RetrieveUpdateDestroyAPIView):
     def put(self, request, pk):
         folder = self.get_object(pk)
         serializer = FolderSerializer(folder, data=request.data)
+        print(serializer)
         if serializer.is_valid():
             serializer.save()
             return Response({'status':200,
@@ -299,12 +305,29 @@ class FolderUpdate(generics.RetrieveUpdateDestroyAPIView):
         return Response({'status':400,
                             'message':serializer.errors,
                              },status=status.HTTP_400_BAD_REQUEST)
-    
+class FolderFilter1(filters.FilterSet):
+
+    parent_folder = django_filters.Filter(method='filter_parent_folder')
+
+    class Meta:
+        model = Folder
+        fields = ['name', 'file_size', 'parent_folder']
+
+    def filter_parent_folder(self, queryset, name, value):
+        if value == 'null':
+            return queryset.filter(parent_folder__isnull=True)
+        elif value.isdigit():
+            return queryset.filter(parent_folder=int(value))
+        else:
+            return queryset.none()
 class FolderFilter(generics.ListAPIView):
     queryset = Folder.objects.all()
     serializer_class = FolderSerializer
     filter_backends = [filters.DjangoFilterBackend]
     filterset_fields = ['name','file_size','parent_folder']
+    filterset_class = FolderFilter1
+
+
 
 class ShareFilter(filters.FilterSet):
     class Meta:
@@ -549,6 +572,67 @@ class DownloadFile(APIView):
             print(file_path)
             # shutil.copy2(file_path, save_path)
             return response
+        except Folder.DoesNotExist:
+            raise status.HTTP_404_NOT_FOUND
+        
+class DownloadFolder(APIView):
+    def get_object(self, pk):
+        try:
+            return Folder.objects.get(pk=pk)
+        except Folder.DoesNotExist:
+            raise status.HTTP_404_NOT_FOUND
+    def get(self, request, pk):
+        try:
+            folder = self.get_object(pk)
+            folderList = Folder.objects.filter(path__startswith=folder.path)
+            folder_path = folder.path
+            zip_file_name = f"{folder.name}.zip"
+
+            # Tạo thư mục cha cho mỗi tệp trong folderList
+            for item in folderList:
+                if item.type=='Folder': 
+                    path = os.path.join(folder_path,item.path.replace(folder_path, ""))
+                    os.makedirs(path, exist_ok=True)
+                
+                if item.type=='File': 
+                    file_path = item.files.path
+                    print(item.path)
+                    # Đọc dữ liệu từ file hiện có
+                    with open(file_path, 'rb') as source_file:
+                        file_content = source_file.read()
+                    
+                    # Tạo một file mới và ghi dữ liệu vào đó
+                    new_file_path = os.path.join(folder_path, os.path.basename(item.path.replace(folder_path, "")))  # Tạo đường dẫn cho file mới
+                    with open(new_file_path, 'wb') as new_file:
+                        new_file.write(file_content)
+
+
+                
+                    
+            # Tạo tệp ZIP từ thư mục
+            with zipfile.ZipFile(zip_file_name, 'w', zipfile.ZIP_DEFLATED) as zipf:
+                for root, dirs, files in os.walk(folder_path):
+                    for file in files:
+                        abs_path = os.path.join(root, file)
+                        rel_path = os.path.relpath(abs_path, folder_path)
+                        arcname = os.path.join(folder.name, rel_path)
+                        zipf.write(abs_path, arcname=arcname)
+                    for dir in dirs:
+                        abs_path = os.path.join(root, dir)
+                        rel_path = os.path.relpath(abs_path, folder_path)
+                        arcname = os.path.join(folder.name, rel_path)
+                        zipf.write(abs_path, arcname=arcname)
+                # Kiểm tra xem thư mục có rỗng không
+                if not os.listdir(folder_path):
+                    abs_path = folder_path
+                    rel_path = os.path.relpath(abs_path, folder_path)
+                    arcname = os.path.join(folder.name, rel_path)
+                    zipf.write(abs_path, arcname=arcname)
+
+            with open(zip_file_name, 'rb') as zip_file:
+                response = HttpResponse(zip_file.read(), content_type='application/zip')
+                response['Content-Disposition'] = 'attachment; filename="%s"' % zip_file_name
+                return response
         except Folder.DoesNotExist:
             raise status.HTTP_404_NOT_FOUND
 

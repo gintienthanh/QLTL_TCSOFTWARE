@@ -31,4 +31,6 @@ urlpatterns = [
     path('download/<int:pk>/', DownloadConvertAPIView.as_view(), name='download-convert'),
     path('file/download/<int:folder_id>', DownloadFile.as_view(), name='file-download'),
     
+    path('file/downloadfolder/<int:pk>', DownloadFolder.as_view(), name='folder-download'),
+    
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
