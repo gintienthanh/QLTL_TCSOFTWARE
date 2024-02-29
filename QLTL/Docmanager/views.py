@@ -733,45 +733,29 @@ class WatchListUpdate(APIView):
 class DownloadFile(APIView):
     lookup_field = 'folder_id'
     def get(self, request, folder_id,format=None):
-        try:
-            file = Folder.objects.get(pk=folder_id)
-            file_path = file.files.path
-            content_type, encoding = mimetypes.guess_type(file_path)
-            content_type = content_type or 'application/octet-stream'
-            response = HttpResponse(open(file_path, 'rb'), content_type=content_type)
-            # Tạo response từ tệp tin
-            response['Content-Disposition'] = f'attachment; filename="{file.files.name}"'
-            print(file_path)
-            # shutil.copy2(file_path, save_path)
-            return response
-        except Folder.DoesNotExist:
-            raise status.HTTP_404_NOT_FOUND
-        
-class DownloadFolder(APIView):
-    def get_object(self, pk):
-        try:
-            return Folder.objects.get(pk=pk)
-        except Folder.DoesNotExist:
-            raise status.HTTP_404_NOT_FOUND
-    def get(self, request, pk):
         rootPath="download/"
         folder=None
         zip_file_name=None
         try:
-            folder = self.get_object(pk)
+            folder = file = Folder.objects.get(pk=folder_id)
+            if file.type=="File":
+                file_path = file.files.path
+                content_type, encoding = mimetypes.guess_type(file_path)
+                content_type = content_type or 'application/octet-stream'
+                response = HttpResponse(open(file_path, 'rb'), content_type=content_type)
+                # Tạo response từ tệp tin
+                response['Content-Disposition'] = f'attachment; filename="{file.files.name}"'
+                print(file_path)
+                # shutil.copy2(file_path, save_path)
+                return response
+            # downloadfolder
             folderList = Folder.objects.filter(path__startswith=folder.path)
-            # folder_path = os.path.join(rootPath,folder_path)
-            folder_path= folder.path
             zip_file_name = f"{folder.name}.zip"
-
-            
-
-            # Tạo thư mục cha cho mỗi tệp trong folderList
+            # create folder
             for item in folderList:
                 if item.type=='Folder': 
-                    # path = os.path.join(folder_path,item.path.replace(folder_path, ""))
                     os.makedirs(os.path.join(rootPath,item.path), exist_ok=True)
-                    # print("Đường dẫn vật lý của thư mục đã tạo:", os.path.abspath(path))
+            # create file
             for item in folderList:
                 if item.type=='File': 
                     file_path = item.files.path
@@ -779,7 +763,7 @@ class DownloadFolder(APIView):
                         file_content = source_file.read()
                     with open(os.path.join(rootPath,item.path), 'wb') as new_file:
                         new_file.write(file_content)
-            # Tạo tệp ZIP từ thư mục
+            # create zip 
             with zipfile.ZipFile(os.path.join(rootPath, zip_file_name), 'w', zipfile.ZIP_DEFLATED) as zipf:
                 for root, dirs, files in os.walk(os.path.join(rootPath,folder.path)):
                     print(root)
@@ -793,8 +777,6 @@ class DownloadFolder(APIView):
                         rel_path = os.path.relpath(abs_path, os.path.join(rootPath,folder.path))
                         arcname = os.path.join(folder.name, rel_path)
                         zipf.write(abs_path, arcname=arcname)
-                        # shutil.rmtree(abs_path)
-            
             # return zip
             with open(os.path.join(rootPath,zip_file_name), 'rb') as zip_file:
                 response = HttpResponse(zip_file.read(), content_type='application/zip')
@@ -805,8 +787,7 @@ class DownloadFolder(APIView):
         finally:
             shutil.rmtree(os.path.join(rootPath, folder.path))
             os.remove(os.path.join(rootPath, zip_file_name))
-
-
+        
 
 class DownloadConvertAPIView(generics.RetrieveAPIView):
     permission_classes = [permissions.IsAuthenticated]
