@@ -12,7 +12,7 @@ schema_view = get_schema_view(
         title="API Documentation",
         default_version='v1',
         description="API documentation for your project",
-        terms_of_service="https://www.example.com/terms/",
+        terms_of_service="https://quanlytailieu-be.tcgroup.vn/",
         contact=openapi.Contact(email="contact@example.com"),
         license=openapi.License(name="BSD License"),
     ),
