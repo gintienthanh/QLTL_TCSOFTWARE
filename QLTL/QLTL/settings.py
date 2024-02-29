@@ -128,7 +128,6 @@ STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 # Database
 # https://docs.djangoproject.com/en/5.0/ref/settings/#databases
 
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ENV_FILE = os.path.join(BASE_DIR, '.env')
 
 DATABASES = {
