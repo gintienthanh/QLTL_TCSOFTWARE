@@ -33,8 +33,9 @@ urlpatterns = [
     path('document-filter/', DocumentList.as_view()),
     
     
-    # path('watchlist', Watchlist.as_view()),
-    # path('watchlist/<int:pk>', WatchListUpdate.as_view()),
+    path('watchlist', WatchList.as_view()),
+    path('watchlist/<int:pk>', WatchListUpdate.as_view()),
+    path('folder-filter/', FolderFilter.as_view(), name='folder-filter'),
     
     path('file/download/<int:folder_id>', DownloadFile.as_view(), name='file-download'),
     

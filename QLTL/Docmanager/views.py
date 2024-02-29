@@ -1,5 +1,9 @@
+<<<<<<< HEAD
 from datetime import UTC, timezone
 import os
+=======
+import datetime
+>>>>>>> 035b6ed7e3a3da1cf0006abd78f0896e75ec1bb6
 from django.shortcuts import render
 import pytz
 from Docmanager.permissions import CheckOwnerFactory, CheckSharedGroupdFactory
@@ -17,40 +21,56 @@ import pandas as pd
 from io import BytesIO
 import zipfile
 from django.core.files.storage import default_storage
+<<<<<<< HEAD
 from django.db.models import *
 from django_filters.rest_framework import DjangoFilterBackend
 import django_filters
 
+=======
+import django_filters
+>>>>>>> 035b6ed7e3a3da1cf0006abd78f0896e75ec1bb6
 # Create your views here.
 class PortfolioList(generics.ListCreateAPIView):
     serializer_class = PortfolioSerializer
 
-class PortfolioSetPagination(PageNumberPagination):
-    page_size = 12
-    page_size_query_param = 'page_size'
-    max_page_size = 1000  
-class FolderSetPagination(PageNumberPagination):
-    page_size = 12
-    page_size_query_param = 'page_size'
-    max_page_size = 1000  
-class WarehouseSetPagination(PageNumberPagination):
-    page_size = 12
-    page_size_query_param = 'page_size'
-    max_page_size = 1000  
-class DocumentSetPagination(PageNumberPagination):
-    page_size = 12
-    page_size_query_param = 'page_size'
-    max_page_size = 1000  
-class ShareSetPagination(PageNumberPagination):
-    page_size = 12
+class CustomPagination(PageNumberPagination):
+    def get_paginated_response(self, data):
+        next_page = self.get_next_link()
+        previous_page = self.get_previous_link()
+        total_pages = self.page.paginator.num_pages
+        current_page = self.page.number
+        total_count = self.page.paginator.count
+        return Response({
+            "status": "200",
+            "message": " found successfully",
+            "pagination": {
+                "count": total_count,
+                "total_pages": 6,
+                "current_page": 1,
+                "next_page": next_page,
+                "previous_page": previous_page,
+                },
+            "data": data,
+        })
+class PortfolioSetPagination(CustomPagination):
+    page_size = 10
     page_size_query_param = 'page_size'
     max_page_size = 1000  
     
-class WatchlistSetPagination(PageNumberPagination):
+class FolderSetPagination(CustomPagination):
+    page_size = 12
+    page_size_query_param = 'page_size'
+    max_page_size = 1000   
+class WarehouseSetPagination(CustomPagination):
+    page_size = 1000
+    page_size_query_param = 'page_size'
+    max_page_size = 1000  
+class ShareSetPagination(CustomPagination):
     page_size = 12
     page_size_query_param = 'page_size'
     max_page_size = 1000  
 
+<<<<<<< HEAD
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.pagination import PageNumberPagination
@@ -82,10 +102,48 @@ class PortfolioList(APIView):
                 
             }
         return Response(data, status=status.HTTP_200_OK)
+=======
+class WatchlistSetPagination(CustomPagination):
+    page_size = 12
+    page_size_query_param = 'page_size'
+    max_page_size = 1000
+class DocumentSetPagination(CustomPagination):
+    page_size = 12
+    page_size_query_param = 'page_size'
+    max_page_size = 1000
+
+
+class PortfolioFilter(filters.FilterSet):
+    title = filters.CharFilter(field_name='title', lookup_expr='icontains')
+    usage_policy = filters.CharFilter(field_name='usage_policy', lookup_expr='icontains')
+    
+    class Meta:
+        model = Portfolio
+        fields = ['title', 'usage_policy']
+
+class PortfolioList(generics.ListCreateAPIView):
+    # permission_classes = [permissions.IsAuthenticated]
+    queryset = Portfolio.objects.order_by('-id')
+    serializer_class = PortfolioSerializer
+    filter_backends = [filters.DjangoFilterBackend]
+    filterset_class = PortfolioFilter
+    paginator = PortfolioSetPagination()
+   
+    
+    def get_queryset(self):
+        
+        queryset = super().get_queryset()
+        user = self.request.user
+        if user.is_authenticated:  # Check if user is authenticated
+            queryset = queryset.filter(create_by=user)
+        return queryset 
+    
+>>>>>>> 035b6ed7e3a3da1cf0006abd78f0896e75ec1bb6
     def post(self, request):
         serializer = PortfolioSerializer(data=request.data)
         if serializer.is_valid():
             serializer.save()
+<<<<<<< HEAD
             data = {
                 'status': '201',
                 'data': serializer.data
@@ -96,6 +154,14 @@ class PortfolioList(APIView):
             'errors': serializer.errors
         }
         return Response(data, status=status.HTTP_400_BAD_REQUEST)
+=======
+            return Response({'status':201,
+                             'message':'created successfully',
+                             'data':serializer.data}, 
+                             status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+>>>>>>> 035b6ed7e3a3da1cf0006abd78f0896e75ec1bb6
 class PortfolioUpdate(APIView):
     # permission_classes = [permissions.IsAuthenticated]
     def get_object(self, pk):
@@ -152,10 +218,16 @@ class PortfolioUpdate(APIView):
     def delete(self, request, pk):
         portfolio = self.get_object(pk)
         serializer = PortfolioSerializer(portfolio, 
+<<<<<<< HEAD
             data={
+=======
+            data =
+            {   
+>>>>>>> 035b6ed7e3a3da1cf0006abd78f0896e75ec1bb6
                 'is_delete': True,
             }, partial=True)
         if serializer.is_valid():
+            serializer.validated_data['delete_at'] = datetime.datetime.now()
             serializer.save()
             data = {
                 'status': '200',
@@ -199,21 +271,24 @@ class PortfolioBulkUpdate(APIView):
 class DocumentList(generics.ListCreateAPIView):
     
     
-    def get_permissions(self):
-        if self.request.method == 'POST':
-            return [permissions.IsAuthenticated()]
-        elif self.request.method == 'GET':
-            return [permissions.IsAdminUser()]
-        return super().get_permissions()
+    # def get_permissions(self):
+    #     if self.request.method == 'POST':
+    #         return [permissions.IsAuthenticated()]
+    #     elif self.request.method == 'GET':
+    #         return [permissions.IsAdminUser()]
+    #     return super().get_permissions()
     def get(self, request , *args, **kwargs):
         paginator = DocumentSetPagination()
         document = Document.objects.filter(is_delete=False)
+        document = document.order_by('-id')
         result_page = paginator.paginate_queryset(document, request)
-        serializer = PortfolioSerializer(result_page, many=True)
+        serializer = DocumentSerializer(result_page, many=True)
+        
         data = {
             'status': '200',
             'message':'successfully',
             'pagination': {
+                'count':paginator.page.paginator.count,
                 'total_pages': paginator.page.paginator.num_pages,
                 'current_page': paginator.page.number,
                 'next_page': paginator.get_next_link(),
@@ -225,7 +300,7 @@ class DocumentList(generics.ListCreateAPIView):
         return Response(data, status=status.HTTP_200_OK)
 
 class DocumentUpdate(generics.RetrieveUpdateDestroyAPIView):
-    permission_classes = [CheckSharedGroupdFactory(Document(),'edit') | CheckOwnerFactory(Document())]
+    #permission_classes = [CheckSharedGroupdFactory(Document(),'edit') | CheckOwnerFactory(Document())]
     queryset = Document.objects.all()
     serializer_class = DocumentSerializer
     
@@ -248,7 +323,7 @@ class DocumentBulkDelete(APIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 class FolderList(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+    # permission_classes = [permissions.IsAuthenticated]
     def get(self, request):
         paginator=FolderSetPagination()
         name_query = request.GET.get('name', None)  
@@ -265,7 +340,11 @@ class FolderList(APIView):
                 'status': '200',
                 'message':' found successfully',
                 'pagination': {
+<<<<<<< HEAD
                     
+=======
+                    'count':paginator.page.paginator.count,
+>>>>>>> 035b6ed7e3a3da1cf0006abd78f0896e75ec1bb6
                     'total_pages': paginator.page.paginator.num_pages,
                     'current_page': paginator.page.number,
                     'next_page': paginator.get_next_link(),
@@ -348,7 +427,7 @@ class FolderList(APIView):
 
 # @permission_classes([CheckSharedGroupdFactory(Folder(),'Chỉnh sửa') | CheckOwnerFactory(Folder())])
 class FolderUpdate(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+    # permission_classes = [permissions.IsAuthenticated]
     def get_object(self, pk):
         try:
             return Folder.objects.get(pk=pk)
@@ -420,12 +499,12 @@ class ShareList(generics.ListCreateAPIView):
     serializer_class = ShareSerializer
     filter_backends = (filters.DjangoFilterBackend,)
     filterset_fields = ('owner','create_by','document','folder')
-    def get_permissions(self):
-        if self.request.method == 'POST':
-            return [permissions.IsAuthenticated()]
-        elif self.request.method == 'GET':
-            return [permissions.IsAuthenticated()]
-        return super().get_permissions()
+    # def get_permissions(self):
+    #     if self.request.method == 'POST':
+    #         return [permissions.IsAuthenticated()]
+    #     elif self.request.method == 'GET':
+    #         return [permissions.IsAuthenticated()]
+    #     return super().get_permissions()
         
     def get(self, request):
         paginator = ShareSetPagination()
@@ -436,6 +515,7 @@ class ShareList(generics.ListCreateAPIView):
             'status': '200',
             'message':'successfully',
             'pagination': {
+                'count':paginator.page.paginator.count,
                 'total_pages': paginator.page.paginator.num_pages,
                 'current_page': paginator.page.number,
                 'next_page': paginator.get_next_link(),
@@ -489,7 +569,10 @@ class ShareUpdate(generics.RetrieveUpdateDestroyAPIView):
 
 class WarehouseList(APIView):
     # permission_classes = [permissions.IsAuthenticated]
+<<<<<<< HEAD
 
+=======
+>>>>>>> 035b6ed7e3a3da1cf0006abd78f0896e75ec1bb6
     def get(self, request, *args, **kwargs):
         paginator = WarehouseSetPagination()
         type_warehouse = request.GET.get('type_warehouse')
@@ -513,6 +596,7 @@ class WarehouseList(APIView):
         }
         return Response(data, status=status.HTTP_200_OK)
     def post(self, request):
+<<<<<<< HEAD
         serializer = WarehouseSerializer(data=request.data)
         id = request.data.get('parent_warehouse_id')
         if serializer.is_valid():
@@ -528,6 +612,32 @@ class WarehouseList(APIView):
                 'errors': serializer.errors
             }
             return Response(data, status=status.HTTP_400_BAD_REQUEST)
+=======
+        try:
+            serializer = WarehouseSerializer(data=request.data)
+            id = request.data.get('parent_warehouse_id')
+            if serializer.is_valid():
+                 
+                parent_warehouse =Warehouse.objects.get(id=id)    
+                serializer.save(parent_warehouse=parent_warehouse)
+                return Response({'status':201,
+                                'message':'created successfully',
+                                'data':serializer.data},status=status.HTTP_201_CREATED)
+            return Response({'status':400,
+                            'message':'created fail'},status=status.HTTP_400_BAD_REQUEST)
+        except Warehouse.DoesNotExist:
+            serializer.save(parent_warehouse=parent_warehouse)
+            return Response({'status':201,
+                            'message':'created successfully',
+                            'data':serializer.data},status=status.HTTP_201_CREATED)
+        except Exception as e:
+            return Response({'status':400,
+                            'message':'created fail'},status=status.HTTP_400_BAD_REQUEST)
+            
+            
+            
+            
+>>>>>>> 035b6ed7e3a3da1cf0006abd78f0896e75ec1bb6
 
 class WarehouseUpdate(APIView):
     # permission_classes = [permissions.IsAuthenticated]
@@ -850,6 +960,7 @@ class portfolio_DownloadConvertAPIView(generics.RetrieveAPIView):
         
         return response
 
+<<<<<<< HEAD
 class Multi_portfolio_DownloadConvertAPIView(APIView):
     def get(self, request, ids, *args, **kwargs):
         # Chuyển đổi danh sách ID từ chuỗi thành danh sách các số nguyên
@@ -892,3 +1003,28 @@ class Multi_portfolio_DownloadConvertAPIView(APIView):
         response = HttpResponse(zip_file.getvalue(), content_type='application/zip')
         response['Content-Disposition'] = 'attachment; filename=data.zip'
         return response                                                                                   
+=======
+class FolderFilter1(django_filters.FilterSet):
+    parent_folder = django_filters.Filter(field_name='parent_folder', method='filter_parent_folder')
+    paginator = PortfolioSetPagination()
+    class Meta:
+        model = Folder
+        fields = ['name', 'file_size', 'parent_folder']
+
+    def filter_parent_folder(self, queryset, name, value):
+        if value=='null':
+            return queryset.filter(parent_folder__isnull=True)
+        elif value.lower() == 'false':
+            return queryset.exclude(parent_folder__isnull=True)
+        elif value.isdigit():
+            return queryset.filter(parent_folder=int(value))
+        else:
+            return queryset.none()
+
+class FolderFilter(generics.ListAPIView):
+    queryset = Folder.objects.all()
+    serializer_class = FolderSerializer
+    filter_backends = [filters.DjangoFilterBackend]
+    filterset_class = FolderFilter1
+                                                                                           
+>>>>>>> 035b6ed7e3a3da1cf0006abd78f0896e75ec1bb6
