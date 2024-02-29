@@ -326,14 +326,14 @@ class FolderList(generics.ListCreateAPIView):
                 for i in data:
                     name_list.append(i['name'])
                 if name not in name_list: 
-                    serializer.save(type='Folder',file_size = 0,path = path + name,name = name)
+                    serializer.save(type='Folder',file_size = 0,path = path + name,name = name,parent_folder=parent_folder)
                 elif name + " (1)" not in name_list and name in name_list:
                     name = name + " (1)"
-                    serializer.save(type='Folder',file_size = 0,path = path + name,name = name)
+                    serializer.save(type='Folder',file_size = 0,path = path + name,name = name,parent_folder=parent_folder)
                 elif name + " (1)" in name_list and name in name_list:
                     name = name + " (1)"
                     newname = self.extract_and_convert_to_integer(name,data)
-                    serializer.save(type='Folder',file_size = 0,path = path + newname,name = newname)
+                    serializer.save(type='Folder',file_size = 0,path = path + newname,name = newname,parent_folder=parent_folder)
             response = {
                 "status":200,
                 "data": {
@@ -514,38 +514,43 @@ class ShareUpdate(generics.RetrieveUpdateDestroyAPIView):
         instance.is_delete = True
         instance.save()
         return Response({'status':200,'message':'destroyed'},status=status.HTTP_204_NO_CONTENT)
+    
+    
+#############WAREHOUSE#########
+class  WarehouseFilter(filters.FilterSet):
+    name = filters.CharFilter(field_name='name', lookup_expr='icontains')
+    
+    class Meta:
+        model = Warehouse
+        fields = ['name', 'parent_warehouse', 'type_warehouse'] 
 
-class WarehouseList(APIView):
+class WarehouseList(generics.ListCreateAPIView):
     # permission_classes = [permissions.IsAuthenticated]
-    def get(self, request, *args, **kwargs):
-        paginator = WarehouseSetPagination()
-        type_warehouse = request.GET.get('type_warehouse', None)
-        warehouse = Warehouse.objects.filter(is_delete=False)
-        if type_warehouse == 'shelf':
-            warehouse = Warehouse.objects.filter(type_warehouse='shelf',is_delete=False)
-        elif type_warehouse == 'warehouse':
-            warehouse = Warehouse.objects.filter(type_warehouse='warehouse', is_delete=False)
-        elif type_warehouse == 'boxcase':
-            warehouse = Warehouse.objects.filter(type_warehouse='boxcase', is_delete=False)
-        else:
-            return Response({"error": "Invalid type_warehouse value"}, status=status.HTTP_400_BAD_REQUEST)
-        result_page = paginator.paginate_queryset(warehouse, request)
-        
-        serializer = WarehouseSerializer(result_page, many=True)
-        
-        data = {
-            'status': '200',
-            'message':' found successfully',
-            'pagination': {
-                'total_pages': paginator.page.paginator.num_pages,
-                'current_page': paginator.page.number,
-                'next_page': paginator.get_next_link(),
-                'previous_page': paginator.get_previous_link(),
-            },
-            'data': serializer.data,
-            
-        }
-        return Response(data, status=status.HTTP_200_OK)
+    queryset = Warehouse.objects.annotate(
+    compare_time=Coalesce(
+        Case(
+            When(created_at__gt=F('updated_at'), then=F('created_at')),
+            default=F('updated_at'),
+            output_field=CharField()
+        ),
+        Case(
+            When(created_at__gt=F('created_at'), then=F('updated_at')),
+            default=F('created_at'),
+            output_field=CharField()
+        )
+    )
+).order_by('-compare_time')
+    serializer_class = WarehouseSerializer
+    filter_backends = [filters.DjangoFilterBackend]
+    filterset_class = WarehouseFilter
+    paginator = WarehouseSetPagination()
+    
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        user = self.request.user
+        if user.is_authenticated:  # Check if user is authenticated
+            queryset = queryset.filter(create_by=user)
+        return queryset
     def post(self, request):
         try:
             serializer = WarehouseSerializer(data=request.data)
@@ -648,11 +653,6 @@ class WarehouseUpdate(APIView):
                              'message':'error'
                              },status=status.HTTP_400_BAD_REQUEST)
 
-class WarehouseFilter(generics.ListAPIView):
-    queryset = Warehouse.objects.all()
-    serializer_class = WarehouseSerializer
-    filter_backends = [filters.DjangoFilterBackend]
-    filterset_fields = ['name','type_warehouse', 'parent_warehouse']
 
 #######WatchList#######
 
