@@ -524,33 +524,29 @@ class  WarehouseFilter(filters.FilterSet):
         model = Warehouse
         fields = ['name', 'parent_warehouse', 'type_warehouse'] 
 
-class WarehouseList(generics.ListCreateAPIView):
-    # permission_classes = [permissions.IsAuthenticated]
-    queryset = Warehouse.objects.annotate(
-    compare_time=Coalesce(
-        Case(
-            When(created_at__gt=F('updated_at'), then=F('created_at')),
-            default=F('updated_at'),
-            output_field=CharField()
-        ),
-        Case(
-            When(created_at__gt=F('created_at'), then=F('updated_at')),
-            default=F('created_at'),
-            output_field=CharField()
-        )
-    )
-).order_by('-compare_time')
-    serializer_class = WarehouseSerializer
-    filter_backends = [filters.DjangoFilterBackend]
-    filterset_class = WarehouseFilter
-    paginator = WarehouseSetPagination()
-    
-    def get_queryset(self):
-        queryset = super().get_queryset()
-        user = self.request.user
-        if user.is_authenticated:  # Check if user is authenticated
-            queryset = queryset.filter(create_by=user)
-        return queryset
+class WarehouseList(APIView):
+    def get(self, request, *args, **kwargs):
+        paginator = WarehouseSetPagination()
+        type_warehouse = request.GET.get('type_warehouse')
+
+        if type_warehouse not in ['shelf', 'warehouse', 'boxcase']:
+            return Response({"error": "Invalid type_warehouse value"}, status=status.HTTP_400_BAD_REQUEST)
+
+        warehouses = Warehouse.objects.filter(type_warehouse=type_warehouse, is_delete=False)
+        paginated_queryset = paginator.paginate_queryset(warehouses, request)
+        serializer = WarehouseSerializer(paginated_queryset, many=True)
+
+        data = {
+            'status': '200',
+            'data': serializer.data,
+            'pagination': {
+                'total_pages': paginator.page.paginator.num_pages,
+                'current_page': paginator.page.number,
+                'next_page': paginator.get_next_link(),
+                'previous_page': paginator.get_previous_link(),
+            }
+        }
+        return Response(data, status=status.HTTP_200_OK)
     def post(self, request):
         try:
             serializer = WarehouseSerializer(data=request.data)

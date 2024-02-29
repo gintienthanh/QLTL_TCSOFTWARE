@@ -18,12 +18,10 @@ schema_view = get_schema_view(
     public=True,
     permission_classes=[AllowAny],
 )
-
-
 urlpatterns = [
     path('folder', FolderList.as_view()),
     path('folder/<int:pk>', FolderUpdate.as_view()),
-    
+    path('folder-filter/', FolderFilter.as_view()),
     
     path('warehouse', WarehouseList.as_view()),
     path('warehouse/<int:pk>', WarehouseUpdate.as_view()),
@@ -44,6 +42,7 @@ urlpatterns = [
     
     path('watchlist', WatchList.as_view()),
     path('watchlist/<int:pk>', WatchListUpdate.as_view()),
+    
     
     
     path('download/<int:pk>/', DownloadConvertAPIView.as_view(), name='download-convert'),
