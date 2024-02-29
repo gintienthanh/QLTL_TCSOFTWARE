@@ -2,9 +2,3 @@
 /env
 .idea
 QLTL/staticfiles
-files
-Docmanager/__pycache__
-Docmanager/migrations
-Auth/__pycache__
-Auth/migrations
-media

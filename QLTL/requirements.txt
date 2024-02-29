@@ -2,7 +2,6 @@ asgiref==3.7.2
 Deprecated==1.2.14
 Django==4.2.9
 django-allauth==0.60.1
-django-rest-swagger==2.2.0
 django-cors-headers==4.3.1
 django-filter==23.5
 django-oauth-toolkit==2.3.0
@@ -34,8 +33,4 @@ tzdata==2023.4
 urllib3==2.2.0
 wrapt==1.16.0
 gunicorn==21.2.0
-django-rest-swagger
 pandas
-django-filter==23.5
-drf-yasg
-setuptools
