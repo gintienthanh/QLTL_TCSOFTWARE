@@ -507,7 +507,6 @@ class ShareUpdate(generics.RetrieveUpdateDestroyAPIView):
 #############WAREHOUSE#########
 class  WarehouseFilter(filters.FilterSet):
     name = filters.CharFilter(field_name='name', lookup_expr='icontains')
-    
     class Meta:
         model = Warehouse
         fields = ['name', 'parent_warehouse', 'type_warehouse'] 
@@ -790,8 +789,9 @@ class DownloadConvertAPIView(generics.RetrieveAPIView):
         
         return response
 
-class FolderFilter1(django_filters.FilterSet):
+class FolderFilterSet(django_filters.FilterSet):
     parent_folder = django_filters.Filter(field_name='parent_folder', method='filter_parent_folder')
+    name = filters.CharFilter(field_name='name', lookup_expr='icontains')
     paginator = PortfolioSetPagination()
     class Meta:
         model = Folder
@@ -811,7 +811,7 @@ class FolderFilter(generics.ListAPIView):
     queryset = Folder.objects.all()
     serializer_class = FolderSerializer
     filter_backends = [filters.DjangoFilterBackend]
-    filterset_class = FolderFilter1
+    filterset_class = FolderFilterSet
                                                                                            
 class Multi_portfolio_DownloadConvertAPIView(APIView):
     def get(self, request, ids, *args, **kwargs):
