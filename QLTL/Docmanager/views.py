@@ -1,5 +1,6 @@
 import datetime
 import os
+import shutil
 from django.conf import settings
 from django.shortcuts import render
 from Docmanager.permissions import CheckOwnerFactory, CheckSharedGroupdFactory
@@ -8,7 +9,7 @@ from .models import*
 from rest_framework import authentication, permissions, status, generics
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from django.http import HttpResponse
+from django.http import FileResponse, HttpResponse
 from django_filters import rest_framework as filters
 from rest_framework.pagination import PageNumberPagination
 import mimetypes
@@ -430,11 +431,33 @@ class FolderUpdate(APIView):
     
 
 
+
+
+class ShareFilter(filters.FilterSet):
+    class Meta:
+        model = Share
+        fields = ['owner','create_by','document','folder']
+   
 class ShareList(generics.ListCreateAPIView):
     queryset = Share.objects.all()
     serializer_class = ShareSerializer
     filter_backends = (filters.DjangoFilterBackend,)
-    filterset_fields = ('owner','create_by','document','folder')
+
+    # filterset_fields = ('owner','create_by','document','folder')
+    filterset_class = ShareFilter
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        user = self.request.user
+        if user.is_authenticated:  # Check if user is authenticated
+            queryset = queryset.filter(create_by=user)
+        return queryset
+    def get_permissions(self):
+        if self.request.method == 'POST':
+            return [permissions.IsAuthenticated()]
+        elif self.request.method == 'GET':
+            return [permissions.IsAuthenticated()]
+        return super().get_permissions()
+
     # def get_permissions(self):
     #     if self.request.method == 'POST':
     #         return [permissions.IsAuthenticated()]
@@ -462,32 +485,25 @@ class ShareList(generics.ListCreateAPIView):
         }
         return Response(data, status=status.HTTP_200_OK)
 
+
     def post(self, request):
         try:
             serializer = ShareSerializer(data=request.data)
             if serializer.is_valid():
-                try:
-                    share = Share.objects.get(
-                        folder=serializer.validated_data.get('folder'),
-                        document=serializer.validated_data.get('document'),
-                        create_by=request.user,
-                        owner=serializer.validated_data.get('owner'),
-                        type=serializer.validated_data.get('type')
+                share = Share.objects.get(
+                    folder=serializer.validated_data.get('folder'),
+                    document=serializer.validated_data.get('document'),
+                    create_by=request.user,
+                    owner=serializer.validated_data.get('owner'),
+                    type=serializer.validated_data.get('type')
                     )
-                    share.create_by = request.user
-                    share.save()
-                    serializer = ShareSerializer(share)
-                    return Response({'status':201,
-                             'message':'created successfully',
-                             'data':serializer.data},status=status.HTTP_201_CREATED)
-                except Share.DoesNotExist:
-                    serializer.save(create_by=request.user)
-                    return Response({'status':201,
-                             'message':'created successfully',
-                             'data':serializer.data},status=status.HTTP_201_CREATED)
-            return Response({'status':400,
-                             'message':'created fail'
-                            },status=status.HTTP_400_BAD_REQUEST)
+                serializer = ShareSerializer(share)
+                return Response(serializer.data, status=status.HTTP_201_CREATED)
+                
+                
+        except Share.DoesNotExist:
+            serializer.save(create_by=request.user)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
         except Exception as e:
             return Response({'status':400,'error':str(e)}, status=status.HTTP_400_BAD_REQUEST)
         
@@ -496,15 +512,26 @@ class ShareUpdate(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [CheckSharedGroupdFactory(Share(),'edit') | CheckOwnerFactory(Share())]
     queryset = Share.objects.all()
     serializer_class = ShareSerializer
+
     
+    def update(self, request, *args, **kwargs):
+        instance = self.get_object()
+        instance.updated_at = datetime.now()
+        instance.editor = request.user
+        serializer = self.get_serializer(instance, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+        return Response(serializer.data)
+
     def destroy(self, request, *args, **kwargs):
         instance = self.get_object()
-        instance.is_delete = True
-        instance.save()
+        instance.is_delete=True
+        instance.delete_at=datetime.now() 
+        instance.delete_by=request.user
+        self.perform_update(instance)
         return Response({'status':200,'message':'destroyed'},status=status.HTTP_204_NO_CONTENT)
-    
-    
-#############WAREHOUSE#########
+       
+
 class  WarehouseFilter(filters.FilterSet):
     name = filters.CharFilter(field_name='name', lookup_expr='icontains')
     class Meta:
@@ -705,19 +732,61 @@ class WatchListUpdate(APIView):
 class DownloadFile(APIView):
     lookup_field = 'folder_id'
     def get(self, request, folder_id,format=None):
+        rootPath="download/"
+        folder=None
+        zip_file_name=None
         try:
-            file = Folder.objects.get(pk=folder_id)
-            file_path = file.files.path
-            content_type, encoding = mimetypes.guess_type(file_path)
-            content_type = content_type or 'application/octet-stream'
-            response = HttpResponse(open(file_path, 'rb'), content_type=content_type)
-            # Tạo response từ tệp tin
-            response['Content-Disposition'] = f'attachment; filename="{file.files.name}"'
-            print(file_path)
-            # shutil.copy2(file_path, save_path)
-            return response
+            folder = file = Folder.objects.get(pk=folder_id)
+            if file.type=="File":
+                file_path = file.files.path
+                content_type, encoding = mimetypes.guess_type(file_path)
+                content_type = content_type or 'application/octet-stream'
+                response = HttpResponse(open(file_path, 'rb'), content_type=content_type)
+                # Tạo response từ tệp tin
+                response['Content-Disposition'] = f'attachment; filename="{file.files.name}"'
+                print(file_path)
+                # shutil.copy2(file_path, save_path)
+                return response
+            # downloadfolder
+            folderList = Folder.objects.filter(path__startswith=folder.path)
+            zip_file_name = f"{folder.name}.zip"
+            # create folder
+            for item in folderList:
+                if item.type=='Folder': 
+                    os.makedirs(os.path.join(rootPath,item.path), exist_ok=True)
+            # create file
+            for item in folderList:
+                if item.type=='File': 
+                    file_path = item.files.path
+                    with open(file_path, 'rb') as source_file:
+                        file_content = source_file.read()
+                    with open(os.path.join(rootPath,item.path), 'wb') as new_file:
+                        new_file.write(file_content)
+            # create zip 
+            with zipfile.ZipFile(os.path.join(rootPath, zip_file_name), 'w', zipfile.ZIP_DEFLATED) as zipf:
+                for root, dirs, files in os.walk(os.path.join(rootPath,folder.path)):
+                    print(root)
+                    for file in files:
+                        abs_path = os.path.join(root, file)
+                        rel_path = os.path.relpath(abs_path, os.path.join(rootPath,folder.path))
+                        arcname = os.path.join(folder.name, rel_path)
+                        zipf.write(abs_path, arcname=arcname)
+                    for dir in dirs:
+                        abs_path = os.path.join(root, dir)
+                        rel_path = os.path.relpath(abs_path, os.path.join(rootPath,folder.path))
+                        arcname = os.path.join(folder.name, rel_path)
+                        zipf.write(abs_path, arcname=arcname)
+            # return zip
+            with open(os.path.join(rootPath,zip_file_name), 'rb') as zip_file:
+                response = HttpResponse(zip_file.read(), content_type='application/zip')
+                response['Content-Disposition'] = f'attachment; filename="{zip_file_name}"'
+                return response
         except Folder.DoesNotExist:
             raise status.HTTP_404_NOT_FOUND
+        finally:
+            shutil.rmtree(os.path.join(rootPath, folder.path))
+            os.remove(os.path.join(rootPath, zip_file_name))
+        
 
 class DownloadConvertAPIView(generics.RetrieveAPIView):
     permission_classes = [permissions.IsAuthenticated]
