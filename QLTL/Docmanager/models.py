@@ -8,8 +8,8 @@ class Base(models.Model):
     id = models.AutoField(primary_key=True)
     is_delete = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=False, null=True, blank=True)
-    delete_at = models.DateTimeField(auto_now=False, null=True, blank=True)
+    updated_at = models.DateTimeField(auto_now=True, null=True, blank=True)
+    delete_at = models.DateTimeField(auto_now=False,null=True, blank=True)
     owner = models.ForeignKey(User, null=True, blank=True, on_delete=models.CASCADE)
     create_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.CASCADE, related_name='%(class)s_created')
     delete_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.CASCADE, related_name='%(class)s_deleted')
@@ -104,6 +104,7 @@ class Document(Base):
     physical_status = models.CharField(max_length=200,null=True, blank=True)
     note = models.CharField(max_length=1000,null=True, blank=True)
     files = models.FileField(upload_to='files/', null=True, blank=True)
+    type = models.CharField(max_length=100, choices=[(tag.value, tag.name) for tag in Choices_type], default=Choices_type.Folder.value)
     add_info = models.JSONField(null=True, blank=True)
     
     def __str__(self) :
