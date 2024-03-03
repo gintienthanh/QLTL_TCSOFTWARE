@@ -78,7 +78,7 @@ class PortfolioFilter(filters.FilterSet):
     class Meta:
         model = Portfolio
         fields = ['title', 'usage_policy']
-class PortfolioList(generics.ListCreateAPIView):
+class PortfolioList(generics.ListAPIView):
     # permission_classes = [permissions.IsAuthenticated]
     queryset = Portfolio.objects.annotate(
     compare_time=Coalesce(
@@ -187,7 +187,7 @@ class DocumentList(generics.ListCreateAPIView):
             output_field=CharField()
         )
     )
-).order_by('-compare_time')
+    ).order_by('-compare_time')
     serializer_class = DocumentSerializer
     filter_backends = [filters.DjangoFilterBackend]
     filterset_class = DocumentFilter
@@ -222,32 +222,47 @@ class DocumentUpdate(generics.RetrieveUpdateDestroyAPIView):
         instance.is_delete = True
         instance.save()
         return Response({'status':200,'message':'destroyed'},status=status.HTTP_204_NO_CONTENT)
- 
+
+class FolderFilter(filters.FilterSet):
+    name = filters.CharFilter(field_name='name', lookup_expr='icontains')
+    
+    
+    class Meta:
+        model = Folder
+        fields = ['name', 'parent_folder']
 
 
 
 
-class FolderList(APIView):
-     # permission_classes = [IsAuthenticated]
-    def get(self, request):
-        try:
-            paginator=FolderSetPagination()
-            name_query = request.GET.get('name', None)  
-            parent_folder = request.GET.get('parent_folder')
-            folder = Folder.objects.filter(is_delete=False)
-            if not parent_folder:
-                folder = Folder.objects.filter(parent_folder=None)
-            else:
-                folder = Folder.objects.filter(parent_folder=parent_folder)
-            if name_query: 
-                folder = folder.filter(name__icontains=name_query)
-            
-            result_page = paginator.paginate_queryset(folder, request)
-            serializer = FolderSerializer(result_page, many=True)
-            return paginator.get_paginated_response(serializer.data)
-            
-        except:
-            return Response({'status':400},status=status.HTTP_400_BAD_REQUEST)
+
+class FolderList(generics.ListAPIView):
+    permission_classes = [permissions.IsAuthenticated]
+    queryset = Folder.objects.annotate(
+    compare_time=Coalesce(
+        Case(
+            When(created_at__gt=F('updated_at'), then=F('created_at')),
+            default=F('updated_at'),
+            output_field=CharField()
+        ),
+        Case(
+            When(created_at__gt=F('created_at'), then=F('updated_at')),
+            default=F('created_at'),
+            output_field=CharField()
+        )
+    )
+    ).order_by('-compare_time')
+    serializer_class = FolderSerializer  
+    filter_backends = [filters.DjangoFilterBackend]
+    filterset_class = FolderFilter
+    paginator = FolderSetPagination()
+    
+    def get_queryset(self):
+        
+        queryset = super().get_queryset()
+        user = self.request.user
+        if user.is_authenticated:  # Check if user is authenticated
+            queryset = queryset.filter(create_by=user, is_delete = False)
+        return queryset 
     def extract_and_convert_to_integer(self,name,data):
         start_index = name.rfind('(')
         end_index = name.rfind(')')
@@ -269,15 +284,19 @@ class FolderList(APIView):
             except ValueError:
                 return name
     def post(self, request):
-        serializer = FolderSerializer(data=request.data)
+        serializer = FolderSerializer(data=request.data,partial=True)
         files = request.FILES.getlist('files')
-        if files:
-            name = request.POST.get('name')
+        name = request.POST.get('name')
+        if name:
             name = name.rstrip()
-            parent_folder_id = request.POST.get('parent_folder')
         else:
             name = request.data.get('name')
-            name = name.rstrip()
+            if name:
+                name = name.rstrip()
+            else:
+                name = None
+        parent_folder_id = request.POST.get('parent_folder')
+        if not parent_folder_id:
             parent_folder_id = request.data.get('parent_folder')
         if serializer.is_valid():
             if parent_folder_id:
@@ -291,18 +310,13 @@ class FolderList(APIView):
             serializer_db = FolderSerializer(queryset,many=True)
             data = serializer_db.data
             if files:
-                files_list = []
                 name_list = []
-                file_name_list = []
                 for i in data:
                     name_list.append(i['name'])
                 for file in files:
                     name = file.name
-                    for i in name_list:
-                        file_name_list.append(i)
                     start_index = name.rfind('.')
                     name_default = name[:start_index] + "(1)" + name[start_index:]
-                    files_list.append(file)
                     if name not in name_list: 
                         serializer.save(type='File', files=file,file_size = file.size, path = path + name, name = name,parent_folder=parent_folder)
                     elif name_default not in name_list and name in name_list:
@@ -312,16 +326,16 @@ class FolderList(APIView):
                         serializer.save(type='File', files=file,file_size = file.size, path = path + newname, name = newname,parent_folder=parent_folder)
             else:
                 name_list = []
+                name_default = name + " (1)"
                 for i in data:
                     name_list.append(i['name'])
                 if name not in name_list: 
                     serializer.save(type='Folder',file_size = 0,path = path + name,name = name,parent_folder=parent_folder)
-                elif name + " (1)" not in name_list and name in name_list:
-                    name = name + " (1)"
-                    serializer.save(type='Folder',file_size = 0,path = path + name,name = name,parent_folder=parent_folder)
-                elif name + " (1)" in name_list and name in name_list:
-                    name = name + " (1)"
-                    newname = self.extract_and_convert_to_integer(name,data)
+                elif name_default not in name_list and name in name_list:
+                    serializer.save(type='Folder',file_size = 0,path = path + name,name = name_default,parent_folder=parent_folder)
+                elif name_default in name_list and name in name_list:
+                    name_default
+                    newname = self.extract_and_convert_to_integer(name_default,data)
                     serializer.save(type='Folder',file_size = 0,path = path + newname,name = newname,parent_folder=parent_folder)
             response = {
                 "status":200,
@@ -331,6 +345,7 @@ class FolderList(APIView):
             }
             return Response(response, status=status.HTTP_201_CREATED)
         return Response({'status':400}, status=status.HTTP_400_BAD_REQUEST)
+
 
 # @permission_classes([CheckSharedGroupdFactory(Folder(),'Chỉnh sửa') | CheckOwnerFactory(Folder())])
 class FolderUpdate(APIView):
@@ -346,17 +361,21 @@ class FolderUpdate(APIView):
         return Response({'status':302,
                              'message':'found successfully',
                              'data':serializer.data},status=status.HTTP_302_FOUND)
-
-
-
     def patch(self, request, pk):
         folder = self.get_object(pk)
-        serializer = FolderSerializer(folder, data=request.data)
-        files = request.FILES.getlist('files')
+        serializer = FolderSerializer(folder, data=request.data,partial=True)
         name = request.POST.get('name')
-        name = name.rstrip()
+        if name:
+            name = name.rstrip()
+        else:
+            name = request.data.get('name')
+            if name:
+                name = name.rstrip()
+            else:
+                name = folder.name
         parent_folder_id = request.POST.get('parent_folder')
-        parent_folder = Folder.objects.get(id=parent_folder_id)
+        if not parent_folder_id:
+            parent_folder_id = request.data.get('parent_folder')
         if serializer.is_valid():
             if parent_folder_id:
                 parent_folder = Folder.objects.get(id=parent_folder_id)
@@ -368,39 +387,17 @@ class FolderUpdate(APIView):
                 queryset = Folder.objects.filter(parent_folder = None)
             serializer_db = FolderSerializer(queryset,many=True)
             data = serializer_db.data
-            if files:
-                files_list = []
-                name_list = []
-                file_name_list = []
-                for i in data:
-                    name_list.append(i['name'])
-                for file in files:
-                    name = file.name
-                    for i in name_list:
-                        file_name_list.append(i)
-                    start_index = name.rfind('.')
-                    name_default = name[:start_index] + "(1)" + name[start_index:]
-                    files_list.append(file)
-                    if name not in name_list: 
-                        serializer.save(type='File', files=file,file_size = file.size, path = path + name, name = name,parent_folder=parent_folder)
-                    elif name_default not in name_list and name in name_list:
-                        serializer.save(type='File', files=file,file_size = file.size, path = path + name_default, name = name_default,parent_folder=parent_folder)
-                    elif name_default in name_list and name in name_list:
-                        newname = self.extract_and_convert_to_integer(name_default,data)
-                        serializer.save(type='File', files=file,file_size = file.size, path = path + newname, name = newname,parent_folder=parent_folder)
-            else:
-                name_list = []
-                for i in data:
-                    name_list.append(i['name'])
-                if name not in name_list: 
-                    serializer.save(type='Folder',file_size = 0,path = path + name,name = name)
-                elif name + " (1)" not in name_list and name in name_list:
-                    name = name + " (1)"
-                    serializer.save(type='Folder',file_size = 0,path = path + name,name = name)
-                elif name + " (1)" in name_list and name in name_list:
-                    name = name + " (1)"
-                    newname = self.extract_and_convert_to_integer(name,data)
-                    serializer.save(type='Folder',file_size = 0,path = path + newname,name = newname)
+            name_list = []
+            for i in data:
+                name_list.append(i['name'])
+            name_default = name + " (1)"
+            if name not in name_list: 
+                serializer.save(id = pk,path = path + name , name = name,parent_folder=parent_folder)
+            elif name_default not in name_list and name in name_list:
+                serializer.save(id = pk,path = path + name_default, name = name_default,parent_folder=parent_folder)
+            elif name_default in name_list and name in name_list:
+                newname = self.extract_and_convert_to_integer(name_default,data)
+                serializer.save(id = pk,path = path + newname, name = newname,parent_folder=parent_folder)
             response = {
                 "status":200,
                 "data": {
@@ -409,26 +406,6 @@ class FolderUpdate(APIView):
             }
             return Response(response, status=status.HTTP_200_OK)
         return Response({'status':400}, status=status.HTTP_400_BAD_REQUEST)
-
-
-    def delete(self, request, pk):
-        folder = self.get_object(pk)
-        folder.is_delete = True
-        serializer = FolderSerializer(folder, 
-            data =
-            {
-                'is_delete': True,
-            }, partial=True)
-        if serializer.is_valid():
-            queryset = Folder.objects.filter(parent_folder = pk)
-            serializer_db = FolderSerializer(queryset,many=True)
-            data = serializer_db.data
-            for i in data:
-                self.delete(request,i['id'])
-            folder.save()
-            return Response({'status':200},status=status.HTTP_200_OK)
-        return Response({'status':400}, status=status.HTTP_400_BAD_REQUEST)
-    
 
 
 
@@ -441,15 +418,15 @@ class ShareFilter(filters.FilterSet):
 class ShareList(generics.ListCreateAPIView):
     queryset = Share.objects.all()
     serializer_class = ShareSerializer
-    filter_backends = (filters.DjangoFilterBackend,)
-
+    filter_backends = (filters.DjangoFilterBackend)
     # filterset_fields = ('owner','create_by','document','folder')
     filterset_class = ShareFilter
+    paginator = ShareSetPagination()
     def get_queryset(self):
         queryset = super().get_queryset()
         user = self.request.user
         if user.is_authenticated:  # Check if user is authenticated
-            queryset = queryset.filter(create_by=user)
+            queryset = queryset.filter(create_by=user, is_delete=False)
         return queryset
     def get_permissions(self):
         if self.request.method == 'POST':
@@ -458,32 +435,6 @@ class ShareList(generics.ListCreateAPIView):
             return [permissions.IsAuthenticated()]
         return super().get_permissions()
 
-    # def get_permissions(self):
-    #     if self.request.method == 'POST':
-    #         return [permissions.IsAuthenticated()]
-    #     elif self.request.method == 'GET':
-    #         return [permissions.IsAuthenticated()]
-    #     return super().get_permissions()
-        
-    def get(self, request):
-        paginator = ShareSetPagination()
-        share = Share.objects.filter(is_delete=False)
-        result_page = paginator.paginate_queryset(share, request)
-        serializer = PortfolioSerializer(result_page, many=True)
-        data = {
-            'status': '200',
-            'message':'successfully',
-            'pagination': {
-                'count':paginator.page.paginator.count,
-                'total_pages': paginator.page.paginator.num_pages,
-                'current_page': paginator.page.number,
-                'next_page': paginator.get_next_link(),
-                'previous_page': paginator.get_previous_link(),
-            },
-            'data': serializer.data,
-            
-        }
-        return Response(data, status=status.HTTP_200_OK)
 
 
     def post(self, request):
@@ -648,7 +599,6 @@ class WarehouseUpdate(APIView):
             warehouse.is_delete = True
             warehouse.delete_at = timezone.now()  # Cập nhật delete_at với ngày và giờ hiện tại
             warehouse.save()
-
             return Response({'status':200,
                              'message':'delete successfully'},status=status.HTTP_200_OK)
         return Response({'status':400,
@@ -858,29 +808,6 @@ class DownloadConvertAPIView(generics.RetrieveAPIView):
         
         return response
 
-class FolderFilterSet(django_filters.FilterSet):
-    parent_folder = django_filters.Filter(field_name='parent_folder', method='filter_parent_folder')
-    name = filters.CharFilter(field_name='name', lookup_expr='icontains')
-    paginator = PortfolioSetPagination()
-    class Meta:
-        model = Folder
-        fields = ['name', 'file_size', 'parent_folder']
-
-    def filter_parent_folder(self, queryset, name, value):
-        if value=='null':
-            return queryset.filter(parent_folder__isnull=True)
-        elif value.lower() == 'false':
-            return queryset.exclude(parent_folder__isnull=True)
-        elif value.isdigit():
-            return queryset.filter(parent_folder=int(value))
-        else:
-            return queryset.none()
-
-class FolderFilter(generics.ListAPIView):
-    queryset = Folder.objects.all()
-    serializer_class = FolderSerializer
-    filter_backends = [filters.DjangoFilterBackend]
-    filterset_class = FolderFilterSet
                                                                                            
 class Multi_portfolio_DownloadConvertAPIView(APIView):
     def get(self, request, ids, *args, **kwargs):
