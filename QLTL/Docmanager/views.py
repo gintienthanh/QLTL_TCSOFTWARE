@@ -89,27 +89,27 @@ class CustomPagination(PageNumberPagination):
 #     page_size_query_param = 'page_size'
 #     max_page_size = 1000  
     
-class FolderSetPagination(CustomPagination):
-    page_size = 12
-    page_size_query_param = 'page_size'
-    max_page_size = 1000   
-class WarehouseSetPagination(CustomPagination):
-    page_size = 1000
-    page_size_query_param = 'page_size'
-    max_page_size = 1000  
-class ShareSetPagination(CustomPagination):
-    page_size = 12
-    page_size_query_param = 'page_size'
-    max_page_size = 1000  
+# class FolderSetPagination(CustomPagination):
+#     page_size = 12
+#     page_size_query_param = 'page_size'
+#     max_page_size = 1000   
+# class WarehouseSetPagination(CustomPagination):
+#     page_size = 1000
+#     page_size_query_param = 'page_size'
+#     max_page_size = 1000  
+# class ShareSetPagination(CustomPagination):
+#     page_size = 12
+#     page_size_query_param = 'page_size'
+#     max_page_size = 1000  
 
 class WatchlistSetPagination(CustomPagination):
     page_size = 12
     page_size_query_param = 'page_size'
     max_page_size = 1000
-class DocumentSetPagination(CustomPagination):
-    page_size = 12
-    page_size_query_param = 'page_size'
-    max_page_size = 1000
+# class DocumentSetPagination(CustomPagination):
+#     page_size = 12
+#     page_size_query_param = 'page_size'
+#     max_page_size = 1000
 
 #######PORTFOLIO######
 
@@ -163,14 +163,14 @@ class PortfolioListCreate(generics.ListAPIView):
     
     
 class PortfolioUpdateDelete(APIView):
-    # permission_classes = [permissions.IsAuthenticated]
-    def get_object(self, pk):
+    permission_classes = [permissions.IsAuthenticated]
+    def get_portfolio(self, pk):
         try:
             return Portfolio.objects.get(pk=pk)
         except Portfolio.DoesNotExist:
             raise status.HTTP_404_NOT_FOUND
     def get(self, request, pk):
-        portfolio = self.get_object(pk)
+        portfolio = self.get_portfolio(pk)
         serializer = PortfolioSerializer(portfolio)
         return Response({'status':201,
                         'message':'found',
@@ -178,11 +178,11 @@ class PortfolioUpdateDelete(APIView):
 
 
     def patch(self, request, pk):
-        portfolio = self.get_object(pk)
+        portfolio = self.get_portfolio(pk)
         serializer = PortfolioSerializer(portfolio, data=request.data, partial=True)
         if serializer.is_valid():
             serializer.validated_data['updated_at'] = timezone.now()
-            serializer.validated_data['editor'] = timezone.now()
+            serializer.validated_data['editor'] = request.user
             serializer.save()
             return Response({'status':201,
                              'message':'created successfully',
@@ -193,8 +193,16 @@ class PortfolioUpdateDelete(APIView):
     def delete(self, request, pk):
         instance = Portfolio.objects.get(pk=pk)
         instance.soft_delete(request)
+        document = Document.objects.get(portfolio=pk)
+        document.soft_delete(request)
+        
+        serializers = PortfolioSerializer(instance)
+        docserializers = DocumentSerializer(document)
+        
         return Response({'status':200,
-                             'message':'delete successfully'
+                             'message':'delete successfully',
+                             'dataportfolio': serializers.data,
+                             'datadocment': docserializers.data
                             })
         
 class PortfolioBulkDelete (APIView):
@@ -271,7 +279,7 @@ class DocumentListCreate(generics.ListCreateAPIView):
     serializer_class = DocumentSerializer
     filter_backends = [filters.DjangoFilterBackend]
     filterset_class = DocumentFilter
-    paginator = DocumentSetPagination()
+    paginator = CustomPagination()
     
     def get_queryset(self):
         
@@ -292,16 +300,43 @@ class DocumentListCreate(generics.ListCreateAPIView):
                              status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-class DocumentUpdateDelete(generics.RetrieveUpdateDestroyAPIView):
-    #permission_classes = [CheckSharedGroupdFactory(Document(),'edit') | CheckOwnerFactory(Document())]
-    queryset = Document.objects.all()
-    serializer_class = DocumentSerializer
-    
-    def destroy(self, request, *args, **kwargs):
-        instance = self.get_object()
-        instance.is_delete = True
-        instance.save()
-        return Response({'status':200,'message':'destroyed'},status=status.HTTP_204_NO_CONTENT)
+class DocumentUpdateDelete(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+    def get_document(self, pk):
+        try:
+            return Document.objects.get(pk=pk)
+        except  Document.DoesNotExist:
+            raise status.HTTP_404_NOT_FOUND
+    def get(self, request, pk):
+        document = self.get_document(pk)
+        serializer = DocumentSerializer(document)
+        return Response({'status':201,
+                        'message':'found',
+                        'data':serializer.data},status=status.HTTP_302_FOUND)
+
+
+    def patch(self, request, pk):
+        document = self.get_document(pk)
+        serializer = DocumentSerializer(document, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.validated_data['updated_at'] = timezone.now()
+            serializer.validated_data['editor'] = request.user
+            serializer.save()
+            return Response({'status':201,
+                             'message':'created successfully',
+                             'data':serializer.data},status=status.HTTP_200_OK)
+        return Response({'status':400,
+                        'message':serializer.errors},status=status.HTTP_400_BAD_REQUEST)
+
+    def delete(self, request, pk):
+        instance = Document.objects.get(pk=pk)
+        instance.soft_delete(request)
+        return Response({'status':200,
+                             'message':'delete successfully'
+                            })
+        
+        
+########FOLDER#######
 
 class FolderFilter(filters.FilterSet):
     name = filters.CharFilter(field_name='name', lookup_expr='icontains')
@@ -334,7 +369,7 @@ class FolderListCreate(generics.ListAPIView):
     serializer_class = FolderSerializer  
     filter_backends = [filters.DjangoFilterBackend]
     filterset_class = FolderFilter
-    paginator = FolderSetPagination()
+    paginator = CustomPagination()
     
     def get_queryset(self):
         
@@ -426,22 +461,22 @@ class FolderListCreate(generics.ListAPIView):
         return Response({'status':400}, status=status.HTTP_400_BAD_REQUEST)
 
 
-# @permission_classes([CheckSharedGroupdFactory(Folder(),'Chỉnh sửa') | CheckOwnerFactory(Folder())])
+
 class FolderUpdateDelete(APIView):
-    # permission_classes = [permissions.IsAuthenticated]
-    def get_object(self, pk):
+    permission_classes = [permissions.IsAuthenticated]
+    def get_folder(self, pk):
         try:
             return Folder.objects.get(pk=pk)
         except Folder.DoesNotExist:
             raise status.HTTP_404_NOT_FOUND
     def get(self, request, pk):
-        folder = self.get_object(pk)
+        folder = self.get_folder(pk)
         serializer = FolderSerializer(folder)
         return Response({'status':302,
                              'message':'found successfully',
                              'data':serializer.data},status=status.HTTP_302_FOUND)
     def patch(self, request, pk):
-        folder = self.get_object(pk)
+        folder = self.get_folder(pk)
         serializer = FolderSerializer(folder, data=request.data,partial=True)
         name = request.POST.get('name')
         user = request.user
@@ -530,7 +565,7 @@ class APIShareListCreate(generics.ListCreateAPIView):
     filter_backends = [filters.DjangoFilterBackend]
 
     filterset_class = ShareFilter
-    paginator = ShareSetPagination()
+    paginator = CustomPagination()
     def get_permissions(self):
         if self.request.method == 'POST':
             return [permissions.IsAuthenticated()]
@@ -586,6 +621,8 @@ class ShareUpdateDestroy(generics.RetrieveUpdateDestroyAPIView):
         self.perform_update(instance)
         return Response({'status':200,'message':'destroyed'},status=status.HTTP_204_NO_CONTENT)  
 
+######WAREHOUSE######
+
 
 
 class  WarehouseFilter(filters.FilterSet):
@@ -613,7 +650,7 @@ class WarehouseListCreate(generics.ListAPIView):
     serializer_class = WarehouseSerializer 
     filter_backends = [filters.DjangoFilterBackend]
     filterset_class = WarehouseFilter
-    paginator = WarehouseSetPagination()
+    paginator = CustomPagination()
     
     def get_queryset(self):
         
@@ -630,8 +667,8 @@ class WarehouseListCreate(generics.ListAPIView):
             if serializer.is_valid():
                  
                 parent_warehouse =Warehouse.objects.get(id=id)    
-                serializer.save(parent_warehouse=parent_warehouse)
-                
+                serializer.save(parent_warehouse=parent_warehouse, create_by=request.user)
+    
                 return Response({'status':201,
                                 'message':'created successfully',
                                 'data':serializer.data},status=status.HTTP_201_CREATED)
@@ -650,7 +687,12 @@ class WarehouseListCreate(generics.ListAPIView):
             
             
             
-######WAREHOUSE######
+######WAREHOUSE#######
+
+
+
+
+
 
             
             
@@ -658,13 +700,13 @@ class WarehouseListCreate(generics.ListAPIView):
 
 class WarehouseUpdateDelete(APIView):
     # permission_classes = [permissions.IsAuthenticated]
-    def get_object(self, pk):
+    def get_warehouse(self, pk):
         try:
             return Warehouse.objects.get(pk=pk)
         except Warehouse.DoesNotExist:
             raise status.HTTP_404_NOT_FOUND
     def get(self, request, pk):
-        warehouse = self.get_object(pk)
+        warehouse = self.get_warehouse(pk)
         serializer = WarehouseSerializer(warehouse)
         return Response({'status':200,
                              'message':'found successfully',
@@ -672,7 +714,7 @@ class WarehouseUpdateDelete(APIView):
 
 
     def patch(self, request, pk):
-        warehouse = self.get_object(pk)
+        warehouse = self.get_warehouse(pk)
     
         # Copy request data to remove 'type_warehouse' field
         modified_data = request.data.copy()
