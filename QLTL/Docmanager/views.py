@@ -116,6 +116,10 @@ class PortfolioListCreate(generics.ListAPIView):
                              'data':serializer.data}, 
                              status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+    
+    
+    
 class PortfolioUpdateDelete(APIView):
     # permission_classes = [permissions.IsAuthenticated]
     def get_object(self, pk):
@@ -150,6 +154,51 @@ class PortfolioUpdateDelete(APIView):
         return Response({'status':200,
                              'message':'delete successfully'
                             })
+        
+class PortfolioBulkDelete (APIView):
+    def delete(self, request, *args, **kwargs):
+        portfolio_ids = request.data.get('portfolio_ids', [])
+        success_count = 0
+        
+        for portfolio_id in portfolio_ids:
+            try:
+                portfolio = Portfolio.objects.get(id=int(portfolio_id))
+                serializer = PortfolioSerializer(portfolio, 
+                    data={
+                        'is_delete': True,
+                    }, partial=True)
+                if serializer.is_valid():
+                    serializer.validated_data['delete_at'] = datetime.datetime.now()
+                    serializer.save()
+
+                    documents = Document.objects.filter(portfolio=portfolio)
+                    for document in documents:
+                        document.is_delete = True
+                        document.delete_at = datetime.datetime.now()
+                        document.save()
+
+                    success_count += 1
+
+            except Portfolio.DoesNotExist:
+                pass
+
+        if success_count > 0:
+            data = {
+                'status': 'success',
+                'message': f'Deleted {success_count} portfolios and associated documents successfully'
+            }
+            return Response(data, status=status.HTTP_200_OK)
+        else:
+            data = {
+                'status': 'error',
+                'message': 'Failed to delete portfolios and associated documents'
+            }
+            return Response(data, status=status.HTTP_400_BAD_REQUEST)        
+        
+        
+        
+        
+        
 #######DOCUMENT######
 class DocumentFilter(filters.FilterSet):
     name = filters.CharFilter(field_name='name', lookup_expr='icontains')
@@ -528,6 +577,13 @@ class WarehouseListCreate(generics.ListAPIView):
     filterset_class = WarehouseFilter
     paginator = WarehouseSetPagination()
     
+    def get_queryset(self):
+        
+        queryset = super().get_queryset()
+        user = self.request.user
+        if user.is_authenticated:  # Check if user is authenticated
+            queryset = queryset.filter(create_by=user, is_delete = False)
+        return queryset 
         
     def post(self, request):
         try:
