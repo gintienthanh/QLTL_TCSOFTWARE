@@ -546,7 +546,7 @@ class WarehouseList(APIView):
         if type_warehouse not in ['shelf', 'warehouse', 'boxcase']:
             return Response({"error": "Invalid type_warehouse value"}, status=status.HTTP_400_BAD_REQUEST)
 
-        warehouses = Warehouse.objects.filter(type_warehouse=type_warehouse, is_delete=False)
+        warehouses = Warehouse.objects.filter(type_warehouse=type_warehouse, is_delete=False).prefetch_related('parent_warehouse')
         result_page = paginator.paginate_queryset(warehouses, request)
     
         
@@ -623,7 +623,7 @@ class WarehouseUpdate(APIView):
             warehouse.delete_at = timezone.now()  # Cập nhật delete_at với ngày và giờ hiện tại
             warehouse.save()
             
-            shelf_boxcases = Warehouse.objects.filter(parent_warehouse=warehouse)
+            shelf_boxcases = Warehouse.objects.filter(parent_warehouse=warehouse).prefetch_related('parent_warehouse')
             shelf_boxcases.update(is_delete=True, delete_at=timezone.now())  # Cập nhật delete_at cho các boxcase
             
         elif warehouse.type_warehouse == Choices_type_warehouse.BoxCase.value:

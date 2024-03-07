@@ -58,6 +58,7 @@ class SendPasswordResetEmailSerializer(serializers.Serializer):
         email = attrs.get('email')
         if User.objects.filter(email = email).exists():
             user = User.objects.get(email=email)
+            if user.is_active is False: raise serializers.ValidationError('User not active')
             uid = urlsafe_base64_encode(force_bytes(user.id))
             token = PasswordResetTokenGenerator().make_token(user)
             api_user_url = config('API_USER_URL')
