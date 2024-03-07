@@ -699,7 +699,7 @@ class WarehouseUpdateDelete(APIView):
             warehouse.delete_at = timezone.now()  # Cập nhật delete_at với ngày và giờ hiện tại
             warehouse.save()
             
-            shelf_boxcases = Warehouse.objects.filter(parent_warehouse=warehouse)
+            shelf_boxcases = Warehouse.objects.filter(parent_warehouse=warehouse).prefetch_related('parent_warehouse')
             shelf_boxcases.update(is_delete=True, delete_at=timezone.now())  # Cập nhật delete_at cho các boxcase
             
         elif warehouse.type_warehouse == ChoicesTypeWarehouse.BoxCase.value:
