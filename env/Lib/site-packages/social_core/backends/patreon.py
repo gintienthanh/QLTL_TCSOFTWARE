@@ -2,7 +2,6 @@
 Patreon OAuth2 backend
 https://www.patreon.com/platform/documentation/oauth
 """
-
 from .oauth import BaseOAuth2
 
 

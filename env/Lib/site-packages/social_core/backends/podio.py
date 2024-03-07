@@ -2,7 +2,6 @@
 Podio OAuth2 backend, docs at:
     https://python-social-auth.readthedocs.io/en/latest/backends/podio.html
 """
-
 from .oauth import BaseOAuth2
 
 

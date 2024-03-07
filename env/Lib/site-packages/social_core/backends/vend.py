@@ -1,7 +1,6 @@
 """
 Vend  OAuth2 backend:
 """
-
 from .oauth import BaseOAuth2
 
 

@@ -1,7 +1,6 @@
 """
 Coding OAuth2 backend, docs at:
 """
-
 from urllib.parse import urljoin
 
 from .oauth import BaseOAuth2

@@ -1,7 +1,6 @@
 """
 Upwork OAuth1 backend
 """
-
 from .oauth import BaseOAuth1
 
 

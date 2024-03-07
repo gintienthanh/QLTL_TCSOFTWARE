@@ -232,36 +232,33 @@ class FolderFilter(filters.FilterSet):
         fields = ['name', 'parent_folder']
 
 class FolderList(APIView):
-    # permission_classes = [IsAuthenticated]
-    def get(self, request):
-        try:
-            paginator=FolderSetPagination()
-            name_query = request.GET.get('name', None)  
-            parent_folder = request.GET.get('parent_folder')
-            if not parent_folder:
-                folder = Folder.objects.filter(parent_folder=None,is_delete=False)
-            else:
-                folder = Folder.objects.filter(parent_folder=parent_folder,is_delete=False)
-            if name_query: 
-                folder = folder.filter(name__icontains=name_query,is_delete=False)
-            
-            result_page = paginator.paginate_queryset(folder, request)
-            serializer = FolderSerializer(result_page, many=True)
-            data = {
-                    'status': '200',
-                    'message':' found successfully',
-                    'pagination': {
-                        'total_pages': paginator.page.paginator.num_pages,
-                        'current_page': paginator.page.number,
-                        'next_page': paginator.get_next_link(),
-                        'previous_page': paginator.get_previous_link(),
-                    },
-                    'data': serializer.data,
-                    
-                }
-            return Response(data, status=status.HTTP_200_OK)
-        except:
-            return Response({'status':400},status=status.HTTP_400_BAD_REQUEST)
+    permission_classes = [permissions.IsAuthenticated]
+    queryset = Folder.objects.annotate(
+    compare_time=Coalesce(
+        Case(
+            When(created_at__gt=F('updated_at'), then=F('created_at')),
+            default=F('updated_at'),
+            output_field=CharField()
+        ),
+        Case(
+            When(created_at__gt=F('created_at'), then=F('updated_at')),
+            default=F('created_at'),
+            output_field=CharField()
+        )
+    )
+    ).order_by('-compare_time')
+    serializer_class = FolderSerializer  
+    filter_backends = [filters.DjangoFilterBackend]
+    filterset_class = FolderFilter
+    paginator = FolderSetPagination()
+    
+    def get_queryset(self):
+        
+        queryset = super().get_queryset()
+        user = self.request.user
+        if user.is_authenticated:  # Check if user is authenticated
+            queryset = queryset.filter(create_by=user, is_delete = False)
+        return queryset 
         
     def extract_and_convert_to_integer(self,name,data):
         start_index = name.rfind('(')

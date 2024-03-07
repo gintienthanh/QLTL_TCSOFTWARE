@@ -3,7 +3,6 @@ Spotify backend, docs at:
     https://developer.spotify.com/spotify-web-api/
     https://developer.spotify.com/spotify-web-api/authorization-guide/
 """
-
 import base64
 
 from .oauth import BaseOAuth2

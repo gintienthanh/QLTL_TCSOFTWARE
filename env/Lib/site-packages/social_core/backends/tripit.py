@@ -2,7 +2,6 @@
 Tripit OAuth2 backend, docs at:
     https://python-social-auth.readthedocs.io/en/latest/backends/tripit.html
 """
-
 from xml.dom import minidom
 
 from .oauth import BaseOAuth1

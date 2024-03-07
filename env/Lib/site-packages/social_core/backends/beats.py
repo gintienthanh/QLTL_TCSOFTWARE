@@ -2,7 +2,6 @@
 Beats backend, docs at:
     https://developer.beatsmusic.com/docs
 """
-
 import base64
 
 from ..utils import handle_http_errors

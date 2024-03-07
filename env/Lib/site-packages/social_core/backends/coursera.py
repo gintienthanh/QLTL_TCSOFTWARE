@@ -2,7 +2,6 @@
 Coursera OAuth2 backend, docs at:
     https://tech.coursera.org/app-platform/oauth2/
 """
-
 from .oauth import BaseOAuth2
 
 

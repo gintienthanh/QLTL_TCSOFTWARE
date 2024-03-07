@@ -2,7 +2,6 @@
 Discord Auth OAuth2 backend, docs at:
     https://discord.com/developers/docs/topics/oauth2
 """
-
 from .oauth import BaseOAuth2
 
 

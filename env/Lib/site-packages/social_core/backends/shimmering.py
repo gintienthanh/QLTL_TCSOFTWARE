@@ -1,7 +1,6 @@
 """
 Shimmering Oauth
 """
-
 from .oauth import BaseOAuth2
 
 

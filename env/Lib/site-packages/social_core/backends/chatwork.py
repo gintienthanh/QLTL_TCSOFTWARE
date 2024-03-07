@@ -1,7 +1,6 @@
 """
 Chatwork OAuth2 backend
 """
-
 import base64
 
 from .oauth import BaseOAuth2

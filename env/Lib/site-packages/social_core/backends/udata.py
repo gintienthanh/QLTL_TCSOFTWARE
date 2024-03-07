@@ -4,7 +4,6 @@ Udata related backends.
 Docs at:
     https://python-social-auth.readthedocs.io/en/latest/backends/udata.html
 """
-
 from .oauth import BaseOAuth2
 
 

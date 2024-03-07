@@ -2,7 +2,6 @@
 Lyft OAuth2 backend. Read more about the
     API at https://developer.lyft.com/docs
 """
-
 from .oauth import BaseOAuth2
 
 

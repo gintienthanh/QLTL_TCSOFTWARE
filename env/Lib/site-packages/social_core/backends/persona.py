@@ -2,7 +2,6 @@
 Mozilla Persona authentication backend, docs at:
     https://python-social-auth.readthedocs.io/en/latest/backends/persona.html
 """
-
 from ..exceptions import AuthFailed, AuthMissingParameter
 from ..utils import handle_http_errors
 from .base import BaseAuth

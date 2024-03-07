@@ -1,5 +1,4 @@
 """Tests for NGP VAN ActionID Backend"""
-
 import datetime
 from urllib.parse import urlencode
 
