@@ -31,8 +31,8 @@ warehouse_urls = [
 ]
 
 share_urls = [
-    path('', ShareList.as_view(), name='share-list'),
-    path('/<int:pk>', ShareUpdate.as_view(), name='share-detail'),
+    path('', APIShareListCreate.as_view(), name='share-list'),
+    path('/<int:pk>', ShareUpdateDestroy.as_view(), name='share-detail'),
 ]
 
 portfolio_urls = [
