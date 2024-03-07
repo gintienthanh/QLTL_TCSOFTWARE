@@ -55,7 +55,7 @@ watchlist_urls = [
 ]
 
 file_urls = [
-    path('/download/<int:folder_id>/', DownloadFile.as_view(), name='file-download'),
+    path('download/<int:folder_id>/', DownloadFile.as_view(), name='file-download'),
 ]
 
 urlpatterns = [
