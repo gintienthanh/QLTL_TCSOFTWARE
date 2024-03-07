@@ -22,7 +22,6 @@ schema_view = get_schema_view(
 
 folder_urls = [
     path('', FolderListCreate.as_view(), name='folder-list'),
-    path('/folder-filter/', FolderFilter.as_view(), name='folder-filter'),
     path('/<int:pk>', FolderUpdateDelete.as_view(), name='folder-detail'),
 ]
 
@@ -55,7 +54,7 @@ watchlist_urls = [
 ]
 
 file_urls = [
-    path('/download/<int:folder_id>/', DownloadFile.as_view(), name='file-download'),
+    path('download/<int:folder_id>/', DownloadFile.as_view(), name='file-download'),
 ]
 
 urlpatterns = [

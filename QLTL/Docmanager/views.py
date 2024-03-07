@@ -26,7 +26,7 @@ from django.core.files.storage import default_storage
 from django.utils import timezone
 from django.db.models import F, Case, When, Value, CharField
 from django.db.models.functions import Coalesce
-import shutil
+import shutil, re
 # Create your views here.
 
 class CustomPagination(PageNumberPagination):
@@ -231,7 +231,6 @@ class FolderFilter(filters.FilterSet):
 class FolderFilter(filters.FilterSet):
     name = filters.CharFilter(field_name='name', lookup_expr='icontains')
     
-    
     class Meta:
         model = Folder
         fields = ['name', 'parent_folder']
@@ -270,17 +269,12 @@ class FolderListCreate(generics.ListAPIView):
         end_index = name.rfind(')')
         if start_index != -1 and end_index != -1 and start_index < end_index:
             try:
-                name_list = []
                 for i in data:
-                    name_list.append(i['name'])
-                for i in name_list:
-                    if name in name_list:
+                    if name == i['name']:
+                        end_index = name.rfind(')')
                         substring = name[start_index+1:end_index]
-                        integer_value = int(substring)
-                        integer_value += 1
-                        name_lst = list(name)
-                        name_lst[start_index + 1] = str(integer_value)
-                        new_name = ''.join(name_lst)
+                        integer_value = int(substring) + 1
+                        new_name = name.replace(substring, str(integer_value))
                         name = new_name
                 return name
             except ValueError:
@@ -290,6 +284,9 @@ class FolderListCreate(generics.ListAPIView):
         files = request.FILES.getlist('files')
         name = request.POST.get('name')
         parent_folder_id = request.POST.get('parent_folder')
+        # results = Folder.objects.filter(name__icontains=name,parent_folder = parent_folder_id).order_by('-name')
+        # for i in results:
+        #     print(i.name)
         user = request.user
         if name:
             name = name.rstrip()
@@ -310,6 +307,7 @@ class FolderListCreate(generics.ListAPIView):
             else:
                 parent_folder = None
                 path = ''
+                owner = request.user
                 queryset = Folder.objects.filter(parent_folder = None)
             serializer_db = FolderSerializer(queryset,many=True)
             data = serializer_db.data
@@ -328,7 +326,7 @@ class FolderListCreate(generics.ListAPIView):
                         newname = name_default
                     elif name_default in name_list and name in name_list:
                         newname = self.extract_and_convert_to_integer(name_default,data)
-                    serializer.save(type= type, files=file,file_size = file.size, path = path + newname, name = newname,parent_folder=parent_folder,create_by = user)
+                    serializer.save(type= type, files=file,file_size = file.size, path = path + newname, name = newname,parent_folder=parent_folder,create_by = user,owner=owner)
             else:
                 type = 'Folder'
                 name_default = name + " (1)"
@@ -338,7 +336,7 @@ class FolderListCreate(generics.ListAPIView):
                     newname = name_default
                 elif name_default in name_list and name in name_list:
                     newname = self.extract_and_convert_to_integer(name_default,data)
-                serializer.save(type = type,file_size = 0,path = path + newname + "/",name = newname,parent_folder=parent_folder,create_by = user)
+                serializer.save(type = type,file_size = 0,path = path + newname + "/",name = newname,parent_folder=parent_folder,create_by = user,owner=owner)
             response = {
                 "status": 200,
                 "message": "created successfully",
@@ -348,7 +346,6 @@ class FolderListCreate(generics.ListAPIView):
         return Response({'status':400}, status=status.HTTP_400_BAD_REQUEST)
 
 
-# @permission_classes([CheckSharedGroupdFactory(Folder(),'Chỉnh sửa') | CheckOwnerFactory(Folder())])
 class FolderUpdateDelete(APIView):
     # permission_classes = [permissions.IsAuthenticated]
     def get_object(self, pk):
@@ -440,56 +437,6 @@ class FolderDeletes(APIView):
             return Response({'status':200},status=status.HTTP_200_OK)
         except:
             return Response({'status':400}, status=status.HTTP_400_BAD_REQUEST)
-
-
-class FolderDeletes(APIView):
-    def delete(self, request, *args, **kwargs):
-        selected_records = request.data.get('selected_records', [])
-        queryset =  Folder.objects.filter(id__in=selected_records)
-        serializers = FolderSerializer(queryset,many=True)
-        try:
-            for i in serializers.data:
-                queryset_child = Folder.objects.filter(parent_folder = i['id'])
-                serializer_child = FolderSerializer(queryset_child,many=True)
-                for j in serializer_child.data:
-                    self.delete(j['id'])
-            return Response({'status':200},status=status.HTTP_200_OK)
-        except:
-            return Response({'status':400}, status=status.HTTP_400_BAD_REQUEST)
-
-class FolderFilter1(filters.FilterSet):
-
-    parent_folder = django_filters.Filter(method='filter_parent_folder')
-
-    class Meta:
-        model = Folder
-        fields = ['name', 'file_size', 'parent_folder']
-
-    def filter_parent_folder(self, queryset, name, value):
-        print(value)
-        if value == 'null':
-            return queryset.filter(parent_folder__isnull=True)
-        if value == 'notnull':
-            return queryset.filter(parent_folder__isnull=False)
-        
-        elif value.isdigit():
-            return queryset.filter(parent_folder=int(value))
-        else:
-            return queryset.none()
-        
-class FolderFilter(generics.ListCreateAPIView):
-    queryset = Folder.objects.all()
-    serializer_class = FolderSerializer
-    filter_backends = [filters.DjangoFilterBackend]
-    # filterset_fields = ['name','file_size','parent_folder']
-    filterset_class = FolderFilter1
-
-    def get_queryset(self):
-        queryset = super().get_queryset()
-        user = self.request.user
-        if user.is_authenticated:  # Check if user is authenticated
-            queryset = queryset.filter(create_by=user)
-        return queryset
 
 
 class ShareFilter(filters.FilterSet):
@@ -790,6 +737,7 @@ class DownloadFile(APIView):
                 print(file_path)
                 # shutil.copy2(file_path, save_path)
                 return response
+            
             # downloadfolder
             folderList = Folder.objects.filter(path__startswith=folder.path)
             zip_file_name = f"{folder.name}.zip"
@@ -827,8 +775,9 @@ class DownloadFile(APIView):
         except Folder.DoesNotExist:
             raise status.HTTP_404_NOT_FOUND
         finally:
-            shutil.rmtree(os.path.join(rootPath, folder.path))
-            os.remove(os.path.join(rootPath, zip_file_name))
+            print('kdkd ')
+            # shutil.rmtree(os.path.join(rootPath, folder.path))
+            # os.remove(os.path.join(rootPath, zip_file_name))
         
 
 class DownloadConvertAPIView(generics.RetrieveAPIView):
