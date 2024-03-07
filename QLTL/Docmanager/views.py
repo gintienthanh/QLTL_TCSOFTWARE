@@ -1,26 +1,31 @@
 import datetime
 import os
-import shutil
 from django.conf import settings
 from django.shortcuts import render
+from rest_framework import status,generics,serializers,permissions,authentication,filters
+from rest_framework.views import APIView, View
+from rest_framework.response import Response
+from rest_framework.pagination import PageNumberPagination
+from django.http import HttpResponse,JsonResponse
+from .model_serializers import *
+from .models import *
+from django.http import FileResponse
+import mimetypes
+import tkinter as tk
+from tkinter import filedialog
 from Docmanager.permissions import CheckOwnerFactory, CheckSharedGroupdFactory
 from .model_serializers import*
 from .models import*
-from rest_framework import authentication, permissions, status, generics
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from django.http import FileResponse, HttpResponse
 from django_filters import rest_framework as filters
-from rest_framework.pagination import PageNumberPagination
 import mimetypes
 import pandas as pd
 from io import BytesIO
 import zipfile
 from django.core.files.storage import default_storage
-import django_filters
 from django.utils import timezone
 from django.db.models import F, Case, When, Value, CharField
 from django.db.models.functions import Coalesce
+import shutil
 # Create your views here.
 
 class CustomPagination(PageNumberPagination):
@@ -78,7 +83,7 @@ class PortfolioFilter(filters.FilterSet):
     class Meta:
         model = Portfolio
         fields = ['title', 'usage_policy']
-class PortfolioList(generics.ListAPIView):
+class PortfolioList(generics.ListCreateAPIView):
     # permission_classes = [permissions.IsAuthenticated]
     queryset = Portfolio.objects.annotate(
     compare_time=Coalesce(
@@ -187,7 +192,7 @@ class DocumentList(generics.ListCreateAPIView):
             output_field=CharField()
         )
     )
-    ).order_by('-compare_time')
+).order_by('-compare_time')
     serializer_class = DocumentSerializer
     filter_backends = [filters.DjangoFilterBackend]
     filterset_class = DocumentFilter
@@ -222,6 +227,9 @@ class DocumentUpdate(generics.RetrieveUpdateDestroyAPIView):
         instance.is_delete = True
         instance.save()
         return Response({'status':200,'message':'destroyed'},status=status.HTTP_204_NO_CONTENT)
+ 
+
+
 
 class FolderFilter(filters.FilterSet):
     name = filters.CharFilter(field_name='name', lookup_expr='icontains')
@@ -352,8 +360,12 @@ class FolderUpdate(APIView):
     def get(self, request, pk):
         folder = self.get_object(pk)
         serializer = FolderSerializer(folder)
-        return Response(serializer.data)
-    
+        return Response({'status':302,
+                             'message':'found successfully',
+                             'data':serializer.data},status=status.HTTP_302_FOUND)
+
+
+
     def patch(self, request, pk):
         folder = self.get_object(pk)
         serializer = FolderSerializer(folder, data=request.data,partial=True)
@@ -519,7 +531,6 @@ class ShareUpdate(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [CheckSharedGroupdFactory(Share(),'edit') | CheckOwnerFactory(Share())]
     queryset = Share.objects.all()
     serializer_class = ShareSerializer
-
     
     def update(self, request, *args, **kwargs):
         instance = self.get_object()

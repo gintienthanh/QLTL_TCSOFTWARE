@@ -20,7 +20,7 @@ from .services import generate_strong_password
 from Auth.services import  facebookValidate
 
 class UserRegistrationView(APIView):
-    #permission_classes = [IsAdminUser]
+    permission_classes = [IsAdminUser]
     renderer_classes = [UserRenderer]
     def post(self,request,format=None):
         try:
@@ -70,7 +70,7 @@ class UserLoginView(APIView):
             'refresh': str(refresh),
             'access': str(refresh.access_token),
             'name':user.username,
-            'is_admin': user.is_superuser,
+            'is_admin': user.is_staff,
             'message':'Login Success'}, status=status.HTTP_200_OK)
         
 class UserChangePasswordView(APIView):
