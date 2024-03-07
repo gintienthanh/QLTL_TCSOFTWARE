@@ -127,6 +127,7 @@ class GoogleLoginApi( APIView):
             'username':username
         }
         user, _ = user_get_or_create(**data)
+        if user.is_active is False: return Response({'message: ':'Account unable','status':'400'}, status=status.HTTP_400_BAD_REQUEST)
         uid = serializer.validated_data['id']
         provider = 'google' 
         social_app = SocialApp.objects.get(provider=provider)
@@ -174,6 +175,7 @@ class FacebookSocialAuthView(APIView):
                 'username' : user_data['name']
             }
         user, _ = user_get_or_create(**data)
+        if user.is_active is False: return Response({'message: ':'Account unable','status':'400'}, status=status.HTTP_400_BAD_REQUEST)
         uid = user_data['id']
         provider = 'facebook' 
         social_app = SocialApp.objects.get(provider=provider)
@@ -200,3 +202,32 @@ class FacebookSocialAuthView(APIView):
         }
         return Response(response,status=status.HTTP_200_OK)
 
+class LockAccountView(APIView):
+    class LockAccountSerializer(serializers.Serializer):
+        email = serializers.CharField(required=True)
+    def post(self,request):
+        serializer = self.LockAccountSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        email = serializer.validated_data['email'] 
+        try: 
+            user = User.objects.get(email=email)
+            user.is_active = False
+            user.save()
+            return Response({'status':200,'message':'lock account successfully'},status=status.HTTP_200_OK)
+        except:
+            return Response({'status':400,'message':'lock account fail'},status=status.HTTP_400_BAD_REQUEST)  
+class UnLockAccountView(APIView):
+    class UnLockAccountSerializer(serializers.Serializer):
+        email = serializers.CharField(required=True)
+    permission_classes = [IsAdminUser]
+    def post(self,request):
+        serializer = self.LockAccountSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        email = serializer.validated_data['email'] 
+        try: 
+            user = User.objects.get(email=email)
+            user.is_active = True
+            user.save()
+            return Response({'status':200,'message':'UNlock account successfully'},status=status.HTTP_200_OK)
+        except:
+            return Response({'status':400,'message':'UNlock account fail'},status=status.HTTP_400_BAD_REQUEST)       

@@ -53,7 +53,11 @@ TEMPLATES = [
         # ...
     },
 ]
-
+INTERNAL_IPS = [
+    # ...
+    "127.0.0.1",
+    # ...
+]
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -68,6 +72,7 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt',
     'rest_framework_simplejwt.token_blacklist',
     'drf_yasg',
+    "debug_toolbar",
 
     'oauth2_provider',
     'allauth',
@@ -97,7 +102,8 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-
+    
+    "debug_toolbar.middleware.DebugToolbarMiddleware",
     'corsheaders.middleware.CorsMiddleware',
     "django.middleware.common.CommonMiddleware",
     'allauth.account.middleware.AccountMiddleware',
@@ -255,7 +261,19 @@ AUTHENTICATION_BACKENDS = (
     'social_core.backends.github.GithubOAuth2',
     'django.contrib.auth.backends.ModelBackend',
 )
+# settings.py
+import sentry_sdk
 
+sentry_sdk.init(
+    dsn="https://08869e033d2fca8289ddc18d36e6bb19@o4506829320290304.ingest.sentry.io/4506829331628032",
+    # Set traces_sample_rate to 1.0 to capture 100%
+    # of transactions for performance monitoring.
+    traces_sample_rate=1.0,
+    # Set profiles_sample_rate to 1.0 to profile 100%
+    # of sampled transactions.
+    # We recommend adjusting this value in production.
+    profiles_sample_rate=1.0,
+)
 SWAGGER_SETTINGS = {
    'USE_SESSION_AUTH': False
 }
