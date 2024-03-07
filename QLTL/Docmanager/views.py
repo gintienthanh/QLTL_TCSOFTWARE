@@ -1,9 +1,11 @@
+import concurrent.futures
 import datetime
 import os
 import shutil
 from django.conf import settings
 from django.shortcuts import render
 from Docmanager.permissions import CheckOwnerFactory, CheckSharedGroupdFactory
+from QLTL.settings import EXPORT_PATH_FILE
 from .model_serializers import*
 from .models import*
 from rest_framework import authentication, permissions, status, generics
@@ -805,9 +807,9 @@ class WatchListUpdate(APIView):
 class DownloadFile(APIView):
     lookup_field = 'folder_id'
     def get(self, request, folder_id,format=None):
-        rootPath="download/"
         folder=None
         zip_file_name=None
+        set_file_fail = set()
         try:
             folder = file = Folder.objects.get(pk=folder_id)
             if file.type=="File":
@@ -826,39 +828,49 @@ class DownloadFile(APIView):
             # create folder
             for item in folderList:
                 if item.type=='Folder': 
-                    os.makedirs(os.path.join(rootPath,item.path), exist_ok=True)
-            # create file
-            for item in folderList:
-                if item.type=='File': 
+                    os.makedirs(os.path.join(EXPORT_PATH_FILE,item.path), exist_ok=True)
+            # create file 
+            def write_file(item):    
+                if item.type=='File':
                     file_path = item.files.path
+                    if not os.path.exists(file_path):
+                        set_file_fail.add(file_path)
+                        return
                     with open(file_path, 'rb') as source_file:
-                        file_content = source_file.read()
-                    with open(os.path.join(rootPath,item.path), 'wb') as new_file:
+                            file_content = source_file.read()
+                    with open(os.path.join(EXPORT_PATH_FILE,item.path), 'wb') as new_file:
                         new_file.write(file_content)
+            with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+                    futures = []
+                    for obj in folderList:
+                        future = executor.submit(write_file, obj)
+                        futures.append(future)
             # create zip 
-            with zipfile.ZipFile(os.path.join(rootPath, zip_file_name), 'w', zipfile.ZIP_DEFLATED) as zipf:
-                for root, dirs, files in os.walk(os.path.join(rootPath,folder.path)):
-                    print(root)
+            with zipfile.ZipFile(os.path.join(EXPORT_PATH_FILE, zip_file_name), 'w', zipfile.ZIP_DEFLATED) as zipf:
+                for root, dirs, files in os.walk(os.path.join(EXPORT_PATH_FILE,folder.path)):
                     for file in files:
                         abs_path = os.path.join(root, file)
-                        rel_path = os.path.relpath(abs_path, os.path.join(rootPath,folder.path))
+                        rel_path = os.path.relpath(abs_path, os.path.join(EXPORT_PATH_FILE,folder.path))
                         arcname = os.path.join(folder.name, rel_path)
                         zipf.write(abs_path, arcname=arcname)
                     for dir in dirs:
                         abs_path = os.path.join(root, dir)
-                        rel_path = os.path.relpath(abs_path, os.path.join(rootPath,folder.path))
+                        rel_path = os.path.relpath(abs_path, os.path.join(EXPORT_PATH_FILE,folder.path))
                         arcname = os.path.join(folder.name, rel_path)
                         zipf.write(abs_path, arcname=arcname)
             # return zip
-            with open(os.path.join(rootPath,zip_file_name), 'rb') as zip_file:
+            with open(os.path.join(EXPORT_PATH_FILE,zip_file_name), 'rb') as zip_file:
                 response = HttpResponse(zip_file.read(), content_type='application/zip')
                 response['Content-Disposition'] = f'attachment; filename="{zip_file_name}"'
                 return response
         except Folder.DoesNotExist:
             raise status.HTTP_404_NOT_FOUND
         finally:
-            shutil.rmtree(os.path.join(rootPath, folder.path))
-            os.remove(os.path.join(rootPath, zip_file_name))
+            if os.path.exists(os.path.join(EXPORT_PATH_FILE, folder.path)):
+                shutil.rmtree(os.path.join(EXPORT_PATH_FILE, folder.path))  
+            # os.remove(os.path.join(rootPath, zip_file_name))
+            for e in set_file_fail:
+                print(e)
         
 
 class DownloadConvertAPIView(generics.RetrieveAPIView):

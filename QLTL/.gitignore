@@ -8,3 +8,4 @@ Docmanager/migrations
 Auth/__pycache__
 Auth/migrations
 media
+export_files
