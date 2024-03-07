@@ -49,7 +49,11 @@ TEMPLATES = [
         # ...
     },
 ]
-
+INTERNAL_IPS = [
+    # ...
+    "127.0.0.1",
+    # ...
+]
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -65,6 +69,7 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt.token_blacklist',
     'corsheaders',
     'drf_yasg',
+    "debug_toolbar",
 
     'oauth2_provider',
     'allauth',
@@ -94,7 +99,8 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-
+    
+    "debug_toolbar.middleware.DebugToolbarMiddleware",
     'corsheaders.middleware.CorsMiddleware',
     "django.middleware.common.CommonMiddleware",
     'allauth.account.middleware.AccountMiddleware',
