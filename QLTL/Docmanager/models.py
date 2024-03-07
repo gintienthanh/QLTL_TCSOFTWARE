@@ -2,6 +2,7 @@ from django.contrib.auth.models import User
 from django.db import models
 from django.contrib.auth.models import Group
 from enum import Enum
+from django.utils import timezone
 
 # Create your models here.
 class Base(models.Model):
@@ -17,6 +18,12 @@ class Base(models.Model):
     class  Meta:
         abstract = True
     
+    def soft_delete(self, request):
+        self.is_delete = True
+        self.delete_at = timezone.now()
+        self.delete_by = request.user
+        self.save()
+
 class Choices_status(Enum):
     wait = 'Wait'
     finished = 'Finished'
