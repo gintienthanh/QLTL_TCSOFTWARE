@@ -22,9 +22,49 @@ from django.utils import timezone
 from django.db.models import F, Case, When, Value, CharField
 from django.db.models.functions import Coalesce
 # Create your views here.
-
 class CustomPagination(PageNumberPagination):
+    limit_query_param = 'limit'
+    offset_query_param = 'offset'
+    max_limit = 1000
+
+    def get_page_size(self, request):
+        limit = self.get_limit(request)
+        return min(limit, self.max_limit)
+
+    def get_limit(self, request):
+        limit_param = request.GET.get(self.limit_query_param)
+        if limit_param is None:
+            return self.page_size
+
+        try:
+            limit = int(limit_param)
+            if limit < 0:
+                limit = self.page_size
+        except ValueError:
+            limit = self.page_size
+
+        return limit
+
+    def get_offset(self, request):
+        offset_param = request.GET.get(self.offset_query_param)
+        if offset_param is None:
+            return 0
+
+        try:
+            offset = int(offset_param)
+            if offset < 0:
+                offset = 0
+        except ValueError:
+            offset = 0
+
+        return offset
+
     def get_paginated_response(self, data):
+        limit = self.get_limit(self.request)
+        offset = self.get_offset(self.request)
+
+        
+
         next_page = self.get_next_link()
         previous_page = self.get_previous_link()
         total_pages = self.page.paginator.num_pages
@@ -32,20 +72,22 @@ class CustomPagination(PageNumberPagination):
         total_count = self.page.paginator.count
         return Response({
             "status": "200",
-            "message": " found successfully",
+            "message": "Data found successfully",
             "pagination": {
                 "count": total_count,
                 "total_pages": total_pages,
                 "current_page": current_page,
                 "next_page": next_page,
                 "previous_page": previous_page,
-                },
+                "limit": limit,
+                "offset": offset,
+            },
             "data": data,
         })
-class PortfolioSetPagination(CustomPagination):
-    page_size = 12
-    page_size_query_param = 'page_size'
-    max_page_size = 1000  
+# class PortfolioSetPagination(CustomPagination):
+#     page_size = 12
+#     page_size_query_param = 'page_size'
+#     max_page_size = 1000  
     
 class FolderSetPagination(CustomPagination):
     page_size = 12
@@ -78,7 +120,7 @@ class PortfolioFilter(filters.FilterSet):
     class Meta:
         model = Portfolio
         fields = ['title', 'usage_policy']
-class PortfolioList(generics.ListCreateAPIView):
+class PortfolioListCreate(generics.ListAPIView):
     # permission_classes = [permissions.IsAuthenticated]
     queryset = Portfolio.objects.annotate(
     compare_time=Coalesce(
@@ -97,14 +139,14 @@ class PortfolioList(generics.ListCreateAPIView):
     serializer_class = PortfolioSerializer
     filter_backends = [filters.DjangoFilterBackend]
     filterset_class = PortfolioFilter
-    paginator = PortfolioSetPagination()
+    paginator = CustomPagination()
     
     def get_queryset(self):
         
         queryset = super().get_queryset()
         user = self.request.user
         if user.is_authenticated:  # Check if user is authenticated
-            queryset = queryset.filter(create_by=user)
+            queryset = queryset.filter(create_by=user, is_delete = False)
         return queryset 
     
     def post(self, request):
@@ -116,7 +158,11 @@ class PortfolioList(generics.ListCreateAPIView):
                              'data':serializer.data}, 
                              status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-class PortfolioUpdate(APIView):
+    
+    
+    
+    
+class PortfolioUpdateDelete(APIView):
     # permission_classes = [permissions.IsAuthenticated]
     def get_object(self, pk):
         try:
@@ -136,6 +182,7 @@ class PortfolioUpdate(APIView):
         serializer = PortfolioSerializer(portfolio, data=request.data, partial=True)
         if serializer.is_valid():
             serializer.validated_data['updated_at'] = timezone.now()
+            serializer.validated_data['editor'] = timezone.now()
             serializer.save()
             return Response({'status':201,
                              'message':'created successfully',
@@ -144,23 +191,56 @@ class PortfolioUpdate(APIView):
                         'message':serializer.errors},status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self, request, pk):
-        portfolio = self.get_object(pk)
-        serializer = PortfolioSerializer(portfolio, 
-            data =
-            {   
-                'is_delete': True,
-                
-            }, partial=True)
-        if serializer.is_valid():
-            serializer.validated_data['delete_at'] = timezone.now()
-            serializer.save()
-            return Response({'status':200,
+        instance = Portfolio.objects.get(pk=pk)
+        instance.soft_delete(request)
+        return Response({'status':200,
                              'message':'delete successfully'
                             })
-        return Response({'status':400,
-                        'message':'delete Fail',
-                        },status=status.HTTP_400_BAD_REQUEST)
-    
+        
+class PortfolioBulkDelete (APIView):
+    def delete(self, request, *args, **kwargs):
+        portfolio_ids = request.data.get('portfolio_ids', [])
+        success_count = 0
+        
+        for portfolio_id in portfolio_ids:
+            try:
+                portfolio = Portfolio.objects.get(id=int(portfolio_id))
+                serializer = PortfolioSerializer(portfolio, 
+                    data={
+                        'is_delete': True,
+                    }, partial=True)
+                if serializer.is_valid():
+                    serializer.validated_data['delete_at'] = datetime.datetime.now()
+                    serializer.save()
+
+                    documents = Document.objects.filter(portfolio=portfolio)
+                    for document in documents:
+                        document.is_delete = True
+                        document.delete_at = datetime.datetime.now()
+                        document.save()
+
+                    success_count += 1
+
+            except Portfolio.DoesNotExist:
+                pass
+
+        if success_count > 0:
+            data = {
+                'status': 'success',
+                'message': f'Deleted {success_count} portfolios and associated documents successfully'
+            }
+            return Response(data, status=status.HTTP_200_OK)
+        else:
+            data = {
+                'status': 'error',
+                'message': 'Failed to delete portfolios and associated documents'
+            }
+            return Response(data, status=status.HTTP_400_BAD_REQUEST)        
+        
+        
+        
+        
+        
 #######DOCUMENT######
 class DocumentFilter(filters.FilterSet):
     name = filters.CharFilter(field_name='name', lookup_expr='icontains')
@@ -171,7 +251,7 @@ class DocumentFilter(filters.FilterSet):
 
     
 
-class DocumentList(generics.ListCreateAPIView):
+class DocumentListCreate(generics.ListCreateAPIView):
 
     permission_classes = [permissions.IsAuthenticated]
     queryset = Document.objects.annotate(
@@ -187,7 +267,7 @@ class DocumentList(generics.ListCreateAPIView):
             output_field=CharField()
         )
     )
-).order_by('-compare_time')
+    ).order_by('-compare_time')
     serializer_class = DocumentSerializer
     filter_backends = [filters.DjangoFilterBackend]
     filterset_class = DocumentFilter
@@ -212,7 +292,7 @@ class DocumentList(generics.ListCreateAPIView):
                              status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-class DocumentUpdate(generics.RetrieveUpdateDestroyAPIView):
+class DocumentUpdateDelete(generics.RetrieveUpdateDestroyAPIView):
     #permission_classes = [CheckSharedGroupdFactory(Document(),'edit') | CheckOwnerFactory(Document())]
     queryset = Document.objects.all()
     serializer_class = DocumentSerializer
@@ -222,32 +302,47 @@ class DocumentUpdate(generics.RetrieveUpdateDestroyAPIView):
         instance.is_delete = True
         instance.save()
         return Response({'status':200,'message':'destroyed'},status=status.HTTP_204_NO_CONTENT)
- 
+
+class FolderFilter(filters.FilterSet):
+    name = filters.CharFilter(field_name='name', lookup_expr='icontains')
+    
+    
+    class Meta:
+        model = Folder
+        fields = ['name', 'parent_folder']
 
 
 
 
-class FolderList(APIView):
-     # permission_classes = [IsAuthenticated]
-    def get(self, request):
-        try:
-            paginator=FolderSetPagination()
-            name_query = request.GET.get('name', None)  
-            parent_folder = request.GET.get('parent_folder')
-            folder = Folder.objects.filter(is_delete=False)
-            if not parent_folder:
-                folder = Folder.objects.filter(parent_folder=None)
-            else:
-                folder = Folder.objects.filter(parent_folder=parent_folder)
-            if name_query: 
-                folder = folder.filter(name__icontains=name_query)
-            
-            result_page = paginator.paginate_queryset(folder, request)
-            serializer = FolderSerializer(result_page, many=True)
-            return paginator.get_paginated_response(serializer.data)
-            
-        except:
-            return Response({'status':400},status=status.HTTP_400_BAD_REQUEST)
+
+class FolderListCreate(generics.ListAPIView):
+    permission_classes = [permissions.IsAuthenticated]
+    queryset = Folder.objects.annotate(
+    compare_time=Coalesce(
+        Case(
+            When(created_at__gt=F('updated_at'), then=F('created_at')),
+            default=F('updated_at'),
+            output_field=CharField()
+        ),
+        Case(
+            When(created_at__gt=F('created_at'), then=F('updated_at')),
+            default=F('created_at'),
+            output_field=CharField()
+        )
+    )
+    ).order_by('-compare_time')
+    serializer_class = FolderSerializer  
+    filter_backends = [filters.DjangoFilterBackend]
+    filterset_class = FolderFilter
+    paginator = FolderSetPagination()
+    
+    def get_queryset(self):
+        
+        queryset = super().get_queryset()
+        user = self.request.user
+        if user.is_authenticated:  # Check if user is authenticated
+            queryset = queryset.filter(create_by=user, is_delete = False)
+        return queryset 
     def extract_and_convert_to_integer(self,name,data):
         start_index = name.rfind('(')
         end_index = name.rfind(')')
@@ -269,71 +364,70 @@ class FolderList(APIView):
             except ValueError:
                 return name
     def post(self, request):
-        serializer = FolderSerializer(data=request.data)
+        serializer = FolderSerializer(data=request.data,partial=True)
         files = request.FILES.getlist('files')
-        if files:
-            name = request.POST.get('name')
+        name = request.POST.get('name')
+        parent_folder_id = request.POST.get('parent_folder')
+        user = request.user
+        if name:
             name = name.rstrip()
-            parent_folder_id = request.POST.get('parent_folder')
         else:
             name = request.data.get('name')
-            name = name.rstrip()
+            if name:
+                name = name.rstrip()
+            else:
+                name = None
+        if not parent_folder_id:
             parent_folder_id = request.data.get('parent_folder')
         if serializer.is_valid():
             if parent_folder_id:
                 parent_folder = Folder.objects.get(id=parent_folder_id)
                 queryset = Folder.objects.filter(parent_folder = parent_folder)
-                path = parent_folder.path + '/'
+                owner = parent_folder.owner
+                path = parent_folder.path
             else:
                 parent_folder = None
-                path = '/'
+                path = ''
                 queryset = Folder.objects.filter(parent_folder = None)
             serializer_db = FolderSerializer(queryset,many=True)
             data = serializer_db.data
+            name_list = []
+            for i in data:
+                name_list.append(i['name'])
             if files:
-                files_list = []
-                name_list = []
-                file_name_list = []
-                for i in data:
-                    name_list.append(i['name'])
+                type = 'File'
                 for file in files:
                     name = file.name
-                    for i in name_list:
-                        file_name_list.append(i)
                     start_index = name.rfind('.')
                     name_default = name[:start_index] + "(1)" + name[start_index:]
-                    files_list.append(file)
                     if name not in name_list: 
-                        serializer.save(type='File', files=file,file_size = file.size, path = path + name, name = name,parent_folder=parent_folder)
+                        newname = name
                     elif name_default not in name_list and name in name_list:
-                        serializer.save(type='File', files=file,file_size = file.size, path = path + name_default, name = name_default,parent_folder=parent_folder)
+                        newname = name_default
                     elif name_default in name_list and name in name_list:
                         newname = self.extract_and_convert_to_integer(name_default,data)
-                        serializer.save(type='File', files=file,file_size = file.size, path = path + newname, name = newname,parent_folder=parent_folder)
+                    serializer.save(type= type, files=file,file_size = file.size, path = path + newname, name = newname,parent_folder=parent_folder,create_by = user)
             else:
-                name_list = []
-                for i in data:
-                    name_list.append(i['name'])
+                type = 'Folder'
+                name_default = name + " (1)"
                 if name not in name_list: 
-                    serializer.save(type='Folder',file_size = 0,path = path + name,name = name,parent_folder=parent_folder)
-                elif name + " (1)" not in name_list and name in name_list:
-                    name = name + " (1)"
-                    serializer.save(type='Folder',file_size = 0,path = path + name,name = name,parent_folder=parent_folder)
-                elif name + " (1)" in name_list and name in name_list:
-                    name = name + " (1)"
-                    newname = self.extract_and_convert_to_integer(name,data)
-                    serializer.save(type='Folder',file_size = 0,path = path + newname,name = newname,parent_folder=parent_folder)
+                    newname = name
+                elif name_default not in name_list and name in name_list:
+                    newname = name_default
+                elif name_default in name_list and name in name_list:
+                    newname = self.extract_and_convert_to_integer(name_default,data)
+                serializer.save(type = type,file_size = 0,path = path + newname + "/",name = newname,parent_folder=parent_folder,create_by = user)
             response = {
-                "status":200,
-                "data": {
-                    "folder": serializer.data,  
-                }
+                "status": "200",
+                "message": "created successfully",
+                "data": serializer.data
             }
             return Response(response, status=status.HTTP_201_CREATED)
         return Response({'status':400}, status=status.HTTP_400_BAD_REQUEST)
 
+
 # @permission_classes([CheckSharedGroupdFactory(Folder(),'Chỉnh sửa') | CheckOwnerFactory(Folder())])
-class FolderUpdate(APIView):
+class FolderUpdateDelete(APIView):
     # permission_classes = [permissions.IsAuthenticated]
     def get_object(self, pk):
         try:
@@ -346,63 +440,47 @@ class FolderUpdate(APIView):
         return Response({'status':302,
                              'message':'found successfully',
                              'data':serializer.data},status=status.HTTP_302_FOUND)
-
-
-
     def patch(self, request, pk):
         folder = self.get_object(pk)
-        serializer = FolderSerializer(folder, data=request.data)
-        files = request.FILES.getlist('files')
+        serializer = FolderSerializer(folder, data=request.data,partial=True)
         name = request.POST.get('name')
-        name = name.rstrip()
+        user = request.user
+        if name:
+            name = name.rstrip()
+        else:
+            name = request.data.get('name')
+            if name:
+                name = name.rstrip()
+            else:
+                name = folder.name
         parent_folder_id = request.POST.get('parent_folder')
-        parent_folder = Folder.objects.get(id=parent_folder_id)
+        if not parent_folder_id:
+            parent_folder_id = request.data.get('parent_folder')
         if serializer.is_valid():
             if parent_folder_id:
                 parent_folder = Folder.objects.get(id=parent_folder_id)
                 queryset = Folder.objects.filter(parent_folder = parent_folder)
-                path = parent_folder.path + '/'
+                path = parent_folder.path
             else:
                 parent_folder = None
                 path = '/'
                 queryset = Folder.objects.filter(parent_folder = None)
             serializer_db = FolderSerializer(queryset,many=True)
             data = serializer_db.data
-            if files:
-                files_list = []
-                name_list = []
-                file_name_list = []
-                for i in data:
-                    name_list.append(i['name'])
-                for file in files:
-                    name = file.name
-                    for i in name_list:
-                        file_name_list.append(i)
-                    start_index = name.rfind('.')
-                    name_default = name[:start_index] + "(1)" + name[start_index:]
-                    files_list.append(file)
-                    if name not in name_list: 
-                        serializer.save(type='File', files=file,file_size = file.size, path = path + name, name = name,parent_folder=parent_folder)
-                    elif name_default not in name_list and name in name_list:
-                        serializer.save(type='File', files=file,file_size = file.size, path = path + name_default, name = name_default,parent_folder=parent_folder)
-                    elif name_default in name_list and name in name_list:
-                        newname = self.extract_and_convert_to_integer(name_default,data)
-                        serializer.save(type='File', files=file,file_size = file.size, path = path + newname, name = newname,parent_folder=parent_folder)
-            else:
-                name_list = []
-                for i in data:
-                    name_list.append(i['name'])
-                if name not in name_list: 
-                    serializer.save(type='Folder',file_size = 0,path = path + name,name = name)
-                elif name + " (1)" not in name_list and name in name_list:
-                    name = name + " (1)"
-                    serializer.save(type='Folder',file_size = 0,path = path + name,name = name)
-                elif name + " (1)" in name_list and name in name_list:
-                    name = name + " (1)"
-                    newname = self.extract_and_convert_to_integer(name,data)
-                    serializer.save(type='Folder',file_size = 0,path = path + newname,name = newname)
+            name_list = []
+            for i in data:
+                name_list.append(i['name'])
+            name_default = name + " (1)"
+            if name not in name_list: 
+                newname = name
+            elif name_default not in name_list and name in name_list:
+                newname = name_default
+            elif name_default in name_list and name in name_list:
+                newname = FolderListCreate.extract_and_convert_to_integer(name_default,data)
+            serializer.save(path = path + newname + "/", name = newname,parent_folder=parent_folder,update_by = user)
             response = {
                 "status":200,
+                "message": "updated successfully",
                 "data": {
                     "folder": serializer.data,  
                 }
@@ -410,86 +488,66 @@ class FolderUpdate(APIView):
             return Response(response, status=status.HTTP_200_OK)
         return Response({'status':400}, status=status.HTTP_400_BAD_REQUEST)
 
-
-    def delete(self, request, pk):
+    def delete(self,request,pk):
         folder = self.get_object(pk)
-        folder.is_delete = True
-        serializer = FolderSerializer(folder, 
-            data =
-            {
-                'is_delete': True,
-            }, partial=True)
-        if serializer.is_valid():
+        folder.soft_delete(request)
+        try:
             queryset = Folder.objects.filter(parent_folder = pk)
             serializer_db = FolderSerializer(queryset,many=True)
             data = serializer_db.data
             for i in data:
                 self.delete(request,i['id'])
             folder.save()
+            return Response({'status':200,
+                             'message':'delete successfully'
+                            }, status=status.HTTP_200_OK)
+        except:
+            return Response({'status':400}, status=status.HTTP_400_BAD_REQUEST)
+
+class FolderDeletes(APIView):
+    def delete(self, request, *args, **kwargs):
+        selected_records = request.data.get('selected_records', [])
+        queryset =  Folder.objects.filter(id__in=selected_records)
+        serializers = FolderSerializer(queryset,many=True)
+        try:
+            for i in serializers.data:
+                queryset_child = Folder.objects.filter(parent_folder = i['id'])
+                serializer_child = FolderSerializer(queryset_child,many=True)
+                for j in serializer_child.data:
+                    self.delete(j['id'])
             return Response({'status':200},status=status.HTTP_200_OK)
-        return Response({'status':400}, status=status.HTTP_400_BAD_REQUEST)
-    
-
-
-
+        except:
+            return Response({'status':400}, status=status.HTTP_400_BAD_REQUEST)
 
 class ShareFilter(filters.FilterSet):
     class Meta:
         model = Share
         fields = ['owner','create_by','document','folder']
    
-class ShareList(generics.ListCreateAPIView):
+class APIShareListCreate(generics.ListCreateAPIView):
     queryset = Share.objects.all()
     serializer_class = ShareSerializer
-    filter_backends = (filters.DjangoFilterBackend,)
+    filter_backends = [filters.DjangoFilterBackend]
 
-    # filterset_fields = ('owner','create_by','document','folder')
     filterset_class = ShareFilter
-    def get_queryset(self):
-        queryset = super().get_queryset()
-        user = self.request.user
-        if user.is_authenticated:  # Check if user is authenticated
-            queryset = queryset.filter(create_by=user)
-        return queryset
+    paginator = ShareSetPagination()
     def get_permissions(self):
         if self.request.method == 'POST':
             return [permissions.IsAuthenticated()]
         elif self.request.method == 'GET':
             return [permissions.IsAuthenticated()]
         return super().get_permissions()
-
-    # def get_permissions(self):
-    #     if self.request.method == 'POST':
-    #         return [permissions.IsAuthenticated()]
-    #     elif self.request.method == 'GET':
-    #         return [permissions.IsAuthenticated()]
-    #     return super().get_permissions()
-        
-    def get(self, request):
-        paginator = ShareSetPagination()
-        share = Share.objects.filter(is_delete=False)
-        result_page = paginator.paginate_queryset(share, request)
-        serializer = PortfolioSerializer(result_page, many=True)
-        data = {
-            'status': '200',
-            'message':'successfully',
-            'pagination': {
-                'count':paginator.page.paginator.count,
-                'total_pages': paginator.page.paginator.num_pages,
-                'current_page': paginator.page.number,
-                'next_page': paginator.get_next_link(),
-                'previous_page': paginator.get_previous_link(),
-            },
-            'data': serializer.data,
-            
-        }
-        return Response(data, status=status.HTTP_200_OK)
-
-
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        user = self.request.user
+        if user.is_authenticated:  # Check if user is authenticated
+            queryset = queryset.filter(create_by=user, is_delete=False)
+        return queryset
+    
     def post(self, request):
         try:
             serializer = ShareSerializer(data=request.data)
-            if serializer.is_valid():
+            if serializer.is_valid(raise_exception=True):
                 share = Share.objects.get(
                     folder=serializer.validated_data.get('folder'),
                     document=serializer.validated_data.get('document'),
@@ -498,21 +556,18 @@ class ShareList(generics.ListCreateAPIView):
                     type=serializer.validated_data.get('type')
                     )
                 serializer = ShareSerializer(share)
-                return Response(serializer.data, status=status.HTTP_201_CREATED)
-                
-                
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+            
         except Share.DoesNotExist:
             serializer.save(create_by=request.user)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
-        except Exception as e:
-            return Response({'status':400,'error':str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        except serializers.ValidationError as e:
+            return Response({"error": "Có lỗi xảy ra"}, status=status.HTTP_400_BAD_REQUEST)
         
-
-class ShareUpdate(generics.RetrieveUpdateDestroyAPIView):
+class ShareUpdateDestroy(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [CheckSharedGroupdFactory(Share(),'edit') | CheckOwnerFactory(Share())]
     queryset = Share.objects.all()
     serializer_class = ShareSerializer
-
     
     def update(self, request, *args, **kwargs):
         instance = self.get_object()
@@ -529,8 +584,9 @@ class ShareUpdate(generics.RetrieveUpdateDestroyAPIView):
         instance.delete_at=datetime.now() 
         instance.delete_by=request.user
         self.perform_update(instance)
-        return Response({'status':200,'message':'destroyed'},status=status.HTTP_204_NO_CONTENT)
-       
+        return Response({'status':200,'message':'destroyed'},status=status.HTTP_204_NO_CONTENT)  
+
+
 
 class  WarehouseFilter(filters.FilterSet):
     name = filters.CharFilter(field_name='name', lookup_expr='icontains')
@@ -538,20 +594,34 @@ class  WarehouseFilter(filters.FilterSet):
         model = Warehouse
         fields = ['name', 'parent_warehouse', 'type_warehouse'] 
 
-class WarehouseList(APIView):
-    def get(self, request, *args, **kwargs):
-        paginator = WarehouseSetPagination()
-        type_warehouse = request.GET.get('type_warehouse')
-
-        if type_warehouse not in ['shelf', 'warehouse', 'boxcase']:
-            return Response({"error": "Invalid type_warehouse value"}, status=status.HTTP_400_BAD_REQUEST)
-
-        warehouses = Warehouse.objects.filter(type_warehouse=type_warehouse, is_delete=False).prefetch_related('parent_warehouse')
-        result_page = paginator.paginate_queryset(warehouses, request)
+class WarehouseListCreate(generics.ListAPIView):
+    permission_classes = [permissions.IsAuthenticated]
+    queryset = Warehouse.objects.annotate(
+    compare_time=Coalesce(
+        Case(
+            When(created_at__gt=F('updated_at'), then=F('created_at')),
+            default=F('updated_at'),
+            output_field=CharField()
+        ),
+        Case(
+            When(created_at__gt=F('created_at'), then=F('updated_at')),
+            default=F('created_at'),
+            output_field=CharField()
+        )
+    )
+    ).order_by('-compare_time')
+    serializer_class = WarehouseSerializer 
+    filter_backends = [filters.DjangoFilterBackend]
+    filterset_class = WarehouseFilter
+    paginator = WarehouseSetPagination()
     
+    def get_queryset(self):
         
-        serializer = WarehouseSerializer(result_page, many=True)
-        return paginator.get_paginated_response(serializer.data)
+        queryset = super().get_queryset()
+        user = self.request.user
+        if user.is_authenticated:  # Check if user is authenticated
+            queryset = queryset.filter(create_by=user, is_delete = False)
+        return queryset 
         
     def post(self, request):
         try:
@@ -568,7 +638,7 @@ class WarehouseList(APIView):
             return Response({'status':400,
                             'message':'created fail'},status=status.HTTP_400_BAD_REQUEST)
         except Warehouse.DoesNotExist:
-            serializer.save()
+            serializer.save(create_by=request.user)
             return Response({'status':201,
                             'message':'created successfully',
                             'data':serializer.data},status=status.HTTP_201_CREATED)
@@ -580,9 +650,13 @@ class WarehouseList(APIView):
             
             
             
+######WAREHOUSE######
+
+            
+            
             
 
-class WarehouseUpdate(APIView):
+class WarehouseUpdateDelete(APIView):
     # permission_classes = [permissions.IsAuthenticated]
     def get_object(self, pk):
         try:
@@ -617,7 +691,7 @@ class WarehouseUpdate(APIView):
     def delete(self, request, pk):
         warehouse = self.get_object(pk)
         
-        if warehouse.type_warehouse == Choices_type_warehouse.Shelf.value:
+        if warehouse.type_warehouse == ChoicesTypeWarehouse.Shelf.value:
             # Soft delete the shelf and its associated boxcases
             warehouse.is_delete = True
             warehouse.delete_at = timezone.now()  # Cập nhật delete_at với ngày và giờ hiện tại
@@ -626,7 +700,7 @@ class WarehouseUpdate(APIView):
             shelf_boxcases = Warehouse.objects.filter(parent_warehouse=warehouse).prefetch_related('parent_warehouse')
             shelf_boxcases.update(is_delete=True, delete_at=timezone.now())  # Cập nhật delete_at cho các boxcase
             
-        elif warehouse.type_warehouse == Choices_type_warehouse.BoxCase.value:
+        elif warehouse.type_warehouse == ChoicesTypeWarehouse.BoxCase.value:
             # Soft delete the boxcase and its associated shelf
             warehouse.is_delete = True
             warehouse.delete_at = timezone.now()  # Cập nhật delete_at với ngày và giờ hiện tại
@@ -648,7 +722,6 @@ class WarehouseUpdate(APIView):
             warehouse.is_delete = True
             warehouse.delete_at = timezone.now()  # Cập nhật delete_at với ngày và giờ hiện tại
             warehouse.save()
-
             return Response({'status':200,
                              'message':'delete successfully'},status=status.HTTP_200_OK)
         return Response({'status':400,
@@ -858,29 +931,6 @@ class DownloadConvertAPIView(generics.RetrieveAPIView):
         
         return response
 
-class FolderFilterSet(django_filters.FilterSet):
-    parent_folder = django_filters.Filter(field_name='parent_folder', method='filter_parent_folder')
-    name = filters.CharFilter(field_name='name', lookup_expr='icontains')
-    paginator = PortfolioSetPagination()
-    class Meta:
-        model = Folder
-        fields = ['name', 'file_size', 'parent_folder']
-
-    def filter_parent_folder(self, queryset, name, value):
-        if value=='null':
-            return queryset.filter(parent_folder__isnull=True)
-        elif value.lower() == 'false':
-            return queryset.exclude(parent_folder__isnull=True)
-        elif value.isdigit():
-            return queryset.filter(parent_folder=int(value))
-        else:
-            return queryset.none()
-
-class FolderFilter(generics.ListAPIView):
-    queryset = Folder.objects.all()
-    serializer_class = FolderSerializer
-    filter_backends = [filters.DjangoFilterBackend]
-    filterset_class = FolderFilterSet
                                                                                            
 class Multi_portfolio_DownloadConvertAPIView(APIView):
     def get(self, request, ids, *args, **kwargs):
