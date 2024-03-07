@@ -1,6 +1,7 @@
 from django.contrib.auth.models import User
 from django.db import models
 from django.contrib.auth.models import Group
+from django.utils import timezone
 from enum import Enum
 
 # Create your models here.
@@ -16,26 +17,31 @@ class Base(models.Model):
     editor = models.ForeignKey(User, null=True, on_delete=models.CASCADE, related_name='%(class)s_editor')
     class  Meta:
         abstract = True
-       
+    
+    def soft_delete(self, request):
+        self.is_delete = True
+        self.delete_at = timezone.now()
+        self.delete_by = request.user
+        self.save()
     
     
-class Choices_status(Enum):
+class ChoicesStatus(Enum):
     wait = 'Wait'
     finished = 'Finished'
     fail = 'Fail'
     
     
-class Choices_frame(Enum):
+class ChoicesFrame(Enum):
     img = 'img'
     txt = 'txt'
    
     
-class Choices_type_warehouse(Enum):
+class ChoicesTypeWarehouse(Enum):
     BoxCase = 'boxcase'
     Warehouse = 'warehouse'
     Shelf = 'shelf'
 
-class Choices_type(Enum):
+class ChoicesType(Enum):
     File = 'File'
     Folder = 'Folder'
 
@@ -49,7 +55,7 @@ class Warehouse(Base):
     name = models.CharField(max_length = 255, null = True)
     code = models.CharField(max_length = 255, null = True)
     description = models.CharField(max_length = 255, null = True)
-    type_warehouse = models.CharField(max_length=100, choices=[(tag.value, tag.name) for tag in Choices_type_warehouse], default=Choices_type_warehouse.Warehouse.value)
+    type_warehouse = models.CharField(max_length=100, choices=[(tag.value, tag.name) for tag in ChoicesTypeWarehouse], default=ChoicesTypeWarehouse.Warehouse.value)
     parent_warehouse = models.ForeignKey('self', on_delete=models.CASCADE, null=True, related_name='subwarehouse') 
     def __str__(self) :
         return  self.name
@@ -75,7 +81,7 @@ class Portfolio(Base):
     keywords = models.CharField(max_length=200, null=True)
     annotation = models.CharField(max_length=200, null=True)
     barcode = models.CharField(max_length=200, null=True)
-    status = models.CharField(max_length=100, choices=[(tag.value, tag.name) for tag in Choices_status], default=Choices_status.wait.value)
+    status = models.CharField(max_length=100, choices=[(tag.value, tag.name) for tag in ChoicesStatus], default=ChoicesStatus.wait.value)
     
 
 
@@ -85,7 +91,7 @@ class Folder(Base):
     path = models.CharField(max_length=255, null=True)
     files = models.FileField(upload_to='files/',null=True)
     file_size = models.BigIntegerField(null=True)
-    type = models.CharField(max_length=100, choices=[(tag.value, tag.name) for tag in Choices_type], default=Choices_type.Folder.value)
+    type = models.CharField(max_length=100, choices=[(tag.value, tag.name) for tag in ChoicesType], default=ChoicesType.Folder.value)
     
     def __str__(self) :
         return  self.name
@@ -97,7 +103,7 @@ class Document(Base):
     path = models.CharField(max_length=200,null=True)
     folder = models.ForeignKey(Folder, on_delete=models.CASCADE, null=True)
     portfolio = models.ForeignKey(Portfolio, on_delete=models.CASCADE,  null = True)
-    border_frame = models.CharField(max_length=200, choices=[(tag.value, tag.name) for tag in Choices_frame], default=Choices_frame.img.value)
+    border_frame = models.CharField(max_length=200, choices=[(tag.value, tag.name) for tag in ChoicesFrame], default=ChoicesFrame.img.value)
     color = models.CharField(max_length=200,null=True)
     usage_mode = models.CharField(max_length=200,null=True)
     storage_code = models.CharField(max_length=100,null=True)
@@ -107,7 +113,7 @@ class Document(Base):
     physical_status = models.CharField(max_length=200,null=True)
     note = models.CharField(max_length=1000,null=True)
     files = models.FileField(upload_to='files/', null=True)
-    type = models.CharField(max_length=100, choices=[(tag.value, tag.name) for tag in Choices_type], default=Choices_type.Folder.value)
+    type = models.CharField(max_length=100, choices=[(tag.value, tag.name) for tag in ChoicesType], default=ChoicesType.Folder.value)
     add_info = models.JSONField(null=True)
     
     def __str__(self) :
