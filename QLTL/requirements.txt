@@ -40,4 +40,4 @@ django-filter==23.5
 drf-yasg
 setuptools
 sentry-sdk
-debug-toolbar
+django-debug-toolbar
