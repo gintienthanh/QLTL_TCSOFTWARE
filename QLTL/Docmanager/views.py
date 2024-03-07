@@ -22,9 +22,49 @@ from django.utils import timezone
 from django.db.models import F, Case, When, Value, CharField
 from django.db.models.functions import Coalesce
 # Create your views here.
-
 class CustomPagination(PageNumberPagination):
+    limit_query_param = 'limit'
+    offset_query_param = 'offset'
+    max_limit = 1000
+
+    def get_page_size(self, request):
+        limit = self.get_limit(request)
+        return min(limit, self.max_limit)
+
+    def get_limit(self, request):
+        limit_param = request.GET.get(self.limit_query_param)
+        if limit_param is None:
+            return self.page_size
+
+        try:
+            limit = int(limit_param)
+            if limit < 0:
+                limit = self.page_size
+        except ValueError:
+            limit = self.page_size
+
+        return limit
+
+    def get_offset(self, request):
+        offset_param = request.GET.get(self.offset_query_param)
+        if offset_param is None:
+            return 0
+
+        try:
+            offset = int(offset_param)
+            if offset < 0:
+                offset = 0
+        except ValueError:
+            offset = 0
+
+        return offset
+
     def get_paginated_response(self, data):
+        limit = self.get_limit(self.request)
+        offset = self.get_offset(self.request)
+
+        
+
         next_page = self.get_next_link()
         previous_page = self.get_previous_link()
         total_pages = self.page.paginator.num_pages
@@ -32,20 +72,22 @@ class CustomPagination(PageNumberPagination):
         total_count = self.page.paginator.count
         return Response({
             "status": "200",
-            "message": " found successfully",
+            "message": "Data found successfully",
             "pagination": {
                 "count": total_count,
                 "total_pages": total_pages,
                 "current_page": current_page,
                 "next_page": next_page,
                 "previous_page": previous_page,
-                },
+                "limit": limit,
+                "offset": offset,
+            },
             "data": data,
         })
-class PortfolioSetPagination(CustomPagination):
-    page_size = 12
-    page_size_query_param = 'page_size'
-    max_page_size = 1000  
+# class PortfolioSetPagination(CustomPagination):
+#     page_size = 12
+#     page_size_query_param = 'page_size'
+#     max_page_size = 1000  
     
 class FolderSetPagination(CustomPagination):
     page_size = 12
@@ -97,7 +139,7 @@ class PortfolioListCreate(generics.ListAPIView):
     serializer_class = PortfolioSerializer
     filter_backends = [filters.DjangoFilterBackend]
     filterset_class = PortfolioFilter
-    paginator = PortfolioSetPagination()
+    paginator = CustomPagination()
     
     def get_queryset(self):
         
@@ -542,8 +584,9 @@ class ShareUpdateDestroy(generics.RetrieveUpdateDestroyAPIView):
         instance.delete_at=datetime.now() 
         instance.delete_by=request.user
         self.perform_update(instance)
-        return Response({'status':200,'message':'destroyed'},status=status.HTTP_204_NO_CONTENT)
-       
+        return Response({'status':200,'message':'destroyed'},status=status.HTTP_204_NO_CONTENT)  
+
+
 
 class  WarehouseFilter(filters.FilterSet):
     name = filters.CharFilter(field_name='name', lookup_expr='icontains')
@@ -595,7 +638,7 @@ class WarehouseListCreate(generics.ListAPIView):
             return Response({'status':400,
                             'message':'created fail'},status=status.HTTP_400_BAD_REQUEST)
         except Warehouse.DoesNotExist:
-            serializer.save()
+            serializer.save(create_by=request.user)
             return Response({'status':201,
                             'message':'created successfully',
                             'data':serializer.data},status=status.HTTP_201_CREATED)
