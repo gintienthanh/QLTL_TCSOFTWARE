@@ -526,7 +526,7 @@ class FolderUpdateDelete(APIView):
         return Response({'status':400}, status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self,request,pk):
-        folder = self.get_object(pk)
+        folder = self.get_folder(pk)
         folder.soft_delete(request)
         try:
             queryset = Folder.objects.filter(parent_folder = pk)
@@ -766,11 +766,11 @@ class WarehouseUpdateDelete(APIView):
             warehouse.is_delete = True
             warehouse.delete_at = timezone.now()  # Cập nhật delete_at với ngày và giờ hiện tại
             warehouse.save()
-            return Response({'status':200,
-                             'message':'delete successfully'},status=status.HTTP_200_OK)
-        return Response({'status':400,
+            return Response({'status':400,
                              'message':'error'
                              },status=status.HTTP_400_BAD_REQUEST)
+        return Response({'status':200,
+                             'message':'delete successfully'},status=status.HTTP_200_OK)
 
 
 #######WatchList#######
