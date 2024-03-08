@@ -265,28 +265,44 @@ class FolderListCreate(generics.ListAPIView):
             queryset = queryset.filter(create_by=user, is_delete = False)
         return queryset 
     def extract_and_convert_to_integer(self,name,data):
-        start_index = name.rfind('(')
-        end_index = name.rfind(')')
-        if start_index != -1 and end_index != -1 and start_index < end_index:
-            try:
-                for i in data:
-                    if name == i['name']:
-                        end_index = name.rfind(')')
-                        substring = name[start_index+1:end_index]
-                        integer_value = int(substring) + 1
-                        new_name = name.replace(substring, str(integer_value))
-                        name = new_name
-                return name
-            except ValueError:
-                return name
+        name_list = []
+        for i in data:
+            name_list.append(i['name'])
+        for i in name_list:
+            if name in name_list:
+                match = re.search(r'\((\d+)\)$', name)
+                if match:
+                    number_str = match.group(1)
+                    number = int(number_str)
+                    number += 1
+                    new_name = re.sub(r'\(\d+\)$', f'({number})', name)
+                    name = new_name
+        return name
+        # start_index = name.rfind('(')
+        # end_index = name.rfind(')')
+        # if start_index != -1 and end_index != -1 and start_index < end_index:
+        #     try:
+        #         name_list = []
+        #         for i in data:
+        #             name_list.append(i['name'])
+        #         for i in name_list:
+        #             if name in name_list:
+        #                 substring = name[start_index+1:end_index]
+        #                 integer_value = int(substring)
+        #                 integer_value += 1
+        #                 name_lst = list(name)
+        #                 name_lst[start_index + 1] = str(integer_value)
+        #                 new_name = ''.join(name_lst)
+        #                 name = new_name
+        #         return name
+        #     except ValueError:
+        #         return name
     def post(self, request):
-        serializer = FolderSerializer(data=request.data,partial=True)
         files = request.FILES.getlist('files')
         name = request.POST.get('name')
         parent_folder_id = request.POST.get('parent_folder')
-        # results = Folder.objects.filter(name__icontains=name,parent_folder = parent_folder_id).order_by('-name')
-        # for i in results:
-        #     print(i.name)
+        serializer = FolderSerializer(data={name,parent_folder_id},partial=True)
+        print(request.data['parent_folder'])
         user = request.user
         if name:
             name = name.rstrip()
@@ -295,7 +311,7 @@ class FolderListCreate(generics.ListAPIView):
             if name:
                 name = name.rstrip()
             else:
-                name = None
+                name = 'New Folder'
         if not parent_folder_id:
             parent_folder_id = request.data.get('parent_folder')
         if serializer.is_valid():
