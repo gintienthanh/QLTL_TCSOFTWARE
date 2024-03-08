@@ -25,9 +25,7 @@ from django.db.models import F, Case, When, Value, CharField
 from django.db.models.functions import Coalesce
 # Create your views here.
 class CustomPagination(PageNumberPagination):
-    def __init__(self, serializer_class=None, *args, **kwargs):
-        self.serializer_class = serializer_class
-        super().__init__(*args, **kwargs)
+
 
     limit_query_param = 'limit'
     offset_query_param = 'offset'
@@ -65,10 +63,7 @@ class CustomPagination(PageNumberPagination):
 
         return offset
 
-    def get_serializer(self, queryset):
-        if self.serializer_class is None:
-            raise AssertionError("serializer_class attribute must be set on CustomPagination class.")
-        return self.serializer_class(queryset, many=True)
+   
 
     def get_paginated_response(self, data):
         limit = self.get_limit(self.request)
@@ -79,8 +74,7 @@ class CustomPagination(PageNumberPagination):
         total_pages = self.page.paginator.num_pages
         current_page = self.page.number
 
-        serializer = self.get_serializer(queryset[offset:offset+limit])
-        serialized_data = serializer.data
+       
 
         next_page = self.get_next_link()
         previous_page = self.get_previous_link()
@@ -100,7 +94,7 @@ class CustomPagination(PageNumberPagination):
                 "offset": offset,
                 "has_more": has_more,
             },
-            "data": serialized_data,
+            "data": data
         })
 # class PortfolioSetPagination(CustomPagination):
 #     page_size = 12
@@ -157,7 +151,7 @@ class PortfolioListCreate(generics.ListAPIView):
     serializer_class = PortfolioSerializer
     filter_backends = [filters.DjangoFilterBackend]
     filterset_class = PortfolioFilter
-    paginator = CustomPagination(serializer_class)
+    paginator = CustomPagination()
     
     def get_queryset(self):
         
@@ -223,46 +217,7 @@ class PortfolioUpdateDelete(APIView):
                              'datadocment': docserializers.data
                             })
         
-class PortfolioBulkDelete (APIView):
-    def delete(self, request, *args, **kwargs):
-        portfolio_ids = request.data.get('portfolio_ids', [])
-        success_count = 0
-        
-        for portfolio_id in portfolio_ids:
-            try:
-                portfolio = Portfolio.objects.get(id=int(portfolio_id))
-                serializer = PortfolioSerializer(portfolio, 
-                    data={
-                        'is_delete': True,
-                    }, partial=True)
-                if serializer.is_valid():
-                    serializer.validated_data['delete_at'] = datetime.datetime.now()
-                    serializer.save()
 
-                    documents = Document.objects.filter(portfolio=portfolio)
-                    for document in documents:
-                        document.is_delete = True
-                        document.delete_at = datetime.datetime.now()
-                        document.save()
-
-                    success_count += 1
-
-            except Portfolio.DoesNotExist:
-                pass
-
-        if success_count > 0:
-            data = {
-                'status': 'success',
-                'message': f'Deleted {success_count} portfolios and associated documents successfully'
-            }
-            return Response(data, status=status.HTTP_200_OK)
-        else:
-            data = {
-                'status': 'error',
-                'message': 'Failed to delete portfolios and associated documents'
-            }
-            return Response(data, status=status.HTTP_400_BAD_REQUEST)        
-        
         
         
         
@@ -297,7 +252,7 @@ class DocumentListCreate(generics.ListCreateAPIView):
     serializer_class = DocumentSerializer
     filter_backends = [filters.DjangoFilterBackend]
     filterset_class = DocumentFilter
-    paginator = CustomPagination(serializer_class)
+    paginator = CustomPagination()
     
     def get_queryset(self):
         
@@ -387,7 +342,7 @@ class FolderListCreate(generics.ListAPIView):
     serializer_class = FolderSerializer  
     filter_backends = [filters.DjangoFilterBackend]
     filterset_class = FolderFilter
-    paginator = CustomPagination(serializer_class)
+    paginator = CustomPagination()
     
     def get_queryset(self):
         
@@ -577,7 +532,7 @@ class APIShareListCreate(generics.ListCreateAPIView):
     filter_backends = [filters.DjangoFilterBackend]
 
     filterset_class = ShareFilter
-    paginator = CustomPagination(serializer_class)
+    paginator = CustomPagination()
     def get_permissions(self):
         if self.request.method == 'POST':
             return [permissions.IsAuthenticated()]
@@ -662,7 +617,7 @@ class WarehouseListCreate(generics.ListAPIView):
     serializer_class = WarehouseSerializer 
     filter_backends = [filters.DjangoFilterBackend]
     filterset_class = WarehouseFilter
-    paginator = CustomPagination(serializer_class)
+    paginator = CustomPagination()
     
     def get_queryset(self):
         
@@ -957,3 +912,57 @@ class Multi_portfolio_DownloadConvertAPIView(APIView):
         response = HttpResponse(zip_file.getvalue(), content_type='application/zip')
         response['Content-Disposition'] = 'attachment; filename=data.zip'
         return response  
+class BulkDeleteAPI(APIView):
+    def delete(self, request, *args, **kwargs):
+        portfolio_ids = request.data.get('portfolio_ids', [])
+        warehouse_ids = request.data.get('warehouse_ids', [])
+        success_count = 0
+
+        # Soft delete portfolios and associated documents
+        for portfolio_id in portfolio_ids:
+            try:
+                portfolio = Portfolio.objects.get(id=int(portfolio_id))
+                portfolio.soft_delete(request)
+                documents = Document.objects.filter(portfolio=portfolio)
+                documents.update(is_delete=True, delete_at=timezone.now())
+                success_count += 1
+            except Portfolio.DoesNotExist:
+                pass
+
+        # Soft delete warehouses
+        for warehouse_id in warehouse_ids:
+            try:
+                warehouse = Warehouse.objects.get(id=int(warehouse_id))
+                warehouse.soft_delete(request)
+
+                if warehouse.type_warehouse == ChoicesTypeWarehouse.Shelf.value:
+                    # Get all boxcases related to the shelf
+                    boxcases = Warehouse.objects.filter(parent_warehouse=warehouse)
+                    for boxcase in boxcases:
+                        boxcase.soft_delete(request)
+                elif warehouse.type_warehouse == ChoicesTypeWarehouse.BoxCase.value:
+                    # Get the shelf related to the boxcase
+                    shelf = warehouse.parent_warehouse
+                    shelf.soft_delete(request)
+                else:
+                    # Get all subwarehouses related to the warehouse
+                    subwarehouses = warehouse.subwarehouse.all()
+                    for subwarehouse in subwarehouses:
+                        subwarehouse.soft_delete(request)
+
+                success_count += 1
+            except Warehouse.DoesNotExist:
+                pass
+
+        if success_count > 0:
+            data = {
+                'status': '200',
+                'message': f'Deleted {success_count} items successfully'
+            }
+            return Response(data, status=status.HTTP_200_OK)
+        else:
+            data = {
+                'status': '500',
+                'message': 'Failed to delete items'
+            }
+            return Response(data, status=status.HTTP_400_BAD_REQUEST)
