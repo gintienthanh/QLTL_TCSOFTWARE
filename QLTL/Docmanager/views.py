@@ -25,6 +25,10 @@ from django.db.models import F, Case, When, Value, CharField
 from django.db.models.functions import Coalesce
 # Create your views here.
 class CustomPagination(PageNumberPagination):
+    def __init__(self, serializer_class=None, *args, **kwargs):
+        self.serializer_class = serializer_class
+        super().__init__(*args, **kwargs)
+
     limit_query_param = 'limit'
     offset_query_param = 'offset'
     max_limit = 1000
@@ -61,17 +65,28 @@ class CustomPagination(PageNumberPagination):
 
         return offset
 
+    def get_serializer(self, queryset):
+        if self.serializer_class is None:
+            raise AssertionError("serializer_class attribute must be set on CustomPagination class.")
+        return self.serializer_class(queryset, many=True)
+
     def get_paginated_response(self, data):
         limit = self.get_limit(self.request)
         offset = self.get_offset(self.request)
+        queryset = self.page.paginator.object_list
 
-        
+        total_count = self.page.paginator.count
+        total_pages = self.page.paginator.num_pages
+        current_page = self.page.number
+
+        serializer = self.get_serializer(queryset[offset:offset+limit])
+        serialized_data = serializer.data
 
         next_page = self.get_next_link()
         previous_page = self.get_previous_link()
-        total_pages = self.page.paginator.num_pages
-        current_page = self.page.number
-        total_count = self.page.paginator.count
+
+        has_more = offset + limit < total_count
+
         return Response({
             "status": "200",
             "message": "Data found successfully",
@@ -83,8 +98,9 @@ class CustomPagination(PageNumberPagination):
                 "previous_page": previous_page,
                 "limit": limit,
                 "offset": offset,
+                "has_more": has_more,
             },
-            "data": data,
+            "data": serialized_data,
         })
 # class PortfolioSetPagination(CustomPagination):
 #     page_size = 12
@@ -141,7 +157,7 @@ class PortfolioListCreate(generics.ListAPIView):
     serializer_class = PortfolioSerializer
     filter_backends = [filters.DjangoFilterBackend]
     filterset_class = PortfolioFilter
-    paginator = CustomPagination()
+    paginator = CustomPagination(serializer_class)
     
     def get_queryset(self):
         
@@ -281,7 +297,7 @@ class DocumentListCreate(generics.ListCreateAPIView):
     serializer_class = DocumentSerializer
     filter_backends = [filters.DjangoFilterBackend]
     filterset_class = DocumentFilter
-    paginator = CustomPagination()
+    paginator = CustomPagination(serializer_class)
     
     def get_queryset(self):
         
@@ -371,7 +387,7 @@ class FolderListCreate(generics.ListAPIView):
     serializer_class = FolderSerializer  
     filter_backends = [filters.DjangoFilterBackend]
     filterset_class = FolderFilter
-    paginator = CustomPagination()
+    paginator = CustomPagination(serializer_class)
     
     def get_queryset(self):
         
@@ -561,7 +577,7 @@ class APIShareListCreate(generics.ListCreateAPIView):
     filter_backends = [filters.DjangoFilterBackend]
 
     filterset_class = ShareFilter
-    paginator = CustomPagination()
+    paginator = CustomPagination(serializer_class)
     def get_permissions(self):
         if self.request.method == 'POST':
             return [permissions.IsAuthenticated()]
@@ -646,7 +662,7 @@ class WarehouseListCreate(generics.ListAPIView):
     serializer_class = WarehouseSerializer 
     filter_backends = [filters.DjangoFilterBackend]
     filterset_class = WarehouseFilter
-    paginator = CustomPagination()
+    paginator = CustomPagination(serializer_class)
     
     def get_queryset(self):
         
