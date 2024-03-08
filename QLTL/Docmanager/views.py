@@ -278,30 +278,10 @@ class FolderListCreate(generics.ListAPIView):
                     new_name = re.sub(r'\(\d+\)$', f'({number})', name)
                     name = new_name
         return name
-        # start_index = name.rfind('(')
-        # end_index = name.rfind(')')
-        # if start_index != -1 and end_index != -1 and start_index < end_index:
-        #     try:
-        #         name_list = []
-        #         for i in data:
-        #             name_list.append(i['name'])
-        #         for i in name_list:
-        #             if name in name_list:
-        #                 substring = name[start_index+1:end_index]
-        #                 integer_value = int(substring)
-        #                 integer_value += 1
-        #                 name_lst = list(name)
-        #                 name_lst[start_index + 1] = str(integer_value)
-        #                 new_name = ''.join(name_lst)
-        #                 name = new_name
-        #         return name
-        #     except ValueError:
-        #         return name
     def post(self, request):
         files = request.FILES.getlist('files')
         name = request.POST.get('name')
         parent_folder_id = request.POST.get('parent_folder')
-        serializer = FolderSerializer(data={name,parent_folder_id},partial=True)
         print(request.data['parent_folder'])
         user = request.user
         if name:
@@ -312,6 +292,7 @@ class FolderListCreate(generics.ListAPIView):
                 name = name.rstrip()
             else:
                 name = 'New Folder'
+        serializer = FolderSerializer(data={name:name,parent_folder:parent_folder_id,files:files},partial=True)
         if not parent_folder_id:
             parent_folder_id = request.data.get('parent_folder')
         if serializer.is_valid():
