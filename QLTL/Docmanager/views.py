@@ -346,7 +346,7 @@ class FolderFilter(filters.FilterSet):
     
     class Meta:
         model = Folder
-        fields = ['name', 'parent_folder']
+        fields = ['name', 'parent_folder', 'type']
 
 
 
@@ -381,25 +381,19 @@ class FolderListCreate(generics.ListAPIView):
             queryset = queryset.filter(create_by=user, is_delete = False)
         return queryset 
     def extract_and_convert_to_integer(self,name,data):
-        start_index = name.rfind('(')
-        end_index = name.rfind(')')
-        if start_index != -1 and end_index != -1 and start_index < end_index:
-            try:
-                name_list = []
-                for i in data:
-                    name_list.append(i['name'])
-                for i in name_list:
-                    if name in name_list:
-                        substring = name[start_index+1:end_index]
-                        integer_value = int(substring)
-                        integer_value += 1
-                        name_lst = list(name)
-                        name_lst[start_index + 1] = str(integer_value)
-                        new_name = ''.join(name_lst)
-                        name = new_name
-                return name
-            except ValueError:
-                return name
+        name_list = []
+        for i in data:
+            name_list.append(i['name'])
+        for i in name_list:
+            if name in name_list:
+                match = re.search(r'\((\d+)\)$', name)
+                if match:
+                    number_str = match.group(1)
+                    number = int(number_str)
+                    number += 1
+                    new_name = re.sub(r'\(\d+\)$', f'({number})', name)
+                    name = new_name
+        return name
     def post(self, request):
         serializer = FolderSerializer(data=request.data,partial=True)
         files = request.FILES.getlist('files')
@@ -734,43 +728,32 @@ class WarehouseUpdateDelete(APIView):
                              },status=status.HTTP_400_BAD_REQUEST)
     def delete(self, request, pk):
         warehouse = self.get_warehouse(pk)
-        
+        delete_success = warehouse.soft_delete(request)
+
         if warehouse.type_warehouse == ChoicesTypeWarehouse.Shelf.value:
-            # Soft delete the shelf and its associated boxcases
-            warehouse.is_delete = True
-            warehouse.delete_at = timezone.now()  # Cập nhật delete_at với ngày và giờ hiện tại
-            warehouse.save()
-            
-            shelf_boxcases = Warehouse.objects.filter(parent_warehouse=warehouse).prefetch_related('parent_warehouse')
-            shelf_boxcases.update(is_delete=True, delete_at=timezone.now())  # Cập nhật delete_at cho các boxcase
-            
+            # Lấy tất cả boxcase liên quan đến shelf
+            boxcases = Warehouse.objects.filter(parent_warehouse=warehouse)
+            for boxcase in boxcases:
+                if not boxcase.soft_delete(request):
+                    return Response({"message": "Xóa thành công"}, status=status.HTTP_200_OK)
         elif warehouse.type_warehouse == ChoicesTypeWarehouse.BoxCase.value:
-            # Soft delete the boxcase and its associated shelf
-            warehouse.is_delete = True
-            warehouse.delete_at = timezone.now()  # Cập nhật delete_at với ngày và giờ hiện tại
-            warehouse.save()
-            
+            # Lấy shelf liên quan đến boxcase
             shelf = warehouse.parent_warehouse
-            shelf.is_delete = True
-            shelf.delete_at = timezone.now()  # Cập nhật delete_at cho shelf
-            shelf.save()
-        
+            if not shelf.soft_delete(request):
+                return Response({"message": "Xóa thành công"}, status=status.HTTP_200_OK)
         else:
-            # Soft delete the warehouse and its associated shelves and boxcases
+            # Lấy tất cả warehouse con liên quan đến warehouse
             subwarehouses = warehouse.subwarehouse.all()
             for subwarehouse in subwarehouses:
-                subwarehouse.is_delete = True
-                subwarehouse.delete_at = timezone.now()  # Cập nhật delete_at cho các warehouse con
-                subwarehouse.save()
-            
-            warehouse.is_delete = True
-            warehouse.delete_at = timezone.now()  # Cập nhật delete_at với ngày và giờ hiện tại
-            warehouse.save()
-            return Response({'status':400,
-                             'message':'error'
-                             },status=status.HTTP_400_BAD_REQUEST)
-        return Response({'status':200,
-                             'message':'delete successfully'},status=status.HTTP_200_OK)
+                if not subwarehouse.soft_delete(request):
+                    return Response({"message": "Xóa thành công"}, status=status.HTTP_200_OK)
+
+        if delete_success:
+            return Response({"message": "Xóa thành công"}, status=status.HTTP_204_NO_CONTENT)
+        else:
+            return Response({"message": "Xóa không thành công"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
 
 
 #######WatchList#######
