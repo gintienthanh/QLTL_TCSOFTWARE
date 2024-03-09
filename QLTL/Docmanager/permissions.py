@@ -25,6 +25,7 @@ def checkGroupFactory(required_group):
     
     return CheckGroup
 
+
 # Check the owner of model
 def CheckOwnerFactory(Model):
     class CheckOwner(BasePermission):

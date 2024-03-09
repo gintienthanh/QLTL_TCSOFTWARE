@@ -32,7 +32,18 @@ warehouse_urls = [
 
 share_urls = [
     path('', APIShareListCreate.as_view(), name='share-list'),
-    path('/<int:pk>', ShareUpdateDestroy.as_view(), name='share-detail'),
+    path('/<int:pk>', APIShareUpdateDestroy.as_view(), name='share-detail'),
+]
+permission_urls = [
+    path('', APIPermissionListCreate.as_view(), name='permission-list'),
+    path('/<int:pk>', APIPermissionUpdateDestroy.as_view(), name='permission-detail'),
+    path('/user_permissions/<int:pk>/', UserPermissionView.as_view(), name='user-permissions'),
+]
+group_urls = [
+    path('', APIGroupListCreate.as_view(), name='group-list'),
+    path('/<int:pk>', APIGroupUpdateDestroy.as_view(), name='group-detail'),
+    path('/group_users/<int:pk>/', GroupUserView.as_view(), name='group-users'),
+    path('/group_permissions/<int:pk>/', GroupPermissionView.as_view(), name='group-permissions'),
 ]
 
 portfolio_urls = [
@@ -62,6 +73,8 @@ urlpatterns = [
     path('folder', include((folder_urls, 'folder'))),
     path('warehouse', include((warehouse_urls, 'warehouse'))),
     path('share', include((share_urls, 'share'))),
+    path('permission', include((permission_urls, 'permission'))),
+    path('group', include((group_urls, 'group'))),
     path('portfolio', include((portfolio_urls, 'portfolio'))),
     path('document', include((document_urls, 'document'))),
     path('watchlist', include((watchlist_urls, 'watchlist'))),
