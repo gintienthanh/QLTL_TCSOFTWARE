@@ -1,6 +1,7 @@
 import concurrent.futures
 import datetime
 import os
+import re
 import shutil
 from django.conf import settings
 from django.shortcuts import render
@@ -349,7 +350,7 @@ class FolderListCreate(generics.ListAPIView):
         queryset = super().get_queryset()
         user = self.request.user
         if user.is_authenticated:  # Check if user is authenticated
-            queryset = queryset.filter(create_by=user, is_delete = False)
+            queryset = queryset.filter(create_by=user, is_delete = False, parent_folder = None)
         return queryset 
     def extract_and_convert_to_integer(self,name,data):
         name_list = []
@@ -489,37 +490,20 @@ class FolderUpdateDelete(APIView):
             }
             return Response(response, status=status.HTTP_200_OK)
         return Response({'status':400}, status=status.HTTP_400_BAD_REQUEST)
-
+    
     def delete(self,request,pk):
-        folder = self.get_folder(pk)
-        folder.soft_delete(request)
-        try:
-            queryset = Folder.objects.filter(parent_folder = pk)
-            serializer_db = FolderSerializer(queryset,many=True)
-            data = serializer_db.data
-            for i in data:
-                self.delete(request,i['id'])
-            folder.save()
-            return Response({'status':200,
-                             'message':'delete successfully'
-                            }, status=status.HTTP_200_OK)
-        except:
-            return Response({'status':400}, status=status.HTTP_400_BAD_REQUEST)
+            folder = self.get_object(pk)
+            try:
+                folders = Folder.objects.filter(path__startswith=folder.path)
+                for i in folders:
+                    i.soft_delete(request)
+                return Response({'status':200,
+                                'message':'delete successfully'
+                                }, status=status.HTTP_200_OK)
+            except:
+                return Response({'status':400}, status=status.HTTP_400_BAD_REQUEST)
 
-class FolderDeletes(APIView):
-    def delete(self, request, *args, **kwargs):
-        selected_records = request.data.get('selected_records', [])
-        queryset =  Folder.objects.filter(id__in=selected_records)
-        serializers = FolderSerializer(queryset,many=True)
-        try:
-            for i in serializers.data:
-                queryset_child = Folder.objects.filter(parent_folder = i['id'])
-                serializer_child = FolderSerializer(queryset_child,many=True)
-                for j in serializer_child.data:
-                    self.delete(j['id'])
-            return Response({'status':200},status=status.HTTP_200_OK)
-        except:
-            return Response({'status':400}, status=status.HTTP_400_BAD_REQUEST)
+
 
 class ShareFilter(filters.FilterSet):
     class Meta:
@@ -916,8 +900,10 @@ class BulkDeleteAPI(APIView):
     def delete(self, request, *args, **kwargs):
         portfolio_ids = request.data.get('portfolio_ids', [])
         warehouse_ids = request.data.get('warehouse_ids', [])
+        document_ids = request.data.get('document_ids', [])
+        folder_ids = request.data.get('folder_ids', [])
         success_count = 0
-
+         
         # Soft delete portfolios and associated documents
         for portfolio_id in portfolio_ids:
             try:
@@ -927,8 +913,16 @@ class BulkDeleteAPI(APIView):
                 documents.update(is_delete=True, delete_at=timezone.now())
                 success_count += 1
             except Portfolio.DoesNotExist:
+                pass 
+        #Soft delete document
+        for document_id in document_ids:
+            try:
+                document = Document.objects.get(id=int(document_id))
+                document.soft_delete(request)
+                success_count += 1
+            except Document.DoesNotExist:
                 pass
-
+        
         # Soft delete warehouses
         for warehouse_id in warehouse_ids:
             try:
@@ -953,7 +947,13 @@ class BulkDeleteAPI(APIView):
                 success_count += 1
             except Warehouse.DoesNotExist:
                 pass
-
+        # Solf delete Folder
+        for folder_id in folder_ids:
+            folder =  Folder.objects.get(id=folder_id)
+            folders = Folder.objects.filter(path__startswith=folder.path)
+            for i in folders:
+                i.soft_delete(request)
+            success_count += 1
         if success_count > 0:
             data = {
                 'status': '200',
@@ -966,3 +966,4 @@ class BulkDeleteAPI(APIView):
                 'message': 'Failed to delete items'
             }
             return Response(data, status=status.HTTP_400_BAD_REQUEST)
+        
