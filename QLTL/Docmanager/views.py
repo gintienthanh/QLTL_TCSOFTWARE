@@ -279,10 +279,10 @@ class FolderListCreate(generics.ListAPIView):
                     name = new_name
         return name
     def post(self, request):
+        serializer = FolderSerializer(data=request.data,partial=True)
         files = request.FILES.getlist('files')
         name = request.POST.get('name')
         parent_folder_id = request.POST.get('parent_folder')
-        print(request.data['parent_folder'])
         user = request.user
         if name:
             name = name.rstrip()
@@ -292,7 +292,6 @@ class FolderListCreate(generics.ListAPIView):
                 name = name.rstrip()
             else:
                 name = 'New Folder'
-        serializer = FolderSerializer(data={name:name,parent_folder:parent_folder_id,files:files},partial=True)
         if not parent_folder_id:
             parent_folder_id = request.data.get('parent_folder')
         if serializer.is_valid():
@@ -386,7 +385,11 @@ class FolderUpdateDelete(APIView):
             name_list = []
             for i in data:
                 name_list.append(i['name'])
-            name_default = name + " (1)"
+            if folder.type == "Folder":
+                name_default = name + " (1)"
+            else:
+                start_index = name.rfind('.')
+                name_default = name[:start_index] + "(1)" + name[start_index:]
             if name not in name_list: 
                 newname = name
             elif name_default not in name_list and name in name_list:
@@ -406,35 +409,15 @@ class FolderUpdateDelete(APIView):
 
     def delete(self,request,pk):
         folder = self.get_object(pk)
-        folder.soft_delete(request)
         try:
-            queryset = Folder.objects.filter(parent_folder = pk)
-            serializer_db = FolderSerializer(queryset,many=True)
-            data = serializer_db.data
-            for i in data:
-                self.delete(request,i['id'])
-            folder.save()
+            folders = Folder.objects.filter(path__startswith=folder.path)
+            for i in folders:
+                i.soft_delete(request)
             return Response({'status':200,
                              'message':'delete successfully'
                             }, status=status.HTTP_200_OK)
         except:
             return Response({'status':400}, status=status.HTTP_400_BAD_REQUEST)
-
-class FolderDeletes(APIView):
-    def delete(self, request, *args, **kwargs):
-        selected_records = request.data.get('selected_records', [])
-        queryset =  Folder.objects.filter(id__in=selected_records)
-        serializers = FolderSerializer(queryset,many=True)
-        try:
-            for i in serializers.data:
-                queryset_child = Folder.objects.filter(parent_folder = i['id'])
-                serializer_child = FolderSerializer(queryset_child,many=True)
-                for j in serializer_child.data:
-                    self.delete(j['id'])
-            return Response({'status':200},status=status.HTTP_200_OK)
-        except:
-            return Response({'status':400}, status=status.HTTP_400_BAD_REQUEST)
-
 
 class ShareFilter(filters.FilterSet):
     class Meta:
@@ -890,3 +873,65 @@ class Multi_portfolio_DownloadConvertAPIView(APIView):
         response = HttpResponse(zip_file.getvalue(), content_type='application/zip')
         response['Content-Disposition'] = 'attachment; filename=data.zip'
         return response  
+    
+class BulkDeleteAPI(APIView):
+    def delete(self, request, *args, **kwargs):
+        portfolio_ids = request.data.get('portfolio_ids', [])
+        warehouse_ids = request.data.get('warehouse_ids', [])
+        folder_ids = request.data.get('folder_ids',[])
+        success_count = 0
+
+        # Soft delete portfolios and associated documents
+        for portfolio_id in portfolio_ids:
+            try:
+                portfolio = Portfolio.objects.get(id=int(portfolio_id))
+                portfolio.soft_delete(request)
+                documents = Document.objects.filter(portfolio=portfolio)
+                documents.update(is_delete=True, delete_at=timezone.now())
+                success_count += 1
+            except Portfolio.DoesNotExist:
+                pass
+
+        # Soft delete warehouses
+        for warehouse_id in warehouse_ids:
+            try:
+                warehouse = Warehouse.objects.get(id=int(warehouse_id))
+                warehouse.soft_delete(request)
+
+                if warehouse.type_warehouse == ChoicesTypeWarehouse.Shelf.value:
+                    # Get all boxcases related to the shelf
+                    boxcases = Warehouse.objects.filter(parent_warehouse=warehouse)
+                    for boxcase in boxcases:
+                        boxcase.soft_delete(request)
+                elif warehouse.type_warehouse == ChoicesTypeWarehouse.BoxCase.value:
+                    # Get the shelf related to the boxcase
+                    shelf = warehouse.parent_warehouse
+                    shelf.soft_delete(request)
+                else:
+                    # Get all subwarehouses related to the warehouse
+                    subwarehouses = warehouse.subwarehouse.all()
+                    for subwarehouse in subwarehouses:
+                        subwarehouse.soft_delete(request)
+
+                success_count += 1
+            except Warehouse.DoesNotExist:
+                pass
+        
+        for folder_id in folder_ids:
+            folder =  Folder.objects.get(id=folder_id)
+            folders = Folder.objects.filter(path__startswith=folder.path)
+            for i in folders:
+                i.soft_delete(request)
+            success_count += 1
+        if success_count > 0:
+            data = {
+                'status': '200',
+                'message': f'Deleted {success_count} items successfully'
+            }
+            return Response(data, status=status.HTTP_200_OK)
+        else:
+            data = {
+                'status': '500',
+                'message': 'Failed to delete items'
+            }
+            return Response(data, status=status.HTTP_400_BAD_REQUEST)
