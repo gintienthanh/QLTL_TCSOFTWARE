@@ -218,22 +218,13 @@ class DocumentUpdateDelete(generics.RetrieveUpdateDestroyAPIView):
         instance.save()
         return Response({'status':200,'message':'destroyed'},status=status.HTTP_204_NO_CONTENT)
 
-class FolderFilter(filters.FilterSet):
-    name = filters.CharFilter(field_name='name', lookup_expr='icontains')
-    
-    
-    class Meta:
-        model = Folder
-        fields = ['name', 'parent_folder']
-
-
 
 class FolderFilter(filters.FilterSet):
     name = filters.CharFilter(field_name='name', lookup_expr='icontains')
     
     class Meta:
         model = Folder
-        fields = ['name', 'parent_folder']
+        fields = ['name', 'parent_folder','type']
 
 
 class FolderListCreate(generics.ListAPIView):
@@ -252,7 +243,7 @@ class FolderListCreate(generics.ListAPIView):
         )
     )
     ).order_by('-compare_time')
-    serializer_class = FolderSerializer  
+    serializer_class = FolderSerializer
     filter_backends = [filters.DjangoFilterBackend]
     filterset_class = FolderFilter
     paginator = FolderSetPagination()
@@ -262,8 +253,8 @@ class FolderListCreate(generics.ListAPIView):
         queryset = super().get_queryset()
         user = self.request.user
         if user.is_authenticated:  # Check if user is authenticated
-            queryset = queryset.filter(create_by=user, is_delete = False)
-        return queryset 
+            queryset = queryset.filter(create_by=user, is_delete = False, parent_folder = None)
+        return queryset
     def extract_and_convert_to_integer(self,name,data):
         name_list = []
         for i in data:
@@ -284,14 +275,10 @@ class FolderListCreate(generics.ListAPIView):
         name = request.POST.get('name')
         parent_folder_id = request.POST.get('parent_folder')
         user = request.user
-        if name:
+        if name and name != '':
             name = name.rstrip()
         else:
-            name = request.data.get('name')
-            if name:
-                name = name.rstrip()
-            else:
-                name = 'New Folder'
+            name = 'New Folder'
         if not parent_folder_id:
             parent_folder_id = request.data.get('parent_folder')
         if serializer.is_valid():
@@ -406,18 +393,6 @@ class FolderUpdateDelete(APIView):
             }
             return Response(response, status=status.HTTP_200_OK)
         return Response({'status':400}, status=status.HTTP_400_BAD_REQUEST)
-
-    def delete(self,request,pk):
-        folder = self.get_object(pk)
-        try:
-            folders = Folder.objects.filter(path__startswith=folder.path)
-            for i in folders:
-                i.soft_delete(request)
-            return Response({'status':200,
-                             'message':'delete successfully'
-                            }, status=status.HTTP_200_OK)
-        except:
-            return Response({'status':400}, status=status.HTTP_400_BAD_REQUEST)
 
 class ShareFilter(filters.FilterSet):
     class Meta:
