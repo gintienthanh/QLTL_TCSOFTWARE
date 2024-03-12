@@ -39,7 +39,6 @@ portfolio_urls = [
     path('', PortfolioListCreate.as_view(), name='portfolio-list'),
     path('/<int:pk>', PortfolioUpdateDelete.as_view(), name='portfolio-detail'),
     path('/multi_download/<str:ids>/', Multi_portfolio_DownloadConvertAPIView.as_view(), name='multi-portfolio-download'),
-    path('/bulk_delete/', PortfolioBulkDelete.as_view(), name='portfolio-bulk-delete'),
    
 ]
 
@@ -55,7 +54,7 @@ watchlist_urls = [
 ]
 
 file_urls = [
-    path('/download/<int:folder_id>/', DownloadFile.as_view(), name='file-download'),
+    path('download/<int:folder_id>/', DownloadFile.as_view(), name='file-download'),
 ]
 
 urlpatterns = [
@@ -66,7 +65,9 @@ urlpatterns = [
     path('document', include((document_urls, 'document'))),
     path('watchlist', include((watchlist_urls, 'watchlist'))),
     path('file/', include((file_urls, 'file'))),
-    path('/docs/swagger.json', schema_view.without_ui(cache_timeout=0), name='schema-swagger-json'),
-    path('/docs/', schema_view.with_ui('swagger', cache_timeout=0), name='schema-swagger-ui'),
+    path('docs/swagger.json', schema_view.without_ui(cache_timeout=0), name='schema-swagger-json'),
+    path('docs', schema_view.with_ui('swagger', cache_timeout=0), name='schema-swagger-ui'),
+    path('bulk_delete/', BulkDeleteAPI.as_view(), name='portfolio-bulk-delete'),
+
     
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

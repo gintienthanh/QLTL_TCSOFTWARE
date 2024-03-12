@@ -1,9 +1,12 @@
+import concurrent.futures
 import datetime
 import os
+import re
 import shutil
 from django.conf import settings
 from django.shortcuts import render
 from Docmanager.permissions import CheckOwnerFactory, CheckSharedGroupdFactory
+from QLTL.settings import EXPORT_PATH_FILE
 from .model_serializers import*
 from .models import*
 from rest_framework import authentication, permissions, status, generics
@@ -23,6 +26,8 @@ from django.db.models import F, Case, When, Value, CharField
 from django.db.models.functions import Coalesce
 # Create your views here.
 class CustomPagination(PageNumberPagination):
+
+
     limit_query_param = 'limit'
     offset_query_param = 'offset'
     max_limit = 1000
@@ -59,17 +64,24 @@ class CustomPagination(PageNumberPagination):
 
         return offset
 
+   
+
     def get_paginated_response(self, data):
         limit = self.get_limit(self.request)
         offset = self.get_offset(self.request)
+        queryset = self.page.paginator.object_list
 
-        
+        total_count = self.page.paginator.count
+        total_pages = self.page.paginator.num_pages
+        current_page = self.page.number
+
+       
 
         next_page = self.get_next_link()
         previous_page = self.get_previous_link()
-        total_pages = self.page.paginator.num_pages
-        current_page = self.page.number
-        total_count = self.page.paginator.count
+
+        has_more = offset + limit < total_count
+
         return Response({
             "status": "200",
             "message": "Data found successfully",
@@ -81,35 +93,36 @@ class CustomPagination(PageNumberPagination):
                 "previous_page": previous_page,
                 "limit": limit,
                 "offset": offset,
+                "has_more": has_more,
             },
-            "data": data,
+            "data": data
         })
 # class PortfolioSetPagination(CustomPagination):
 #     page_size = 12
 #     page_size_query_param = 'page_size'
 #     max_page_size = 1000  
     
-class FolderSetPagination(CustomPagination):
-    page_size = 12
-    page_size_query_param = 'page_size'
-    max_page_size = 1000   
-class WarehouseSetPagination(CustomPagination):
-    page_size = 1000
-    page_size_query_param = 'page_size'
-    max_page_size = 1000  
-class ShareSetPagination(CustomPagination):
-    page_size = 12
-    page_size_query_param = 'page_size'
-    max_page_size = 1000  
+# class FolderSetPagination(CustomPagination):
+#     page_size = 12
+#     page_size_query_param = 'page_size'
+#     max_page_size = 1000   
+# class WarehouseSetPagination(CustomPagination):
+#     page_size = 1000
+#     page_size_query_param = 'page_size'
+#     max_page_size = 1000  
+# class ShareSetPagination(CustomPagination):
+#     page_size = 12
+#     page_size_query_param = 'page_size'
+#     max_page_size = 1000  
 
 class WatchlistSetPagination(CustomPagination):
     page_size = 12
     page_size_query_param = 'page_size'
     max_page_size = 1000
-class DocumentSetPagination(CustomPagination):
-    page_size = 12
-    page_size_query_param = 'page_size'
-    max_page_size = 1000
+# class DocumentSetPagination(CustomPagination):
+#     page_size = 12
+#     page_size_query_param = 'page_size'
+#     max_page_size = 1000
 
 #######PORTFOLIO######
 
@@ -163,14 +176,14 @@ class PortfolioListCreate(generics.ListAPIView):
     
     
 class PortfolioUpdateDelete(APIView):
-    # permission_classes = [permissions.IsAuthenticated]
-    def get_object(self, pk):
+    permission_classes = [permissions.IsAuthenticated]
+    def get_portfolio(self, pk):
         try:
             return Portfolio.objects.get(pk=pk)
         except Portfolio.DoesNotExist:
             raise status.HTTP_404_NOT_FOUND
     def get(self, request, pk):
-        portfolio = self.get_object(pk)
+        portfolio = self.get_portfolio(pk)
         serializer = PortfolioSerializer(portfolio)
         return Response({'status':201,
                         'message':'found',
@@ -178,11 +191,11 @@ class PortfolioUpdateDelete(APIView):
 
 
     def patch(self, request, pk):
-        portfolio = self.get_object(pk)
+        portfolio = self.get_portfolio(pk)
         serializer = PortfolioSerializer(portfolio, data=request.data, partial=True)
         if serializer.is_valid():
             serializer.validated_data['updated_at'] = timezone.now()
-            serializer.validated_data['editor'] = timezone.now()
+            serializer.validated_data['editor'] = request.user
             serializer.save()
             return Response({'status':201,
                              'message':'created successfully',
@@ -193,50 +206,19 @@ class PortfolioUpdateDelete(APIView):
     def delete(self, request, pk):
         instance = Portfolio.objects.get(pk=pk)
         instance.soft_delete(request)
+        document = Document.objects.get(portfolio=pk)
+        document.soft_delete(request)
+        
+        serializers = PortfolioSerializer(instance)
+        docserializers = DocumentSerializer(document)
+        
         return Response({'status':200,
-                             'message':'delete successfully'
+                             'message':'delete successfully',
+                             'dataportfolio': serializers.data,
+                             'datadocment': docserializers.data
                             })
         
-class PortfolioBulkDelete (APIView):
-    def delete(self, request, *args, **kwargs):
-        portfolio_ids = request.data.get('portfolio_ids', [])
-        success_count = 0
-        
-        for portfolio_id in portfolio_ids:
-            try:
-                portfolio = Portfolio.objects.get(id=int(portfolio_id))
-                serializer = PortfolioSerializer(portfolio, 
-                    data={
-                        'is_delete': True,
-                    }, partial=True)
-                if serializer.is_valid():
-                    serializer.validated_data['delete_at'] = datetime.datetime.now()
-                    serializer.save()
 
-                    documents = Document.objects.filter(portfolio=portfolio)
-                    for document in documents:
-                        document.is_delete = True
-                        document.delete_at = datetime.datetime.now()
-                        document.save()
-
-                    success_count += 1
-
-            except Portfolio.DoesNotExist:
-                pass
-
-        if success_count > 0:
-            data = {
-                'status': 'success',
-                'message': f'Deleted {success_count} portfolios and associated documents successfully'
-            }
-            return Response(data, status=status.HTTP_200_OK)
-        else:
-            data = {
-                'status': 'error',
-                'message': 'Failed to delete portfolios and associated documents'
-            }
-            return Response(data, status=status.HTTP_400_BAD_REQUEST)        
-        
         
         
         
@@ -271,7 +253,7 @@ class DocumentListCreate(generics.ListCreateAPIView):
     serializer_class = DocumentSerializer
     filter_backends = [filters.DjangoFilterBackend]
     filterset_class = DocumentFilter
-    paginator = DocumentSetPagination()
+    paginator = CustomPagination()
     
     def get_queryset(self):
         
@@ -282,7 +264,7 @@ class DocumentListCreate(generics.ListCreateAPIView):
         return queryset 
     
     def post(self, request):
-        serializer = PortfolioSerializer(data=request.data)
+        serializer = DocumentSerializer(data=request.data)
         if serializer.is_valid():
             serializer.validated_data['create_by'] = request.user   
             serializer.save()
@@ -292,16 +274,43 @@ class DocumentListCreate(generics.ListCreateAPIView):
                              status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-class DocumentUpdateDelete(generics.RetrieveUpdateDestroyAPIView):
-    #permission_classes = [CheckSharedGroupdFactory(Document(),'edit') | CheckOwnerFactory(Document())]
-    queryset = Document.objects.all()
-    serializer_class = DocumentSerializer
-    
-    def destroy(self, request, *args, **kwargs):
-        instance = self.get_object()
-        instance.is_delete = True
-        instance.save()
-        return Response({'status':200,'message':'destroyed'},status=status.HTTP_204_NO_CONTENT)
+class DocumentUpdateDelete(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+    def get_document(self, pk):
+        try:
+            return Document.objects.get(pk=pk)
+        except  Document.DoesNotExist:
+            raise status.HTTP_404_NOT_FOUND
+    def get(self, request, pk):
+        document = self.get_document(pk)
+        serializer = DocumentSerializer(document)
+        return Response({'status':201,
+                        'message':'found',
+                        'data':serializer.data},status=status.HTTP_302_FOUND)
+
+
+    def patch(self, request, pk):
+        document = self.get_document(pk)
+        serializer = DocumentSerializer(document, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.validated_data['updated_at'] = timezone.now()
+            serializer.validated_data['editor'] = request.user
+            serializer.save()
+            return Response({'status':201,
+                             'message':'created successfully',
+                             'data':serializer.data},status=status.HTTP_200_OK)
+        return Response({'status':400,
+                        'message':serializer.errors},status=status.HTTP_400_BAD_REQUEST)
+
+    def delete(self, request, pk):
+        instance = Document.objects.get(pk=pk)
+        instance.soft_delete(request)
+        return Response({'status':200,
+                             'message':'delete successfully'
+                            })
+        
+        
+########FOLDER#######
 
 class FolderFilter(filters.FilterSet):
     name = filters.CharFilter(field_name='name', lookup_expr='icontains')
@@ -309,7 +318,7 @@ class FolderFilter(filters.FilterSet):
     
     class Meta:
         model = Folder
-        fields = ['name', 'parent_folder']
+        fields = ['name', 'parent_folder', 'type']
 
 
 
@@ -334,35 +343,29 @@ class FolderListCreate(generics.ListAPIView):
     serializer_class = FolderSerializer  
     filter_backends = [filters.DjangoFilterBackend]
     filterset_class = FolderFilter
-    paginator = FolderSetPagination()
+    paginator = CustomPagination()
     
     def get_queryset(self):
         
         queryset = super().get_queryset()
         user = self.request.user
         if user.is_authenticated:  # Check if user is authenticated
-            queryset = queryset.filter(create_by=user, is_delete = False)
+            queryset = queryset.filter(create_by=user, is_delete = False, parent_folder = None)
         return queryset 
     def extract_and_convert_to_integer(self,name,data):
-        start_index = name.rfind('(')
-        end_index = name.rfind(')')
-        if start_index != -1 and end_index != -1 and start_index < end_index:
-            try:
-                name_list = []
-                for i in data:
-                    name_list.append(i['name'])
-                for i in name_list:
-                    if name in name_list:
-                        substring = name[start_index+1:end_index]
-                        integer_value = int(substring)
-                        integer_value += 1
-                        name_lst = list(name)
-                        name_lst[start_index + 1] = str(integer_value)
-                        new_name = ''.join(name_lst)
-                        name = new_name
-                return name
-            except ValueError:
-                return name
+        name_list = []
+        for i in data:
+            name_list.append(i['name'])
+        for i in name_list:
+            if name in name_list:
+                match = re.search(r'\((\d+)\)$', name)
+                if match:
+                    number_str = match.group(1)
+                    number = int(number_str)
+                    number += 1
+                    new_name = re.sub(r'\(\d+\)$', f'({number})', name)
+                    name = new_name
+        return name
     def post(self, request):
         serializer = FolderSerializer(data=request.data,partial=True)
         files = request.FILES.getlist('files')
@@ -426,22 +429,22 @@ class FolderListCreate(generics.ListAPIView):
         return Response({'status':400}, status=status.HTTP_400_BAD_REQUEST)
 
 
-# @permission_classes([CheckSharedGroupdFactory(Folder(),'Chỉnh sửa') | CheckOwnerFactory(Folder())])
+
 class FolderUpdateDelete(APIView):
-    # permission_classes = [permissions.IsAuthenticated]
-    def get_object(self, pk):
+    permission_classes = [permissions.IsAuthenticated]
+    def get_folder(self, pk):
         try:
             return Folder.objects.get(pk=pk)
         except Folder.DoesNotExist:
             raise status.HTTP_404_NOT_FOUND
     def get(self, request, pk):
-        folder = self.get_object(pk)
+        folder = self.get_folder(pk)
         serializer = FolderSerializer(folder)
         return Response({'status':302,
                              'message':'found successfully',
                              'data':serializer.data},status=status.HTTP_302_FOUND)
     def patch(self, request, pk):
-        folder = self.get_object(pk)
+        folder = self.get_folder(pk)
         serializer = FolderSerializer(folder, data=request.data,partial=True)
         name = request.POST.get('name')
         user = request.user
@@ -487,37 +490,20 @@ class FolderUpdateDelete(APIView):
             }
             return Response(response, status=status.HTTP_200_OK)
         return Response({'status':400}, status=status.HTTP_400_BAD_REQUEST)
-
+    
     def delete(self,request,pk):
-        folder = self.get_object(pk)
-        folder.soft_delete(request)
-        try:
-            queryset = Folder.objects.filter(parent_folder = pk)
-            serializer_db = FolderSerializer(queryset,many=True)
-            data = serializer_db.data
-            for i in data:
-                self.delete(request,i['id'])
-            folder.save()
-            return Response({'status':200,
-                             'message':'delete successfully'
-                            }, status=status.HTTP_200_OK)
-        except:
-            return Response({'status':400}, status=status.HTTP_400_BAD_REQUEST)
+            folder = self.get_object(pk)
+            try:
+                folders = Folder.objects.filter(path__startswith=folder.path)
+                for i in folders:
+                    i.soft_delete(request)
+                return Response({'status':200,
+                                'message':'delete successfully'
+                                }, status=status.HTTP_200_OK)
+            except:
+                return Response({'status':400}, status=status.HTTP_400_BAD_REQUEST)
 
-class FolderDeletes(APIView):
-    def delete(self, request, *args, **kwargs):
-        selected_records = request.data.get('selected_records', [])
-        queryset =  Folder.objects.filter(id__in=selected_records)
-        serializers = FolderSerializer(queryset,many=True)
-        try:
-            for i in serializers.data:
-                queryset_child = Folder.objects.filter(parent_folder = i['id'])
-                serializer_child = FolderSerializer(queryset_child,many=True)
-                for j in serializer_child.data:
-                    self.delete(j['id'])
-            return Response({'status':200},status=status.HTTP_200_OK)
-        except:
-            return Response({'status':400}, status=status.HTTP_400_BAD_REQUEST)
+
 
 class ShareFilter(filters.FilterSet):
     class Meta:
@@ -530,7 +516,7 @@ class APIShareListCreate(generics.ListCreateAPIView):
     filter_backends = [filters.DjangoFilterBackend]
 
     filterset_class = ShareFilter
-    paginator = ShareSetPagination()
+    paginator = CustomPagination()
     def get_permissions(self):
         if self.request.method == 'POST':
             return [permissions.IsAuthenticated()]
@@ -576,7 +562,7 @@ class ShareUpdateDestroy(generics.RetrieveUpdateDestroyAPIView):
         serializer = self.get_serializer(instance, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         self.perform_update(serializer)
-        return Response(serializer.data)
+        return Response({'status':200, 'message':'updated successfully'},serializer.data)
 
     def destroy(self, request, *args, **kwargs):
         instance = self.get_object()
@@ -585,6 +571,8 @@ class ShareUpdateDestroy(generics.RetrieveUpdateDestroyAPIView):
         instance.delete_by=request.user
         self.perform_update(instance)
         return Response({'status':200,'message':'destroyed'},status=status.HTTP_204_NO_CONTENT)  
+
+######WAREHOUSE######
 
 
 
@@ -613,7 +601,7 @@ class WarehouseListCreate(generics.ListAPIView):
     serializer_class = WarehouseSerializer 
     filter_backends = [filters.DjangoFilterBackend]
     filterset_class = WarehouseFilter
-    paginator = WarehouseSetPagination()
+    paginator = CustomPagination()
     
     def get_queryset(self):
         
@@ -630,8 +618,8 @@ class WarehouseListCreate(generics.ListAPIView):
             if serializer.is_valid():
                  
                 parent_warehouse =Warehouse.objects.get(id=id)    
-                serializer.save(parent_warehouse=parent_warehouse)
-                
+                serializer.save(parent_warehouse=parent_warehouse, create_by=request.user)
+    
                 return Response({'status':201,
                                 'message':'created successfully',
                                 'data':serializer.data},status=status.HTTP_201_CREATED)
@@ -650,7 +638,12 @@ class WarehouseListCreate(generics.ListAPIView):
             
             
             
-######WAREHOUSE######
+######WAREHOUSE#######
+
+
+
+
+
 
             
             
@@ -658,13 +651,13 @@ class WarehouseListCreate(generics.ListAPIView):
 
 class WarehouseUpdateDelete(APIView):
     # permission_classes = [permissions.IsAuthenticated]
-    def get_object(self, pk):
+    def get_warehouse(self, pk):
         try:
             return Warehouse.objects.get(pk=pk)
         except Warehouse.DoesNotExist:
             raise status.HTTP_404_NOT_FOUND
     def get(self, request, pk):
-        warehouse = self.get_object(pk)
+        warehouse = self.get_warehouse(pk)
         serializer = WarehouseSerializer(warehouse)
         return Response({'status':200,
                              'message':'found successfully',
@@ -672,7 +665,7 @@ class WarehouseUpdateDelete(APIView):
 
 
     def patch(self, request, pk):
-        warehouse = self.get_object(pk)
+        warehouse = self.get_warehouse(pk)
     
         # Copy request data to remove 'type_warehouse' field
         modified_data = request.data.copy()
@@ -689,44 +682,33 @@ class WarehouseUpdateDelete(APIView):
                              'message':'update fail'
                              },status=status.HTTP_400_BAD_REQUEST)
     def delete(self, request, pk):
-        warehouse = self.get_object(pk)
-        
+        warehouse = self.get_warehouse(pk)
+        delete_success = warehouse.soft_delete(request)
+
         if warehouse.type_warehouse == ChoicesTypeWarehouse.Shelf.value:
-            # Soft delete the shelf and its associated boxcases
-            warehouse.is_delete = True
-            warehouse.delete_at = timezone.now()  # Cập nhật delete_at với ngày và giờ hiện tại
-            warehouse.save()
-            
-            shelf_boxcases = Warehouse.objects.filter(parent_warehouse=warehouse).prefetch_related('parent_warehouse')
-            shelf_boxcases.update(is_delete=True, delete_at=timezone.now())  # Cập nhật delete_at cho các boxcase
-            
+            # Lấy tất cả boxcase liên quan đến shelf
+            boxcases = Warehouse.objects.filter(parent_warehouse=warehouse)
+            for boxcase in boxcases:
+                if not boxcase.soft_delete(request):
+                    return Response({"message": "Xóa thành công"}, status=status.HTTP_200_OK)
         elif warehouse.type_warehouse == ChoicesTypeWarehouse.BoxCase.value:
-            # Soft delete the boxcase and its associated shelf
-            warehouse.is_delete = True
-            warehouse.delete_at = timezone.now()  # Cập nhật delete_at với ngày và giờ hiện tại
-            warehouse.save()
-            
+            # Lấy shelf liên quan đến boxcase
             shelf = warehouse.parent_warehouse
-            shelf.is_delete = True
-            shelf.delete_at = timezone.now()  # Cập nhật delete_at cho shelf
-            shelf.save()
-        
+            if not shelf.soft_delete(request):
+                return Response({"message": "Xóa thành công"}, status=status.HTTP_200_OK)
         else:
-            # Soft delete the warehouse and its associated shelves and boxcases
+            # Lấy tất cả warehouse con liên quan đến warehouse
             subwarehouses = warehouse.subwarehouse.all()
             for subwarehouse in subwarehouses:
-                subwarehouse.is_delete = True
-                subwarehouse.delete_at = timezone.now()  # Cập nhật delete_at cho các warehouse con
-                subwarehouse.save()
-            
-            warehouse.is_delete = True
-            warehouse.delete_at = timezone.now()  # Cập nhật delete_at với ngày và giờ hiện tại
-            warehouse.save()
-            return Response({'status':200,
-                             'message':'delete successfully'},status=status.HTTP_200_OK)
-        return Response({'status':400,
-                             'message':'error'
-                             },status=status.HTTP_400_BAD_REQUEST)
+                if not subwarehouse.soft_delete(request):
+                    return Response({"message": "Xóa thành công"}, status=status.HTTP_200_OK)
+
+        if delete_success:
+            return Response({"message": "Xóa thành công"}, status=status.HTTP_204_NO_CONTENT)
+        else:
+            return Response({"message": "Xóa không thành công"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
 
 
 #######WatchList#######
@@ -805,9 +787,9 @@ class WatchListUpdate(APIView):
 class DownloadFile(APIView):
     lookup_field = 'folder_id'
     def get(self, request, folder_id,format=None):
-        rootPath="download/"
         folder=None
         zip_file_name=None
+        set_file_fail = set()
         try:
             folder = file = Folder.objects.get(pk=folder_id)
             if file.type=="File":
@@ -826,110 +808,50 @@ class DownloadFile(APIView):
             # create folder
             for item in folderList:
                 if item.type=='Folder': 
-                    os.makedirs(os.path.join(rootPath,item.path), exist_ok=True)
-            # create file
-            for item in folderList:
-                if item.type=='File': 
+                    os.makedirs(os.path.join(EXPORT_PATH_FILE,item.path), exist_ok=True)
+            # create file 
+            def write_file(item):    
+                if item.type=='File':
                     file_path = item.files.path
+                    if not os.path.exists(file_path):
+                        set_file_fail.add(file_path)
+                        return
                     with open(file_path, 'rb') as source_file:
-                        file_content = source_file.read()
-                    with open(os.path.join(rootPath,item.path), 'wb') as new_file:
+                            file_content = source_file.read()
+                    with open(os.path.join(EXPORT_PATH_FILE,item.path), 'wb') as new_file:
                         new_file.write(file_content)
+            with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+                    futures = []
+                    for obj in folderList:
+                        future = executor.submit(write_file, obj)
+                        futures.append(future)
             # create zip 
-            with zipfile.ZipFile(os.path.join(rootPath, zip_file_name), 'w', zipfile.ZIP_DEFLATED) as zipf:
-                for root, dirs, files in os.walk(os.path.join(rootPath,folder.path)):
-                    print(root)
+            with zipfile.ZipFile(os.path.join(EXPORT_PATH_FILE, zip_file_name), 'w', zipfile.ZIP_DEFLATED) as zipf:
+                for root, dirs, files in os.walk(os.path.join(EXPORT_PATH_FILE,folder.path)):
                     for file in files:
                         abs_path = os.path.join(root, file)
-                        rel_path = os.path.relpath(abs_path, os.path.join(rootPath,folder.path))
+                        rel_path = os.path.relpath(abs_path, os.path.join(EXPORT_PATH_FILE,folder.path))
                         arcname = os.path.join(folder.name, rel_path)
                         zipf.write(abs_path, arcname=arcname)
                     for dir in dirs:
                         abs_path = os.path.join(root, dir)
-                        rel_path = os.path.relpath(abs_path, os.path.join(rootPath,folder.path))
+                        rel_path = os.path.relpath(abs_path, os.path.join(EXPORT_PATH_FILE,folder.path))
                         arcname = os.path.join(folder.name, rel_path)
                         zipf.write(abs_path, arcname=arcname)
             # return zip
-            with open(os.path.join(rootPath,zip_file_name), 'rb') as zip_file:
+            with open(os.path.join(EXPORT_PATH_FILE,zip_file_name), 'rb') as zip_file:
                 response = HttpResponse(zip_file.read(), content_type='application/zip')
                 response['Content-Disposition'] = f'attachment; filename="{zip_file_name}"'
                 return response
         except Folder.DoesNotExist:
             raise status.HTTP_404_NOT_FOUND
         finally:
-            shutil.rmtree(os.path.join(rootPath, folder.path))
-            os.remove(os.path.join(rootPath, zip_file_name))
+            if os.path.exists(os.path.join(EXPORT_PATH_FILE, folder.path)):
+                shutil.rmtree(os.path.join(EXPORT_PATH_FILE, folder.path))  
+            # os.remove(os.path.join(rootPath, zip_file_name))
+            for e in set_file_fail:
+                print(e)
         
-
-class DownloadConvertAPIView(generics.RetrieveAPIView):
-    permission_classes = [permissions.IsAuthenticated]
-    queryset = Portfolio.objects.all()
-    serializer_class = PortfolioSerializer
-
-    def retrieve(self, request, *args, **kwargs):
-        portfolio = self.get_object()
-
-        # Tạo DataFrame từ thông tin hồ sơ
-        portfolio_data = {
-            'title': portfolio.title,
-            'identification_code': portfolio.identification_code,
-            'classification': portfolio.classification,
-            'retention_period': portfolio.retention_period,
-            'usage_policy': portfolio.usage_policy,
-            'start_date': portfolio.start_date,
-            'end_date': portfolio.end_date,
-            'physical_condition': portfolio.physical_condition,
-            'box_case': portfolio.box_case.name,
-            'keywords': portfolio.keywords,
-            'annotation': portfolio.annotation,
-            'barcode': portfolio.barcode,
-            'status': portfolio.get_status_display()
-        }
-        portfolio_df = pd.DataFrame([portfolio_data])
-
-        # Tạo file Excel chứa thông tin hồ sơ trong bộ nhớ
-        portfolio_excel_file = BytesIO()
-        with pd.ExcelWriter(portfolio_excel_file, engine='openpyxl') as writer:
-            portfolio_df.to_excel(writer, index=False)
-        portfolio_excel_file.seek(0)
-
-        # Tạo file Excel chứa thông tin các tài liệu trong bộ nhớ
-        documents = Document.objects.filter(portfolio=portfolio)
-        documents_data = []
-        for document in documents:
-            document_data = {
-                'name': document.name,
-                'box_case': document.box_case.name,
-                'path': document.path,
-                'folder': document.folder.name if document.folder else None,
-                'border_frame': document.border_frame,
-                'color': document.color,
-                'usage_mode': document.usage_mode,
-                'storage_code': document.storage_code,
-                'document_expiration': document.document_expiration,
-                'image_title': document.image_title,
-                'date': document.date,
-                'physical_status': document.physical_status,
-                'note': document.note
-            }
-            documents_data.append(document_data)
-        documents_df = pd.DataFrame(documents_data)
-
-        documents_excel_file = BytesIO()
-        with pd.ExcelWriter(documents_excel_file, engine='openpyxl') as writer:
-            documents_df.to_excel(writer, index=False)
-        documents_excel_file.seek(0)
-
-        zip_file = BytesIO()
-        with zipfile.ZipFile(zip_file, 'w') as zf:
-            zf.writestr('portfolio_info.xlsx', portfolio_excel_file.getvalue())
-            zf.writestr('documents_info.xlsx', documents_excel_file.getvalue())
-        zip_file.seek(0)
-
-        response = HttpResponse(zip_file.getvalue(), content_type='application/zip')
-        response['Content-Disposition'] = 'attachment; filename=data.zip'
-        
-        return response
 
                                                                                            
 class Multi_portfolio_DownloadConvertAPIView(APIView):
@@ -974,3 +896,74 @@ class Multi_portfolio_DownloadConvertAPIView(APIView):
         response = HttpResponse(zip_file.getvalue(), content_type='application/zip')
         response['Content-Disposition'] = 'attachment; filename=data.zip'
         return response  
+class BulkDeleteAPI(APIView):
+    def delete(self, request, *args, **kwargs):
+        portfolio_ids = request.data.get('portfolio_ids', [])
+        warehouse_ids = request.data.get('warehouse_ids', [])
+        document_ids = request.data.get('document_ids', [])
+        folder_ids = request.data.get('folder_ids', [])
+        success_count = 0
+         
+        # Soft delete portfolios and associated documents
+        for portfolio_id in portfolio_ids:
+            try:
+                portfolio = Portfolio.objects.get(id=int(portfolio_id))
+                portfolio.soft_delete(request)
+                documents = Document.objects.filter(portfolio=portfolio)
+                documents.update(is_delete=True, delete_at=timezone.now())
+                success_count += 1
+            except Portfolio.DoesNotExist:
+                pass 
+        #Soft delete document
+        for document_id in document_ids:
+            try:
+                document = Document.objects.get(id=int(document_id))
+                document.soft_delete(request)
+                success_count += 1
+            except Document.DoesNotExist:
+                pass
+        
+        # Soft delete warehouses
+        for warehouse_id in warehouse_ids:
+            try:
+                warehouse = Warehouse.objects.get(id=int(warehouse_id))
+                warehouse.soft_delete(request)
+
+                if warehouse.type_warehouse == ChoicesTypeWarehouse.Shelf.value:
+                    # Get all boxcases related to the shelf
+                    boxcases = Warehouse.objects.filter(parent_warehouse=warehouse)
+                    for boxcase in boxcases:
+                        boxcase.soft_delete(request)
+                elif warehouse.type_warehouse == ChoicesTypeWarehouse.BoxCase.value:
+                    # Get the shelf related to the boxcase
+                    shelf = warehouse.parent_warehouse
+                    shelf.soft_delete(request)
+                else:
+                    # Get all subwarehouses related to the warehouse
+                    subwarehouses = warehouse.subwarehouse.all()
+                    for subwarehouse in subwarehouses:
+                        subwarehouse.soft_delete(request)
+
+                success_count += 1
+            except Warehouse.DoesNotExist:
+                pass
+        # Solf delete Folder
+        for folder_id in folder_ids:
+            folder =  Folder.objects.get(id=folder_id)
+            folders = Folder.objects.filter(path__startswith=folder.path)
+            for i in folders:
+                i.soft_delete(request)
+            success_count += 1
+        if success_count > 0:
+            data = {
+                'status': '200',
+                'message': f'Deleted {success_count} items successfully'
+            }
+            return Response(data, status=status.HTTP_200_OK)
+        else:
+            data = {
+                'status': '500',
+                'message': 'Failed to delete items'
+            }
+            return Response(data, status=status.HTTP_400_BAD_REQUEST)
+        
