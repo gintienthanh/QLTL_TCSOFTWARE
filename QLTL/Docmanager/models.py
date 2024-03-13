@@ -66,6 +66,7 @@ class ClassifyVariant(models.Model):
         return  self.variant_name
     
 
+
   
 class Portfolio(Base):
     
