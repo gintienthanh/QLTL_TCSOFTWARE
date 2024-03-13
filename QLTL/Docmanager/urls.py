@@ -47,6 +47,10 @@ document_urls = [
     path('/<int:pk>', DocumentUpdateDelete.as_view(), name='document-detail'),
   
 ]
+user_urls = [
+    path('', UserListCreate.as_view(), name='document-list'),
+  
+]
 
 watchlist_urls = [
     path('', WatchList.as_view(), name='watchlist-list'),
@@ -63,6 +67,7 @@ urlpatterns = [
     path('share', include((share_urls, 'share'))),
     path('portfolio', include((portfolio_urls, 'portfolio'))),
     path('document', include((document_urls, 'document'))),
+    path('user', include((user_urls, 'user'))),
     path('watchlist', include((watchlist_urls, 'watchlist'))),
     path('file/', include((file_urls, 'file'))),
     path('docs/swagger.json', schema_view.without_ui(cache_timeout=0), name='schema-swagger-json'),
