@@ -683,32 +683,31 @@ class WarehouseUpdateDelete(APIView):
                              },status=status.HTTP_400_BAD_REQUEST)
     def delete(self, request, pk):
         warehouse = self.get_warehouse(pk)
-        delete_success = warehouse.soft_delete(request)
+        try:
+            delete_success = warehouse.soft_delete(request)
 
-        if warehouse.type_warehouse == ChoicesTypeWarehouse.Shelf.value:
-            # Lấy tất cả boxcase liên quan đến shelf
-            boxcases = Warehouse.objects.filter(parent_warehouse=warehouse)
-            for boxcase in boxcases:
-                if not boxcase.soft_delete(request):
+            if warehouse.type_warehouse == ChoicesTypeWarehouse.Shelf.value:
+                # Lấy tất cả boxcase liên quan đến shelf
+                boxcases = Warehouse.objects.filter(parent_warehouse=warehouse)
+                for boxcase in boxcases:
+                    if  boxcase.soft_delete(request):
+                        return Response({"message": "Xóa thành công"}, status=status.HTTP_200_OK)
+            elif warehouse.type_warehouse == ChoicesTypeWarehouse.BoxCase.value:
+                # Lấy shelf liên quan đến boxcase
+                shelf = warehouse.parent_warehouse
+                if  shelf.soft_delete(request):
                     return Response({"message": "Xóa thành công"}, status=status.HTTP_200_OK)
-        elif warehouse.type_warehouse == ChoicesTypeWarehouse.BoxCase.value:
-            # Lấy shelf liên quan đến boxcase
-            shelf = warehouse.parent_warehouse
-            if not shelf.soft_delete(request):
-                return Response({"message": "Xóa thành công"}, status=status.HTTP_200_OK)
-        else:
-            # Lấy tất cả warehouse con liên quan đến warehouse
-            subwarehouses = warehouse.subwarehouse.all()
-            for subwarehouse in subwarehouses:
-                if not subwarehouse.soft_delete(request):
-                    return Response({"message": "Xóa thành công"}, status=status.HTTP_200_OK)
-
-        if delete_success:
-            return Response({"message": "Xóa thành công"}, status=status.HTTP_204_NO_CONTENT)
-        else:
-            return Response({"message": "Xóa không thành công"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-
+            else:
+                # Lấy tất cả warehouse con liên quan đến warehouse
+                subwarehouses = warehouse.subwarehouse.all()
+                for subwarehouse in subwarehouses:
+                    if  subwarehouse.soft_delete(request):
+                        return Response({"message": "Xóa thành công"}, status=status.HTTP_200_OK)
+            
+            return Response({'status': 200, 'message': 'Xóa thành công'}, status=status.HTTP_200_OK)
+        
+        except:
+            return Response({'status': 400}, status=status.HTTP_400_BAD_REQUEST)
 
 
 #######WatchList#######
@@ -989,6 +988,10 @@ class BulkDeleteAPI(APIView):
                         'message': 'Failed to delete items'
                     }
                     return Response(data, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+######USER#####             
+                
 class UserFilter(filters.FilterSet):
     username = filters.CharFilter(field_name='username', lookup_expr='icontains')
     
