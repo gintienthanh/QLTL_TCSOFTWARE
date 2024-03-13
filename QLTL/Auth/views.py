@@ -72,7 +72,21 @@ class UserLoginView(APIView):
             'name':user.username,
             'is_admin': user.is_staff,
             'message':'Login Success'}, status=status.HTTP_200_OK)
-        
+
+class CheckLockAccountView(APIView):
+    class CheckLockAccountSerializer(serializers.Serializer):
+        email = serializers.CharField(required=True)  
+    def post(self,request):
+        serializer = self.CheckLockAccountSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        print(serializer)
+        email = serializer.validated_data['email']
+        try: 
+            user = User.objects.get(email=email)
+            if user.is_active is True: return Response({'status':200,'message':'check account successfully','is_active':True},status=status.HTTP_200_OK)
+            else : return Response({'status':200,'message':'check account successfully','is_active':False},status=status.HTTP_200_OK)
+        except:
+            return Response({'status':400,'message':'user not found'},status=status.HTTP_400_BAD_REQUEST)                 
 class UserChangePasswordView(APIView):
     renderer_classes = [UserRenderer]
     permission_classes = [IsAuthenticated]
@@ -231,16 +245,3 @@ class UnLockAccountView(APIView):
             return Response({'status':200,'message':'UNlock account successfully'},status=status.HTTP_200_OK)
         except:
             return Response({'status':400,'message':'UNlock account fail'},status=status.HTTP_400_BAD_REQUEST)  
-class CheckLockAccountView(APIView):
-    class CheckLockAccountSerializer(serializers.Serializer):
-        email = serializers.CharField(required=True)   
-    def post(self,request):
-        serializer = self.LockAccountSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        email = serializer.validated_data['email']
-        try: 
-            user = User.objects.get(email=email)
-            if user.is_active is True: return Response({'status':200,'message':'check account successfully','is_active':'True'},status=status.HTTP_200_OK)
-            else : return Response({'status':200,'message':'check account successfully','is_active':'False'},status=status.HTTP_200_OK)
-        except:
-            return Response({'status':400,'message':'user not found'},status=status.HTTP_400_BAD_REQUEST)         
