@@ -3,14 +3,14 @@ from django.db import models
 from django.contrib.auth.models import Group
 from django.utils import timezone
 from enum import Enum
-from django.utils import timezone
+from datetime import datetime
 
 # Create your models here.
 class Base(models.Model):
     id = models.AutoField(primary_key=True)
     is_delete = models.BooleanField(default=False)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True, null=True)
+    created_at = models.DateTimeField(default = timezone.now())
+    updated_at = models.DateTimeField(default = timezone.now())
     delete_at = models.DateTimeField(auto_now=False,null=True)
     owner = models.ForeignKey(User, null=True, on_delete=models.CASCADE)
     create_by = models.ForeignKey(User, null=True, on_delete=models.CASCADE, related_name='%(class)s_created')
@@ -24,7 +24,12 @@ class Base(models.Model):
         self.delete_at = timezone.now()
         self.delete_by = request.user
         self.save()
-    
+
+    def save(self, *args, **kwargs):
+        if not self.pk:
+            self.created_at = datetime.now()
+        self.updated_at = datetime.now()
+        super().save(*args, **kwargs)
     
 class ChoicesStatus(Enum):
     wait = 'Wait'
@@ -86,7 +91,7 @@ class Portfolio(Base):
 
 
 class Folder(Base):
-    name = models.CharField(max_length=255)
+    name = models.CharField(max_length=255,blank =True)
     parent_folder = models.ForeignKey('self', on_delete=models.CASCADE, null=True, related_name='subfolders') 
     path = models.CharField(max_length=255, null=True)
     files = models.FileField(upload_to='files/',null=True)
@@ -95,7 +100,7 @@ class Folder(Base):
     
     def __str__(self) :
         return  self.name
-
+    
 class Document(Base):
     
     name = models.CharField(max_length=200)
