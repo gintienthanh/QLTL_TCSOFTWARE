@@ -783,6 +783,8 @@ class WatchListUpdate(APIView):
                              'message':serializer.errors
                              },status=status.HTTP_400_BAD_REQUEST)
 
+######DOWNLOAD#######
+
 class DownloadFile(APIView):
     lookup_field = 'folder_id'
     def get(self, request, folder_id,format=None):
