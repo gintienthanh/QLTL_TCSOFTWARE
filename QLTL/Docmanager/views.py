@@ -135,7 +135,7 @@ class PortfolioFilter(filters.FilterSet):
         model = Portfolio
         fields = ['title', 'usage_policy']
 class PortfolioListCreate(generics.ListAPIView):
-    # permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated]
     queryset = Portfolio.objects.annotate(
     compare_time=Coalesce(
         Case(
@@ -351,7 +351,7 @@ class FolderListCreate(generics.ListAPIView):
         queryset = super().get_queryset()
         user = self.request.user
         if user.is_authenticated:  # Check if user is authenticated
-            queryset = queryset.filter(create_by=user, is_delete = False)
+            queryset = queryset.filter(create_by=user, is_delete = False, parent_folder = None)
         return queryset 
     def extract_and_convert_to_integer(self,name,data):
         name_list = []
@@ -491,37 +491,20 @@ class FolderUpdateDelete(APIView):
             }
             return Response(response, status=status.HTTP_200_OK)
         return Response({'status':400}, status=status.HTTP_400_BAD_REQUEST)
-
+    
     def delete(self,request,pk):
-        folder = self.get_folder(pk)
-        folder.soft_delete(request)
-        try:
-            queryset = Folder.objects.filter(parent_folder = pk)
-            serializer_db = FolderSerializer(queryset,many=True)
-            data = serializer_db.data
-            for i in data:
-                self.delete(request,i['id'])
-            folder.save()
-            return Response({'status':200,
-                             'message':'delete successfully'
-                            }, status=status.HTTP_200_OK)
-        except:
-            return Response({'status':400}, status=status.HTTP_400_BAD_REQUEST)
+            folder = self.get_object(pk)
+            try:
+                folders = Folder.objects.filter(path__startswith=folder.path)
+                for i in folders:
+                    i.soft_delete(request)
+                return Response({'status':200,
+                                'message':'delete successfully'
+                                }, status=status.HTTP_200_OK)
+            except:
+                return Response({'status':400}, status=status.HTTP_400_BAD_REQUEST)
 
-class FolderDeletes(APIView):
-    def delete(self, request, *args, **kwargs):
-        selected_records = request.data.get('selected_records', [])
-        queryset =  Folder.objects.filter(id__in=selected_records)
-        serializers = FolderSerializer(queryset,many=True)
-        try:
-            for i in serializers.data:
-                queryset_child = Folder.objects.filter(parent_folder = i['id'])
-                serializer_child = FolderSerializer(queryset_child,many=True)
-                for j in serializer_child.data:
-                    self.delete(j['id'])
-            return Response({'status':200},status=status.HTTP_200_OK)
-        except:
-            return Response({'status':400}, status=status.HTTP_400_BAD_REQUEST)
+
 
 class ShareFilter(filters.FilterSet):
     class Meta:
@@ -886,14 +869,6 @@ class WarehouseListCreate(generics.ListAPIView):
 ######WAREHOUSE#######
 
 
-
-
-
-
-            
-            
-            
-
 class WarehouseUpdateDelete(APIView):
     # permission_classes = [permissions.IsAuthenticated]
     def get_warehouse(self, pk):
@@ -928,32 +903,31 @@ class WarehouseUpdateDelete(APIView):
                              },status=status.HTTP_400_BAD_REQUEST)
     def delete(self, request, pk):
         warehouse = self.get_warehouse(pk)
-        delete_success = warehouse.soft_delete(request)
+        try:
+            delete_success = warehouse.soft_delete(request)
 
-        if warehouse.type_warehouse == ChoicesTypeWarehouse.Shelf.value:
-            # Lấy tất cả boxcase liên quan đến shelf
-            boxcases = Warehouse.objects.filter(parent_warehouse=warehouse)
-            for boxcase in boxcases:
-                if not boxcase.soft_delete(request):
+            if warehouse.type_warehouse == ChoicesTypeWarehouse.Shelf.value:
+                # Lấy tất cả boxcase liên quan đến shelf
+                boxcases = Warehouse.objects.filter(parent_warehouse=warehouse)
+                for boxcase in boxcases:
+                    if  boxcase.soft_delete(request):
+                        return Response({"message": "Xóa thành công"}, status=status.HTTP_200_OK)
+            elif warehouse.type_warehouse == ChoicesTypeWarehouse.BoxCase.value:
+                # Lấy shelf liên quan đến boxcase
+                shelf = warehouse.parent_warehouse
+                if  shelf.soft_delete(request):
                     return Response({"message": "Xóa thành công"}, status=status.HTTP_200_OK)
-        elif warehouse.type_warehouse == ChoicesTypeWarehouse.BoxCase.value:
-            # Lấy shelf liên quan đến boxcase
-            shelf = warehouse.parent_warehouse
-            if not shelf.soft_delete(request):
-                return Response({"message": "Xóa thành công"}, status=status.HTTP_200_OK)
-        else:
-            # Lấy tất cả warehouse con liên quan đến warehouse
-            subwarehouses = warehouse.subwarehouse.all()
-            for subwarehouse in subwarehouses:
-                if not subwarehouse.soft_delete(request):
-                    return Response({"message": "Xóa thành công"}, status=status.HTTP_200_OK)
-
-        if delete_success:
-            return Response({"message": "Xóa thành công"}, status=status.HTTP_204_NO_CONTENT)
-        else:
-            return Response({"message": "Xóa không thành công"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-
+            else:
+                # Lấy tất cả warehouse con liên quan đến warehouse
+                subwarehouses = warehouse.subwarehouse.all()
+                for subwarehouse in subwarehouses:
+                    if  subwarehouse.soft_delete(request):
+                        return Response({"message": "Xóa thành công"}, status=status.HTTP_200_OK)
+            
+            return Response({'status': 200, 'message': 'Xóa thành công'}, status=status.HTTP_200_OK)
+        
+        except:
+            return Response({'status': 400}, status=status.HTTP_400_BAD_REQUEST)
 
 
 #######WatchList#######
@@ -1028,6 +1002,8 @@ class WatchListUpdate(APIView):
         return Response({'status':400,
                              'message':serializer.errors
                              },status=status.HTTP_400_BAD_REQUEST)
+
+######DOWNLOAD#######
 
 class DownloadFile(APIView):
     lookup_field = 'folder_id'
@@ -1145,8 +1121,10 @@ class BulkDeleteAPI(APIView):
     def delete(self, request, *args, **kwargs):
         portfolio_ids = request.data.get('portfolio_ids', [])
         warehouse_ids = request.data.get('warehouse_ids', [])
+        document_ids = request.data.get('document_ids', [])
+        folder_ids = request.data.get('folder_ids', [])
         success_count = 0
-
+         
         # Soft delete portfolios and associated documents
         for portfolio_id in portfolio_ids:
             try:
@@ -1156,8 +1134,25 @@ class BulkDeleteAPI(APIView):
                 documents.update(is_delete=True, delete_at=timezone.now())
                 success_count += 1
             except Portfolio.DoesNotExist:
-                pass
+                data = {
+                    'status': status.HTTP_404_NOT_FOUND,
+                    'message': f'portfolio with ID {portfolio_id} not found'
+                }
+                return Response(data, status=status.HTTP_404_NOT_FOUND)
 
+        # Soft delete documents
+        for document_id in document_ids:
+            try:
+                document = Document.objects.get(id=int(document_id))
+                document.soft_delete(request)
+                success_count += 1
+            except Document.DoesNotExist:
+                data = {
+                    'status': status.HTTP_404_NOT_FOUND,
+                    'message': f'Document with ID {document_id} not found'
+                }
+                return Response(data, status=status.HTTP_404_NOT_FOUND)
+                    
         # Soft delete warehouses
         for warehouse_id in warehouse_ids:
             try:
@@ -1181,18 +1176,63 @@ class BulkDeleteAPI(APIView):
 
                 success_count += 1
             except Warehouse.DoesNotExist:
-                pass
-
+                data = {
+                    'status': status.HTTP_404_NOT_FOUND,
+                    'message': f'Folder with ID {folder_id} not found'
+                }
+                return Response(data, status=status.HTTP_404_NOT_FOUND)
+                    
+        # Soft delete folders
+        for folder_id in folder_ids:
+            try:
+                folder = Folder.objects.get(id=folder_id)
+                folders = Folder.objects.filter(path__startswith=folder.path)
+                for i in folders:
+                    i.soft_delete(request)
+                success_count += 1
+            except Folder.DoesNotExist:
+                data = {
+                    'status': status.HTTP_404_NOT_FOUND,
+                    'message': f'Folder with ID {folder_id} not found'
+                }
+                return Response(data, status=status.HTTP_404_NOT_FOUND)
+        
         if success_count > 0:
             data = {
-                'status': '200',
+                'status': status.HTTP_200_OK,
                 'message': f'Deleted {success_count} items successfully'
             }
             return Response(data, status=status.HTTP_200_OK)
-        else:
-            data = {
-                'status': '500',
-                'message': 'Failed to delete items'
-            }
-            return Response(data, status=status.HTTP_400_BAD_REQUEST)
         
+        if success_count == 0:
+                    data = {
+                        'status': status.HTTP_500_INTERNAL_SERVER_ERROR,
+                        'message': 'Failed to delete items'
+                    }
+                    return Response(data, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+######USER#####                
+class UserFilter(filters.FilterSet):
+    username = filters.CharFilter(field_name='username', lookup_expr='icontains')
+    class Meta:
+        model = User
+        fields = ['username']
+class UserListCreate(generics.ListAPIView):
+    permission_classes = [permissions.IsAdminUser]
+    queryset = User.objects.all()
+    serializer_class = UserSerializer
+    filter_backends = [filters.DjangoFilterBackend]
+    filterset_class = UserFilter
+    paginator = CustomPagination()
+    
+    def post(self, request):
+        serializer = UserSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response({'status':201,
+                             'message':'created successfully',
+                             'data':serializer.data}, 
+                             status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+           

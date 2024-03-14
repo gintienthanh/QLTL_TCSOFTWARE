@@ -66,6 +66,7 @@ class ClassifyVariant(models.Model):
         return  self.variant_name
     
 
+
   
 class Portfolio(Base):
     
@@ -82,8 +83,6 @@ class Portfolio(Base):
     annotation = models.CharField(max_length=200, null=True)
     barcode = models.CharField(max_length=200, null=True)
     status = models.CharField(max_length=100, choices=[(tag.value, tag.name) for tag in ChoicesStatus], default=ChoicesStatus.wait.value)
-    
-
 
 class Folder(Base):
     name = models.CharField(max_length=255)
@@ -115,7 +114,7 @@ class Document(Base):
     files = models.FileField(upload_to='files/', null=True)
     type = models.CharField(max_length=100, choices=[(tag.value, tag.name) for tag in ChoicesType], default=ChoicesType.Folder.value)
     add_info = models.JSONField(null=True)
-    
+
     def __str__(self) :
         return  self.name
     
@@ -128,5 +127,4 @@ class Share(Base):
     document = models.ForeignKey(Document, on_delete=models.CASCADE, null=True)
     folder = models.ForeignKey(Folder, on_delete=models.CASCADE, null=True)
     type = models.CharField(max_length=100, choices=[(tag.value, tag.name) for tag in ChoicesSharingType], default=ChoicesSharingType.ONLY_VIEW.value )
-    
     
