@@ -13,7 +13,6 @@ https://docs.djangoproject.com/en/5.0/ref/settings/
 from pathlib import Path
 import os
 from decouple import config
-from os.path import join, dirname
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -41,9 +40,6 @@ CORS_ALLOWED_ORIGINS = [
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOW_HEADERS = ['*']
 
-# CORS_ORIGIN_WHITELIST = (
-#   'http://localhost:8000',
-# )
 # Application definition
 TEMPLATES = [
     {
@@ -71,6 +67,7 @@ INSTALLED_APPS = [
     'django_filters',
     'rest_framework_simplejwt',
     'rest_framework_simplejwt.token_blacklist',
+    'corsheaders',
     'drf_yasg',
     "debug_toolbar",
 
@@ -83,9 +80,9 @@ INSTALLED_APPS = [
     'rest_framework.authtoken',
 
     'Auth',
-    'Fileprocessor',    
+
+    'Fileprocessor',
     'Docmanager',
-    'corsheaders',#connect
 
 ]
 
@@ -181,30 +178,28 @@ USE_I18N = True
 
 USE_TZ = True
 
-MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
-# MEDIA_URL = 'https://ekyc-test.tcgroup.vn/media/'
-MEDIA_URL = 'media/'
+# Static files (CSS, JavaScript, Images)
+# https://docs.djangoproject.com/en/5.0/howto/static-files/
+
+# MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+# # MEDIA_URL = 'https://ekyc-test.tcgroup.vn/media/'
+# MEDIA_URL = 'media/'
 
 STATIC_URL = '/static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
 STATICFILES_DIRS = [BASE_DIR / 'static']
 
+EXPORT_PATH_FILE = config('EXPORT_PATH_FILE', default='export_files')
+
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-STATICFILES_DIRS = [
-    os.path.join(BASE_DIR, 'static'),
-]
-DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-
-MEDIA_URL = '/files/'
-
 REST_FRAMEWORK = {
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
-    'PAGE_SIZE': 10,
+    'PAGE_SIZE': 1000,
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'oauth2_provider.contrib.rest_framework.OAuth2Authentication',
         'rest_framework_simplejwt.authentication.JWTAuthentication',
