@@ -80,5 +80,4 @@ def CheckSharedGroupdFactory(Model, type):
                     return False
             except Exception:
                 return False
-
     return CheckOwner
