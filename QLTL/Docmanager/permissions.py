@@ -1,11 +1,11 @@
 from rest_framework.permissions import BasePermission
 
 from Docmanager.models import Document, Folder, Share
-from django.contrib.auth.models import Group
+from django.contrib.auth.models import Group,Permission
 
 
 # Check if the user belongs to a specific permission group?
-def checkGroupFactory(required_group):
+def check_group_factory(required_group):
     class CheckGroup(BasePermission):
         def __init__(self, *args, **kwargs):
             super().__init__(*args, **kwargs)
@@ -25,8 +25,36 @@ def checkGroupFactory(required_group):
     
     return CheckGroup
 
+def check_group_permisison_factory(Model):
+    class CheckGroupPermission(BasePermission):
+        def __init__(self, *args, **kwargs):
+            super().__init__()
+        def has_permission(self,request,view):
+            try:
+                http_method = request.method
+                permission_type = ''
+                if http_method == 'GET':
+                    permission_type = f'view_{Model}'
+                if http_method == 'POST':
+                    permission_type = f'add_{Model}'
+                if http_method == 'PUT' or http_method == 'PATCH':
+                    permission_type = f'change_{Model}'
+                if http_method == 'DELETE':
+                    permission_type = f'delete_{Model}'
+                permission = Permission.objects.get(codename = permission_type)
+                permisison_groups = Group.objects.filter(permissions = permission.pk)
+                user_groups = Group.objects.filter(user = request.user)
+                intersection = set(permisison_groups) & set(user_groups)
+                if intersection:
+                    return True
+                return False
+
+            except Exception:
+                return False
+    return CheckGroupPermission
+
 # Check the owner of model
-def CheckOwnerFactory(Model):
+def Check_owner_factory(Model):
     class CheckOwner(BasePermission):
         def __init__(self,*args,**kwargs):
             super().__init__(*args,**kwargs)
@@ -59,7 +87,7 @@ def checkShare(folder, user, type):
 
 
 # Check if the document or folder is shared with the user with two permissions: only view and edit
-def CheckSharedGroupdFactory(Model, type):
+def check_shared_group_factory(Model, type):
     class CheckOwner(BasePermission):
         def __init__(self, *args, **kwargs):
             super().__init__(*args, **kwargs)
