@@ -5,7 +5,7 @@ import re
 import shutil
 from django.conf import settings
 from django.shortcuts import render
-from Docmanager.permissions import CheckOwnerFactory, CheckSharedGroupdFactory
+from Docmanager.permissions import Check_owner_factory, check_shared_group_factory, check_group_permisison_factory
 from QLTL.settings import EXPORT_PATH_FILE
 from .model_serializers import*
 from .models import*
@@ -532,12 +532,13 @@ class APIShareListCreate(generics.ListCreateAPIView):
     queryset = Share.objects.all()
     serializer_class = ShareSerializer
     filter_backends = [filters.DjangoFilterBackend]
+    
 
     filterset_class = ShareFilter
     paginator = CustomPagination()
     def get_permissions(self):
         if self.request.method == 'POST':
-            return [permissions.IsAuthenticated()]
+            return [permissions.IsAuthenticated(), check_group_permisison_factory('share')(self)]
         elif self.request.method == 'GET':
             return [permissions.IsAuthenticated()]
         return super().get_permissions()
@@ -569,7 +570,7 @@ class APIShareListCreate(generics.ListCreateAPIView):
             return Response({"error": "Có lỗi xảy ra"}, status=status.HTTP_400_BAD_REQUEST)
         
 class APIShareUpdateDestroy(generics.RetrieveUpdateDestroyAPIView):
-    permission_classes = [CheckSharedGroupdFactory(Share(),'edit') | CheckOwnerFactory(Share())]
+    permission_classes = [check_shared_group_factory(Share(),'edit') | Check_owner_factory(Share())]
     queryset = Share.objects.all()
     serializer_class = ShareSerializer
     
@@ -615,7 +616,7 @@ class APIPermissionListCreate(generics.ListCreateAPIView):
     
     
 class APIPermissionUpdateDestroy(generics.RetrieveUpdateDestroyAPIView):
-    # permission_classes = [CheckSharedGroupdFactory(Share(),'edit') | CheckOwnerFactory(Share())]
+    # permission_classes = [check_shared_group_factory(Share(),'edit') | Check_owner_factory(Share())]
     queryset = Permission.objects.all()
     serializer_class = PermissionSerializer
 
@@ -662,7 +663,7 @@ class APIGroupListCreate(generics.ListCreateAPIView):
     
     
 class APIGroupUpdateDestroy(generics.RetrieveUpdateDestroyAPIView):
-    # permission_classes = [CheckSharedGroupdFactory(Share(),'edit') | CheckOwnerFactory(Share())]
+    # permission_classes = [check_shared_group_factory(Share(),'edit') | Check_owner_factory(Share())]
     queryset = Group.objects.all()
     serializer_class = GroupSerializer
     
@@ -689,11 +690,8 @@ class APIGroupUpdateDestroy(generics.RetrieveUpdateDestroyAPIView):
 class GroupUserView(APIView):
    
     def get(self, request, pk):
-        group_id = pk
-        user = User.objects.filter(groups=group_id)
-        print(user)
-
-        serializer = UserSerializer(user,many=True)
+        groups = Group.objects.filter(user = request.user)
+        serializer = GroupSerializer(groups,many=True)
         return Response(serializer.data)
 
     def put(seft, request,pk):
