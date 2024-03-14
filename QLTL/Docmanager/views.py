@@ -351,8 +351,12 @@ class FolderListCreate(generics.ListAPIView):
         queryset = super().get_queryset()
         user = self.request.user
         if user.is_authenticated:  # Check if user is authenticated
-            queryset = queryset.filter(create_by=user, is_delete = False, parent_folder = None)
-        return queryset 
+            parent_folder = self.request.GET.get('parent_folder')
+            if parent_folder:
+                queryset = queryset.filter(create_by=user, is_delete = False, parent_folder = parent_folder)
+            else:
+                queryset = queryset.filter(create_by=user, is_delete = False, parent_folder = None)
+        return queryset
     def extract_and_convert_to_integer(self,name,data):
         name_list = []
         for i in data:
