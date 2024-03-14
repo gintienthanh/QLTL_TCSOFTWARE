@@ -635,22 +635,10 @@ class WarehouseListCreate(generics.ListAPIView):
         except Exception as e:
             return Response({'status':400,
                             'message':'created fail'},status=status.HTTP_400_BAD_REQUEST)
-            
-            
-            
-######WAREHOUSE#######
-
-
-
-
-
-
-            
-            
-            
+                  
 
 class WarehouseUpdateDelete(APIView):
-    # permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated]
     def get_warehouse(self, pk):
         try:
             return Warehouse.objects.get(pk=pk)
@@ -711,44 +699,58 @@ class WarehouseUpdateDelete(APIView):
 
 
 #######WatchList#######
+class WatchlistFilter(filters.FilterSet):
 
-class WatchList(APIView):
+    class Meta:
+        model = Watchlist
+        fields = ['document_id', 'folder_id']
+class WatchListCreate(APIView):
     permission_classes = [permissions.IsAuthenticated]
-    def get(self, request):
-        paginator = WatchlistSetPagination()
-        watchlist = Watchlist.objects.filter(is_delete=False)
-        result_page = paginator.paginate_queryset(watchlist, request)
-        serializer = WatchListSerializer(result_page, many=True)
-        data = {
-            'status': '200',
-            'message':' found successfully',
-            'pagination': {
-                'total_pages': paginator.page.paginator.num_pages,
-                'current_page': paginator.page.number,
-                'next_page': paginator.get_next_link(),
-                'previous_page': paginator.get_previous_link(),
-            },
-            'data': serializer.data,
-            
-        }
-        return Response(data, status=status.HTTP_200_OK)
+    queryset = Watchlist.objects.annotate(
+    compare_time=Coalesce(
+        Case(
+            When(created_at__gt=F('updated_at'), then=F('created_at')),
+            default=F('updated_at'),
+            output_field=CharField()
+        ),
+        Case(
+            When(created_at__gt=F('created_at'), then=F('updated_at')),
+            default=F('created_at'),
+            output_field=CharField()
+        )
+    )
+    ).order_by('-compare_time')
+    serializer_class = WatchListSerializer
+    filter_backends = [filters.DjangoFilterBackend]
+    filterset_class = WatchlistFilter
+    paginator = CustomPagination()
+    
+    def get_queryset(self):
+        
+        queryset = super().get_queryset()
+        user = self.request.user
+        if user.is_authenticated:  # Check if user is authenticated
+            queryset = queryset.filter(create_by=user, is_delete=False)
+        return queryset 
+    
     def post(self, request):
         serializer = WatchListSerializer(data=request.data)
         if serializer.is_valid():
+            serializer.validated_data['create_by'] = request.user   
             serializer.save()
-            return Response({'status':200,
-                             'message':'delete successfully'},status=status.HTTP_200_OK)
-        return Response({'status':400,
-                             'message':serializer.errors
-                             },status=status.HTTP_400_BAD_REQUEST)
-class WatchListUpdate(APIView):
-    def get_object(self, pk):
+            return Response({'status':201,
+                             'message':'created successfully',
+                             'data':serializer.data}, 
+                             status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+class WatchListUpdateDelete(APIView):
+    def get_watchlist(self, pk):
         try:
             return Watchlist.objects.get(pk=pk)
         except Watchlist.DoesNotExist:
             raise status.HTTP_404_NOT_FOUND
     def get(self, request, pk):
-        watchlist = self.get_object(pk)
+        watchlist = self.get_watchlist(pk)
         serializer = WatchListSerializer(watchlist)
         return Response({'status':200,
                              'message':'found successfully',
@@ -756,7 +758,7 @@ class WatchListUpdate(APIView):
 
 
     def patch(self, request, pk):
-        watchlist = self.get_object(pk)
+        watchlist = self.get_watchlist(pk)
         serializer = WatchListSerializer(watchlist, data=request.data, partial=True)
         if serializer.is_valid():
             serializer.save()
@@ -768,7 +770,7 @@ class WatchListUpdate(APIView):
                              },status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self, request, pk):
-        watchlist = self.get_object(pk)
+        watchlist = self.get_watchlist(pk)
         serializer = WatchListSerializer(watchlist, 
             data =
             {
@@ -1019,4 +1021,37 @@ class UserListCreate(generics.ListAPIView):
                              'data':serializer.data}, 
                              status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-           
+
+class UserUpdateDelete(APIView):
+    permission_classes = [permissions.IsAdminUser]
+    def get_user(self, pk):
+        try:
+            return User.objects.get(pk=pk)
+        except  User.DoesNotExist:
+            raise status.HTTP_404_NOT_FOUND
+    def get(self, request, pk):
+        user = self.get_user(pk)
+        serializer = UserSerializer(user)
+        return Response({'status':201,
+                        'message':'found',
+                        'data':serializer.data},status=status.HTTP_302_FOUND)
+
+
+    def patch(self, request, pk):
+        user = self.get_user(pk)
+        serializer = UserSerializer(user, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response({'status':201,
+                             'message':'created successfully',
+                             'data':serializer.data},status=status.HTTP_200_OK)
+        return Response({'status':400,
+                        'message':serializer.errors},status=status.HTTP_400_BAD_REQUEST)
+
+    def delete(self, request, pk):
+        user = self.get_user(pk)
+        user.delete()
+        return Response({'status': 204,
+                         'message': 'deleted successfully'})
+   
+       

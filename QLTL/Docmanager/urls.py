@@ -48,13 +48,14 @@ document_urls = [
   
 ]
 user_urls = [
-    path('', UserListCreate.as_view(), name='document-list'),
+    path('', UserListCreate.as_view(), name='user-listcreate'),
+    path('/<int:pk>', UserUpdateDelete.as_view(), name='document-list'),
   
 ]
 
 watchlist_urls = [
-    path('', WatchList.as_view(), name='watchlist-list'),
-    path('/<int:pk>', WatchListUpdate.as_view(), name='watchlist-detail'),
+    path('', WatchListCreate.as_view(), name='watchlist-list'),
+    path('/<int:pk>', WatchListUpdateDelete.as_view(), name='watchlist-detail'),
 ]
 
 file_urls = [
@@ -69,6 +70,8 @@ urlpatterns = [
     path('document', include((document_urls, 'document'))),
     path('user', include((user_urls, 'user'))),
     path('watchlist', include((watchlist_urls, 'watchlist'))),
+    
+    
     path('file/', include((file_urls, 'file'))),
     path('docs/swagger.json', schema_view.without_ui(cache_timeout=0), name='schema-swagger-json'),
     path('docs', schema_view.with_ui('swagger', cache_timeout=0), name='schema-swagger-ui'),
