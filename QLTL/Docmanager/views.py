@@ -598,7 +598,7 @@ class APIPermissionListCreate(generics.ListCreateAPIView):
         queryset = super().get_queryset()
         user = self.request.user
         if user.is_authenticated:  # Check if user is authenticated
-            queryset = queryset.filter( is_delete=False)
+            queryset = queryset.filter()
         return queryset
     
     
@@ -645,7 +645,7 @@ class APIGroupListCreate(generics.ListCreateAPIView):
         queryset = super().get_queryset()
         user = self.request.user
         if user.is_authenticated:  # Check if user is authenticated
-            queryset = queryset.filter( is_delete=False)
+            queryset = queryset.filter()
         return queryset
     
     
