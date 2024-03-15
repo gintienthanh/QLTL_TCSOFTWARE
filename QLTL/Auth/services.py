@@ -6,12 +6,14 @@ from decouple import config
 from typing import Tuple
 from django.db import transaction
 from django.contrib.auth.models import User
+import random
+import string
 
 GOOGLE_ID_TOKEN_INFO_URL = 'https://www.googleapis.com/oauth2/v3/tokeninfo'
 GOOGLE_ACCESS_TOKEN_OBTAIN_URL = 'https://oauth2.googleapis.com/token'
 GOOGLE_USER_INFO_URL = 'https://www.googleapis.com/oauth2/v3/userinfo'
 
-@staticmethod
+# @staticmethod
 def facebookValidate(auth_token):
         """
         validate method Queries the facebook GraphAPI to fetch the user info
@@ -81,20 +83,30 @@ def user_get_or_create(*, email: str, **extra_data) -> Tuple[User, bool]:
 
     return user_create(email=email, **extra_data), True
 def user_create(email, password=None, **extra_fields) -> User:
-    extra_fields = {
-        'is_admin': False,
-        'is_verified':True,
-        **extra_fields
-    }
-
-    user = User(email=email, **extra_fields)
-
+    username = extra_fields['username']
+    user = User(email=email,username=username) 
     if password:
         user.set_password(password)
     else:
         user.set_unusable_password()
-
-    user.full_clean()
     user.save()
-
     return user
+def generate_strong_password(length):
+    lowercase_letters = string.ascii_lowercase.replace('"', '').replace("'", '').replace('/', '')
+    uppercase_letters = string.ascii_uppercase.replace('"', '').replace("'", '').replace('/', '')
+    digits = string.digits.replace('"', '').replace("'", '').replace('/', '')
+    punctuation = string.punctuation.replace('"', '').replace("'", '').replace('/', '')
+
+    password = random.choice(lowercase_letters)
+    password += random.choice(uppercase_letters)
+    password += random.choice(digits)
+    password += random.choice(punctuation)
+
+    remaining_length = length - 4
+    password += ''.join(random.choice(lowercase_letters + uppercase_letters + digits + punctuation) for i in range(remaining_length))
+
+    password_list = list(password)
+    random.shuffle(password_list)
+    password = ''.join(password_list)
+    
+    return password
