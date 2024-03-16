@@ -5,6 +5,9 @@ from django.utils import timezone
 from enum import Enum
 
 # Create your models here.
+class UserProfile(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE)
+    phone = models.CharField(max_length = 12)
 class Base(models.Model):
     id = models.AutoField(primary_key=True)
     is_delete = models.BooleanField(default=False)
