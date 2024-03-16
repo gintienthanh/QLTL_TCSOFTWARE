@@ -1276,6 +1276,7 @@ class UserUpdateDelete(APIView):
                         'data':serializer.data},status=status.HTTP_302_FOUND)
 
 
+
     def patch(self, request, pk):
         user = self.get_user(pk)
         serializer = UserSerializer(user, data=request.data, partial=True)
