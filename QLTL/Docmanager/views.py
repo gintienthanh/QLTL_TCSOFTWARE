@@ -513,14 +513,11 @@ class FolderUpdateDelete(APIView):
 class ShareFilter(filters.FilterSet):
     class Meta:
         model = Share
-        fields = ['owner','create_by','document','folder']
+        fields = ['owner', 'create_by', 'document', 'folder']
    
 class APIShareListCreate(generics.ListCreateAPIView):
-    queryset = Share.objects.all()
     serializer_class = ShareSerializer
     filter_backends = [filters.DjangoFilterBackend]
-    
-
     filterset_class = ShareFilter
     paginator = CustomPagination()
     def get_permissions(self):
@@ -530,11 +527,13 @@ class APIShareListCreate(generics.ListCreateAPIView):
             return [permissions.IsAuthenticated()]
         return super().get_permissions()
     def get_queryset(self):
-        queryset = super().get_queryset()
         user = self.request.user
-        if user.is_authenticated:  # Check if user is authenticated
-            queryset = queryset.filter(create_by=user, is_delete=False)
-        return queryset
+        if user.is_authenticated: 
+            queryset = Share.objects.all().filter(create_by=user, is_delete=False)
+            return queryset
+        if user.is_superuser:
+            queryset = Share.objects.all().get_queryset()
+            return queryset
     
     def post(self, request):
         try:
@@ -749,17 +748,22 @@ class GroupUserView(APIView):
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
 class GroupPermissionView(APIView):
+
     def get(self, request, pk):
         permissions = Permission.objects.filter(group=pk)
         serializer = PermissionSerializer(permissions,many=True)
-        return Response(serializer.data)
+        return Response({'status':200,
+                        'message':'Data found successfully',
+                        'data':serializer.data},status=status.HTTP_200_OK)
 class PermissionNotIncludedInGroup(APIView):
     def get(self, request, pk):
         permissions = Permission.objects.filter(group=pk)
         permission_without_in_group = Permission.objects.exclude(id__in = permissions)
 
         serializer = PermissionSerializer(permission_without_in_group,many=True)
-        return Response(serializer.data)
+        return Response({'status':200,
+                        'message':'Data found successfully',
+                        'data':serializer.data},status=status.HTTP_200_OK)
     
         
 class UserPermissionView(APIView):
