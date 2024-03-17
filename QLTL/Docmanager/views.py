@@ -98,32 +98,6 @@ class CustomPagination(PageNumberPagination):
             },
             "data": data
         })
-# class PortfolioSetPagination(CustomPagination):
-#     page_size = 12
-#     page_size_query_param = 'page_size'
-#     max_page_size = 1000  
-    
-# class FolderSetPagination(CustomPagination):
-#     page_size = 12
-#     page_size_query_param = 'page_size'
-#     max_page_size = 1000   
-# class WarehouseSetPagination(CustomPagination):
-#     page_size = 1000
-#     page_size_query_param = 'page_size'
-#     max_page_size = 1000  
-# class ShareSetPagination(CustomPagination):
-#     page_size = 12
-#     page_size_query_param = 'page_size'
-#     max_page_size = 1000  
-
-class WatchlistSetPagination(CustomPagination):
-    page_size = 12
-    page_size_query_param = 'page_size'
-    max_page_size = 1000
-# class DocumentSetPagination(CustomPagination):
-#     page_size = 12
-#     page_size_query_param = 'page_size'
-#     max_page_size = 1000
 
 #######PORTFOLIO######
 
