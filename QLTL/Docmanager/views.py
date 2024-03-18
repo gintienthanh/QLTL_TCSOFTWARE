@@ -18,6 +18,7 @@ from rest_framework.pagination import PageNumberPagination
 import mimetypes
 import pandas as pd
 from io import BytesIO
+
 import zipfile
 from django.core.files.storage import default_storage
 import django_filters
@@ -25,6 +26,8 @@ from django.utils import timezone
 from django.db.models import F, Case, When, Value, CharField
 from django.db.models.functions import Coalesce
 from django.contrib.auth.models import User,Permission,Group
+from rest_framework.permissions import IsAdminUser
+
 # Create your views here.
 class CustomPagination(PageNumberPagination):
 
@@ -1290,4 +1293,30 @@ class UserUpdateDelete(APIView):
         return Response({'status': 204,
                          'message': 'deleted successfully'})
    
-       
+class UserList(APIView):
+    permission_classes = [IsAdminUser]
+
+    def get(self, request):
+        users = User.objects.all().prefetch_related('groups', 'user_permissions')
+        serialized_data = []
+        for user in users:
+            # user_info = UserProfile.objects.get(user=user)
+            # print(user_info)
+            group_data = [{'id': group.id, 'name': group.name} for group in user.groups.all()]
+            permission_data = [{'id': permission.id, 'name': permission.name} for permission in user.user_permissions.all()]
+            user_data = {
+                'id': user.id,
+                'username': user.username,
+                'email': user.email,
+                'is_active': user.is_active,
+                'groups': group_data,  
+                'user_permissions': permission_data,  
+            }
+            serialized_data.append(user_data)
+
+        return Response({
+            'status': 200,
+            'message': 'Get User List Successfully',
+            'data': serialized_data
+        }, status=status.HTTP_200_OK)
+
