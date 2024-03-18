@@ -77,6 +77,25 @@ user_urls =  [
     path('userlist/',UserListApiView.as_view(),name="userlist"),
     path('user-create/',UserCreateApiView.as_view(),name="userlist"),
 ]
+
+
+
+retentionperiod_urls = [
+    path('', RetentionPeriodListCreate.as_view(), name='storagetime-list'),
+    path('/<int:pk>', RetentionPeriodUpdateDelete.as_view(), name='storagetime-detail'),
+    
+]
+
+language_urls = [
+    path('', LanguageListCreate.as_view(), name='language-list'),
+    path('/<int:pk>', LanguageUpdateDelete.as_view(), name='language-detail'),
+    
+]
+
+
+
+
+
 urlpatterns = [
     path('folder', include((folder_urls, 'folder'))),
     path('warehouse', include((warehouse_urls, 'warehouse'))),
@@ -88,6 +107,8 @@ urlpatterns = [
     path('user', include((user_urls, 'user'))),
     path('watchlist', include((watchlist_urls, 'watchlist'))),
     path('user/',include((user_urls, 'userurl'))),
+    path('retentionperiod', include((retentionperiod_urls, 'storagetime'))),
+    path('language', include((language_urls, 'language'))),
     
     
     path('file/', include((file_urls, 'file'))),
