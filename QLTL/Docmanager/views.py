@@ -760,7 +760,7 @@ class GroupUserView(APIView):
 class GroupPermissionView(APIView):
 
     def get(self, request, pk):
-        permissions = Permission.objects.filter(group=pk)
+        permissions = Permission.objects.filter(group=pk).order_by('content_type')
         serializer = PermissionSerializer(permissions,many=True)
         return Response({'status':200,
                         'message':'Data found successfully',
@@ -768,7 +768,7 @@ class GroupPermissionView(APIView):
 class PermissionNotIncludedInGroup(APIView):
     def get(self, request, pk):
         permissions = Permission.objects.filter(group=pk)
-        permission_without_in_group = Permission.objects.exclude(id__in = permissions)
+        permission_without_in_group = Permission.objects.exclude(id__in = permissions).order_by('content_type')
 
         serializer = PermissionSerializer(permission_without_in_group,many=True)
         return Response({'status':200,
