@@ -1,30 +1,28 @@
 import concurrent.futures
-import datetime
+import mimetypes
 import os
 import re
 import shutil
+import zipfile
+from io import BytesIO
+
+import pandas as pd
 from django.conf import settings
-from django.shortcuts import render
+from django.db.models import F, Case, When, CharField
+from django.db.models.functions import Coalesce
+from django.http import HttpResponse
+from django_filters import rest_framework as filters
+from rest_framework import permissions, status, generics
+from rest_framework.pagination import PageNumberPagination
+from rest_framework.response import Response
+from rest_framework.views import APIView
+
 from Docmanager.permissions import Check_owner_factory, check_shared_group_factory, check_group_permisison_factory
 from QLTL.settings import EXPORT_PATH_FILE
-from .model_serializers import*
-from .models import*
-from rest_framework import authentication, permissions, status, generics
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from django.http import FileResponse, HttpResponse
-from django_filters import rest_framework as filters
-from rest_framework.pagination import PageNumberPagination
-import mimetypes
-import pandas as pd
-from io import BytesIO
-import zipfile
-from django.core.files.storage import default_storage
-import django_filters
-from django.utils import timezone
-from django.db.models import F, Case, When, Value, CharField
-from django.db.models.functions import Coalesce
-from django.contrib.auth.models import User,Permission,Group
+from .model_serializers import *
+from .models import *
+
+
 # Create your views here.
 class CustomPagination(PageNumberPagination):
 
@@ -135,7 +133,7 @@ class PortfolioFilter(filters.FilterSet):
         model = Portfolio
         fields = ['title', 'usage_policy']
 class PortfolioListCreate(generics.ListAPIView):
-    permission_classes = [permissions.IsAuthenticated]
+    # permission_classes = [permissions.IsAuthenticated]
     queryset = Portfolio.objects.annotate(
     compare_time=Coalesce(
         Case(
@@ -177,7 +175,7 @@ class PortfolioListCreate(generics.ListAPIView):
     
     
 class PortfolioUpdateDelete(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+    # permission_classes = [permissions.IsAuthenticated]
     def get_portfolio(self, pk):
         try:
             return Portfolio.objects.get(pk=pk)
@@ -236,7 +234,7 @@ class DocumentFilter(filters.FilterSet):
 
 class DocumentListCreate(generics.ListCreateAPIView):
 
-    permission_classes = [permissions.IsAuthenticated]
+    # permission_classes = [permissions.IsAuthenticated]
     queryset = Document.objects.annotate(
     compare_time=Coalesce(
         Case(
@@ -276,7 +274,7 @@ class DocumentListCreate(generics.ListCreateAPIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class DocumentUpdateDelete(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+    # permission_classes = [permissions.IsAuthenticated]
     def get_document(self, pk):
         try:
             return Document.objects.get(pk=pk)
@@ -326,7 +324,7 @@ class FolderFilter(filters.FilterSet):
 
 
 class FolderListCreate(generics.ListAPIView):
-    permission_classes = [permissions.IsAuthenticated]
+    # permission_classes = [permissions.IsAuthenticated]
     queryset = Folder.objects.annotate(
     compare_time=Coalesce(
         Case(
@@ -436,7 +434,7 @@ class FolderListCreate(generics.ListAPIView):
 
 
 class FolderUpdateDelete(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+    # permission_classes = [permissions.IsAuthenticated]
     def get_folder(self, pk):
         try:
             return Folder.objects.get(pk=pk)
@@ -815,7 +813,7 @@ class  WarehouseFilter(filters.FilterSet):
         fields = ['name', 'parent_warehouse', 'type_warehouse'] 
 
 class WarehouseListCreate(generics.ListAPIView):
-    permission_classes = [permissions.IsAuthenticated]
+    # permission_classes = [permissions.IsAuthenticated]
     queryset = Warehouse.objects.annotate(
     compare_time=Coalesce(
         Case(
@@ -870,7 +868,7 @@ class WarehouseListCreate(generics.ListAPIView):
                   
 
 class WarehouseUpdateDelete(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+    # permission_classes = [permissions.IsAuthenticated]
     def get_warehouse(self, pk):
         try:
             return Warehouse.objects.get(pk=pk, is_delete=False)
@@ -939,7 +937,7 @@ class WatchlistFilter(filters.FilterSet):
         model = Watchlist
         fields = ['document_id', 'folder_id']
 class WatchListCreate(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+    # permission_classes = [permissions.IsAuthenticated]
     queryset = Watchlist.objects.annotate(
     compare_time=Coalesce(
         Case(

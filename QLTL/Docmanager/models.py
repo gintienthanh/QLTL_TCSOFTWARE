@@ -90,8 +90,7 @@ class Folder(Base):
     path = models.CharField(max_length=255, null=True)
     files = models.FileField(upload_to='files/',null=True)
     file_size = models.BigIntegerField(null=True)
-    type = models.CharField(max_length=100, choices=[(tag.value, tag.name) for tag in ChoicesType], default=ChoicesType.Folder.value)
-    
+    type = models.CharField(max_length=100, choices=[(tag.value, tag.name) for tag in ChoicesType],default=ChoicesType.Folder.value)
     def __str__(self) :
         return  self.name
 
