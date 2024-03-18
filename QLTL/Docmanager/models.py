@@ -7,7 +7,7 @@ from enum import Enum
 # Create your models here.
 class UserProfile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
-    phone = models.CharField(max_length=100, null = True)
+    phone = models.CharField(max_length=15, null = True)
 
 
 class Base(models.Model):
