@@ -96,32 +96,6 @@ class CustomPagination(PageNumberPagination):
             },
             "data": data
         })
-# class PortfolioSetPagination(CustomPagination):
-#     page_size = 12
-#     page_size_query_param = 'page_size'
-#     max_page_size = 1000  
-    
-# class FolderSetPagination(CustomPagination):
-#     page_size = 12
-#     page_size_query_param = 'page_size'
-#     max_page_size = 1000   
-# class WarehouseSetPagination(CustomPagination):
-#     page_size = 1000
-#     page_size_query_param = 'page_size'
-#     max_page_size = 1000  
-# class ShareSetPagination(CustomPagination):
-#     page_size = 12
-#     page_size_query_param = 'page_size'
-#     max_page_size = 1000  
-
-class WatchlistSetPagination(CustomPagination):
-    page_size = 12
-    page_size_query_param = 'page_size'
-    max_page_size = 1000
-# class DocumentSetPagination(CustomPagination):
-#     page_size = 12
-#     page_size_query_param = 'page_size'
-#     max_page_size = 1000
 
 #######PORTFOLIO######
 
@@ -511,14 +485,11 @@ class FolderUpdateDelete(APIView):
 class ShareFilter(filters.FilterSet):
     class Meta:
         model = Share
-        fields = ['owner','create_by','document','folder']
+        fields = ['owner', 'create_by', 'document', 'folder']
    
 class APIShareListCreate(generics.ListCreateAPIView):
-    queryset = Share.objects.all()
     serializer_class = ShareSerializer
     filter_backends = [filters.DjangoFilterBackend]
-    
-
     filterset_class = ShareFilter
     paginator = CustomPagination()
     def get_permissions(self):
@@ -528,11 +499,13 @@ class APIShareListCreate(generics.ListCreateAPIView):
             return [permissions.IsAuthenticated()]
         return super().get_permissions()
     def get_queryset(self):
-        queryset = super().get_queryset()
         user = self.request.user
-        if user.is_authenticated:  # Check if user is authenticated
-            queryset = queryset.filter(create_by=user, is_delete=False)
-        return queryset
+        if user.is_authenticated: 
+            queryset = Share.objects.all().filter(create_by=user, is_delete=False)
+            return queryset
+        if user.is_superuser:
+            queryset = Share.objects.all().get_queryset()
+            return queryset
     
     def post(self, request):
         try:
@@ -596,7 +569,7 @@ class APIPermissionListCreate(generics.ListCreateAPIView):
         queryset = super().get_queryset()
         user = self.request.user
         if user.is_authenticated:  # Check if user is authenticated
-            queryset = queryset.filter( is_delete=False)
+            queryset = queryset.filter()
         return queryset
     
     
@@ -643,24 +616,68 @@ class APIGroupListCreate(generics.ListCreateAPIView):
         queryset = super().get_queryset()
         user = self.request.user
         if user.is_authenticated:  # Check if user is authenticated
-            queryset = queryset.filter( is_delete=False)
+            queryset = queryset.filter()
         return queryset
+    def post(self, request):
+        try:
+            group_name = request.data.get('name','')
+            if group_name is None:
+                return Response({'status':404,
+                                'message':"Group name is not valid."},status=status.HTTP_400_BAD_REQUEST)
+            group = GroupSerializer(data = {'name':group_name}) 
+            group.is_valid(raise_exception = True)
+            group = group.save()
+
+            permission_ids = request.data.get('permission_ids', '')
+            permission_ids_list = [int(permission_id) for permission_id in permission_ids.split(',') if permission_id.isdigit()]
+            permissions = Permission.objects.filter(id__in=permission_ids_list)
+            # Thêm các permission từ danh sách thêm
+            for permission in permissions:
+                group.permissions.add(permission)
+            return Response({'status':200,
+                             'message':'created successfully'
+                             },status=status.HTTP_200_OK)
+        except Group.DoesNotExist:
+            return Response({'status':404,'error': 'Group not found.'}, status=status.HTTP_404_NOT_FOUND)
+        except serializers.ValidationError as e:
+            return Response({'status':400,"error": "Group name is exist"}, status=status.HTTP_400_BAD_REQUEST)   
     
     
 class APIGroupUpdateDestroy(generics.RetrieveUpdateDestroyAPIView):
     # permission_classes = [check_shared_group_factory(Share(),'edit') | Check_owner_factory(Share())]
     queryset = Group.objects.all()
     serializer_class = GroupSerializer
-    
+
     def update(self, request, *args, **kwargs):
         instance = self.get_object()
-        instance.updated_at = timezone.now()
-        instance.editor = request.user
-        serializer = self.get_serializer(instance, data=request.data, partial=True)
-        if not serializer.is_valid():
-            return Response({'status':400,'message':'Yêu cầu không hợp lệ hoặc thiếu thông tin cần thiết'},status=status.HTTP_400_BAD_REQUEST)  
-        self.perform_update(serializer)
-        return Response(serializer.data)
+        try:
+            group_name = request.data.get('name','')
+            if group_name is None:
+                return Response({'status':404,
+                                'message':"Group name is not valid."},status=status.HTTP_400_BAD_REQUEST)
+            instance.name = group_name
+            serializer = self.get_serializer(instance, data=request.data, partial=True)
+            serializer.is_valid(raise_exception = True)
+            self.perform_update(serializer)
+            # instance.save()
+            permission_ids = request.data.get('permission_ids', '')
+            permission_ids_list = [int(permission_id) for permission_id in permission_ids.split(',') if permission_id.isdigit()]
+            permissions = Permission.objects.filter(id__in=permission_ids_list)
+            # Lấy danh sách permission đã tồn tại trong nhóm
+            existing_permissions = instance.permissions.all()
+            existing_permissions.delete()
+           
+            
+            # Thêm các permission từ danh sách thêm
+            for permission in permissions:
+                instance.permissions.add(permission)
+            return Response({'status':200,
+                             'message':'update successfully'
+                             },status=status.HTTP_200_OK)
+        except Group.DoesNotExist:
+            return Response({'status':404,'error': 'Group not found.'}, status=status.HTTP_404_NOT_FOUND)
+        except serializers.ValidationError as e:
+            return Response({'status':400,"error": "Group name is exist"}, status=status.HTTP_400_BAD_REQUEST) 
 
     def destroy(self, request, *args, **kwargs):
         instance = self.get_object()
@@ -703,56 +720,24 @@ class GroupUserView(APIView):
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
 class GroupPermissionView(APIView):
+
     def get(self, request, pk):
-        group_id = pk
-        permissions = Permission.objects.filter(group=group_id)
-        print(permissions)
-
+        permissions = Permission.objects.filter(group=pk)
         serializer = PermissionSerializer(permissions,many=True)
-        return Response(serializer.data)
+        return Response({'status':200,
+                        'message':'Data found successfully',
+                        'data':serializer.data},status=status.HTTP_200_OK)
+class PermissionNotIncludedInGroup(APIView):
+    def get(self, request, pk):
+        permissions = Permission.objects.filter(group=pk)
+        permission_without_in_group = Permission.objects.exclude(id__in = permissions)
+
+        serializer = PermissionSerializer(permission_without_in_group,many=True)
+        return Response({'status':200,
+                        'message':'Data found successfully',
+                        'data':serializer.data},status=status.HTTP_200_OK)
+    
         
-    # def post(self, request, pk):
-    #     group_id = pk
-    #     user_ids = request.query_params.get('user_ids', '')
-    #     user_ids_list = [int(user_id) for user_id in user_ids.split(',') if user_id.isdigit()]
-        
-
-    #     try:
-    #         group = Group.objects.get(id=group_id)
-    #         users = User.objects.filter(id__in=user_ids_list)
-    #         for user in users:
-    #             user.groups.add(group)
-    #         return Response({'message': 'Users added to group successfully.'}, status=status.HTTP_200_OK)
-
-    #     except Group.DoesNotExist:
-    #         return Response({'error': 'Group not found.'}, status=status.HTTP_404_NOT_FOUND)
-    #     except Exception as e:
-    #         return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-   
-    def put(seft, request,pk):
-        group_id = pk
-        permission_ids = request.data.get('permission_ids', '')
-        permission_ids_list = [int(permission_id) for permission_id in permission_ids.split(',') if permission_id.isdigit()]
-        print(permission_ids_list)
-
-        try:
-            group = Group.objects.get(id=group_id)
-            permissions = Permission.objects.filter(id__in=permission_ids_list)
-            # Lấy danh sách permission đã tồn tại trong nhóm
-            existing_permissions = group.permissions.all()
-            # Xóa các permission đã tồn tại trong nhóm nhưng không có trong danh sách thêm
-            permissions_to_remove = existing_permissions.exclude(id__in=permission_ids_list)
-            for permission in permissions_to_remove:
-                group.permissions.remove(permission)
-            
-            # Thêm các permission từ danh sách thêm
-            for permission in permissions:
-                group.permissions.add(permission)
-            return Response({'message': 'update group successfully.'},status=status.HTTP_200_OK)
-        except Group.DoesNotExist:
-            return Response({'error': 'Group not found.'}, status=status.HTTP_404_NOT_FOUND)
-        except Exception as e:
-            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)        
 class UserPermissionView(APIView):
     def get(self, request, pk):
         user_id = pk
@@ -1263,6 +1248,7 @@ class UserUpdateDelete(APIView):
         return Response({'status':201,
                         'message':'found',
                         'data':serializer.data},status=status.HTTP_302_FOUND)
+
 
 
     def patch(self, request, pk):

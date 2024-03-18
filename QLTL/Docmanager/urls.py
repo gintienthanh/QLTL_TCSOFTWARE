@@ -38,11 +38,12 @@ permission_urls = [
     path('', APIPermissionListCreate.as_view(), name='permission-list'),
     path('/<int:pk>', APIPermissionUpdateDestroy.as_view(), name='permission-detail'),
     path('/user_permissions/<int:pk>/', UserPermissionView.as_view(), name='user-permissions'),
+    path('/not_included_in_group/<int:pk>/', PermissionNotIncludedInGroup.as_view(), name='permission_not_included_in_group'),
 ]
 group_urls = [
     path('', APIGroupListCreate.as_view(), name='group-list'),
     path('/<int:pk>', APIGroupUpdateDestroy.as_view(), name='group-detail'),
-    path('/group_users/<int:pk>/', GroupUserView.as_view(), name='group-users'),
+    path('/user_groups/<int:pk>/', GroupUserView.as_view(), name='group-users'),
     path('/group_permissions/<int:pk>/', GroupPermissionView.as_view(), name='group-permissions'),
 ]
 
