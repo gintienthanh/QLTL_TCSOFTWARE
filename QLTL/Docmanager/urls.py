@@ -73,6 +73,27 @@ watchlist_urls = [
 file_urls = [
     path('download/<int:folder_id>/', DownloadFile.as_view(), name='file-download'),
 ]
+user_urls =  [
+    path('userlist/',UserList.as_view(),name="userlist"),
+]
+
+
+
+retentionperiod_urls = [
+    path('', RetentionPeriodListCreate.as_view(), name='storagetime-list'),
+    path('/<int:pk>', RetentionPeriodUpdateDelete.as_view(), name='storagetime-detail'),
+    
+]
+
+language_urls = [
+    path('', LanguageListCreate.as_view(), name='language-list'),
+    path('/<int:pk>', LanguageUpdateDelete.as_view(), name='language-detail'),
+    
+]
+
+
+
+
 
 urlpatterns = [
     path('folder', include((folder_urls, 'folder'))),
@@ -84,12 +105,17 @@ urlpatterns = [
     path('document', include((document_urls, 'document'))),
     path('user', include((user_urls, 'user'))),
     path('watchlist', include((watchlist_urls, 'watchlist'))),
+    path('user/',include((user_urls, 'userurl'))),
+    path('retentionperiod', include((retentionperiod_urls, 'storagetime'))),
+    path('language', include((language_urls, 'language'))),
     
     
     path('file/', include((file_urls, 'file'))),
     path('docs/swagger.json', schema_view.without_ui(cache_timeout=0), name='schema-swagger-json'),
     path('docs', schema_view.with_ui('swagger', cache_timeout=0), name='schema-swagger-ui'),
     path('bulk_delete/', BulkDeleteAPI.as_view(), name='portfolio-bulk-delete'),
+
+
 
     
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

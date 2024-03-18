@@ -5,6 +5,15 @@ from django.utils import timezone
 from enum import Enum
 
 # Create your models here.
+class UserProfile(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE)
+    phone = models.CharField(max_length=15, null = True)
+
+class Organization(models.Model):
+    name = models.CharField(max_length=255, null = True)
+    user = models.OneToOneField(User, on_delete=models.CASCADE)
+    description = models.CharField(max_length=1000, null = True)
+    
 class Base(models.Model):
     id = models.AutoField(primary_key=True)
     is_delete = models.BooleanField(default=False)
@@ -65,7 +74,17 @@ class ClassifyVariant(models.Model):
     def __str__(self) :
         return  self.variant_name
     
-
+class RetentionPeriod(Base):
+    
+    name = models.CharField(max_length=200, null = True)
+    description = models.CharField(max_length=1000, null = True)
+    def __str__(self):
+        return self.name
+class Language(Base):
+    name = models.CharField(max_length=200, null = True )
+    description = models.CharField(max_length=1000, null = True)
+    def __str__(self):
+        return self.name
 
   
 class Portfolio(Base):
@@ -73,7 +92,7 @@ class Portfolio(Base):
     title = models.CharField(max_length=200, null=True)
     identification_code = models.CharField(max_length=200, null=True)
     classification = models.ForeignKey(ClassifyVariant, null = True, on_delete=models.CASCADE)
-    retention_period = models.DateField(null=True)
+    retention_period = models.ForeignKey(RetentionPeriod, null=True, on_delete=models.CASCADE)
     usage_policy = models.CharField(max_length=200, null=True)
     start_date = models.DateField(null=True)
     end_date = models.DateField(null=True)
@@ -82,10 +101,11 @@ class Portfolio(Base):
     keywords = models.CharField(max_length=200, null=True)
     annotation = models.CharField(max_length=200, null=True)
     barcode = models.CharField(max_length=200, null=True)
+    languege = models.ForeignKey(Language, null=True, on_delete=models.CASCADE)
     status = models.CharField(max_length=100, choices=[(tag.value, tag.name) for tag in ChoicesStatus], default=ChoicesStatus.wait.value)
 
 class Folder(Base):
-    name = models.CharField(max_length=255)
+    name = models.CharField(max_length=255, null = True)
     parent_folder = models.ForeignKey('self', on_delete=models.CASCADE, null=True, related_name='subfolders') 
     path = models.CharField(max_length=255, null=True)
     files = models.FileField(upload_to='files/',null=True)
