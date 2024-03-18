@@ -254,7 +254,11 @@ class FolderListCreate(generics.ListAPIView):
         queryset = super().get_queryset()
         user = self.request.user
         if user.is_authenticated:  # Check if user is authenticated
-            queryset = queryset.filter(create_by=user, is_delete = False, parent_folder = None)
+            parent_folder = self.request.GET.get('parent_folder')
+            if parent_folder:
+                queryset = queryset.filter(create_by=user, is_delete = False, parent_folder = parent_folder)
+            else:
+                queryset = queryset.filter(create_by=user, is_delete = False, parent_folder = None)
         return queryset
     def extract_and_convert_to_integer(self,name,data):
         name_list = []
@@ -366,13 +370,14 @@ class FolderUpdateDelete(APIView):
                 path = parent_folder.path
             else:
                 parent_folder = None
-                path = '/'
+                path = ''
                 queryset = Folder.objects.filter(parent_folder = None)
             serializer_db = FolderSerializer(queryset,many=True)
             data = serializer_db.data
             name_list = []
             for i in data:
                 name_list.append(i['name'])
+                
             if folder.type == "Folder":
                 name_default = name + " (1)"
             else:
@@ -911,3 +916,58 @@ class BulkDeleteAPI(APIView):
                 'message': 'Failed to delete items'
             }
             return Response(data, status=status.HTTP_400_BAD_REQUEST)
+
+class UserFilter(filters.FilterSet):
+    username = filters.CharFilter(field_name='username', lookup_expr='icontains')
+    class Meta:
+        model = User
+        fields = ['username']
+class UserListCreate(generics.ListAPIView):
+    permission_classes = [permissions.IsAdminUser]
+    queryset = User.objects.all()
+    serializer_class = UserSerializer
+    filter_backends = [filters.DjangoFilterBackend]
+    filterset_class = UserFilter
+    paginator = CustomPagination()
+    
+    def post(self, request):
+        serializer = UserSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response({'status':201,
+                             'message':'created successfully',
+                             'data':serializer.data}, 
+                             status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+class UserUpdateDelete(APIView):
+    permission_classes = [permissions.IsAdminUser]
+    def get_user(self, pk):
+        try:
+            return User.objects.get(pk=pk)
+        except  User.DoesNotExist:
+            raise status.HTTP_404_NOT_FOUND
+    def get(self, request, pk):
+        user = self.get_user(pk)
+        serializer = UserSerializer(user)
+        return Response({'status':201,
+                        'message':'found',
+                        'data':serializer.data},status=status.HTTP_302_FOUND)
+
+
+    def patch(self, request, pk):
+        user = self.get_user(pk)
+        serializer = UserSerializer(user, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response({'status':201,
+                             'message':'created successfully',
+                             'data':serializer.data},status=status.HTTP_200_OK)
+        return Response({'status':400,
+                        'message':serializer.errors},status=status.HTTP_400_BAD_REQUEST)
+
+    def delete(self, request, pk):
+        user = self.get_user(pk)
+        user.delete()
+        return Response({'status': 204,
+                         'message': 'deleted successfully'})
