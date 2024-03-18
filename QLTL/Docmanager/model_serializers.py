@@ -2,6 +2,21 @@ from rest_framework import serializers
 from .models import *
 from django.contrib.auth.models import User,Permission,Group
 
+class AdjustedNameField(serializers.CharField):
+    def to_internal_value(self, data):
+        model = self.parent.Meta.model
+        # Kiểm tra và điều chỉnh tên trùng lặp
+        existing_names = model.objects.filter(name__startswith=data).values_list('name', flat=True)
+
+        if data in existing_names:
+            i = 1
+            while f"{data}({i})" in existing_names:
+                i += 1
+            data = f"{data}({i})"
+        return data
+
+
+
 class BaseSerializer(serializers.ModelSerializer):
     class Meta:
         model = Base
@@ -86,4 +101,13 @@ class ClassificationSerializer(serializers.ModelSerializer):
     class Meta: 
         model = ClassifyVariant
         fields = '__all__'
-        
+
+class RetentionPeriodSerializer(serializers.ModelSerializer):
+    class Meta: 
+        model = RetentionPeriod
+        fields = '__all__'
+
+class LanguageSerializer(serializers.ModelSerializer):
+    class Meta: 
+        model = Language
+        field = '__all__'

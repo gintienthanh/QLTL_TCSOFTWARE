@@ -12,7 +12,7 @@ from .models import*
 from rest_framework import authentication, permissions, status, generics
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from django.http import FileResponse, HttpResponse
+from django.http import FileResponse, Http404, HttpResponse
 from django_filters import rest_framework as filters
 from rest_framework.pagination import PageNumberPagination
 import mimetypes
@@ -104,42 +104,31 @@ class CustomPagination(PageNumberPagination):
 
 #######PORTFOLIO######
 
-class PortfolioFilter(filters.FilterSet):
-    title = filters.CharFilter(field_name='title', lookup_expr='icontains')
-    usage_policy = filters.CharFilter(field_name='usage_policy', lookup_expr='icontains')
-    
-    class Meta:
-        model = Portfolio
-        fields = ['title', 'usage_policy']
+
 class PortfolioListCreate(generics.ListAPIView):
     permission_classes = [permissions.IsAuthenticated]
-    queryset = Portfolio.objects.annotate(
-    compare_time=Coalesce(
-        Case(
-            When(created_at__gt=F('updated_at'), then=F('created_at')),
-            default=F('updated_at'),
-            output_field=CharField()
-        ),
-        Case(
-            When(created_at__gt=F('created_at'), then=F('updated_at')),
-            default=F('created_at'),
-            output_field=CharField()
-        )
-    )
-).order_by('-compare_time')
+    queryset = Portfolio.objects.all()
     serializer_class = PortfolioSerializer
-    filter_backends = [filters.DjangoFilterBackend]
-    filterset_class = PortfolioFilter
     paginator = CustomPagination()
     
-    def get_queryset(self):
-        
+    
+    def get_queryset(self, *args, **kwargs):
         queryset = super().get_queryset()
         user = self.request.user
+
         if user.is_authenticated:  # Check if user is authenticated
-            queryset = queryset.filter(create_by=user, is_delete = False)
-        return queryset 
-    
+            title_query = self.request.GET.get('title', None)  
+            
+            
+            queryset = queryset.filter(create_by=user, is_delete=False)
+            
+            if title_query:
+                queryset = queryset.filter(title__icontains=title_query)
+            
+                
+            queryset = queryset.order_by(F('updated_at').desc())
+            
+        return queryset  
     def post(self, request):
         serializer = PortfolioSerializer(data=request.data)
         if serializer.is_valid():
@@ -1232,19 +1221,26 @@ class BulkDeleteAPI(APIView):
                 return Response(data, status=status.HTTP_404_NOT_FOUND)
                     
         # Soft delete folders
-        for folder_id in folder_ids:
-            try:
-                folder = Folder.objects.get(id=folder_id)
+        
+        try:
+            for folder_id in folder_ids:
+                folder =  Folder.objects.get(id=folder_id)
                 folders = Folder.objects.filter(path__startswith=folder.path)
                 for i in folders:
                     i.soft_delete(request)
                 success_count += 1
-            except Folder.DoesNotExist:
                 data = {
-                    'status': status.HTTP_404_NOT_FOUND,
-                    'message': f'Folder with ID {folder_id} not found'
-                }
-                return Response(data, status=status.HTTP_404_NOT_FOUND)
+                        'status': '200',
+                        'message':'Deleted successfully'
+                        # 'message': f'Deleted {success_count} items successfully'
+                    }
+                return Response(data, status=status.HTTP_200_OK)
+        except Exception as e:
+            data = {
+                'status': '500',
+                'message': e
+            }
+            return Response(data, status=status.HTTP_400_BAD_REQUEST)
         
         if success_count > 0:
             data = {
@@ -1344,4 +1340,157 @@ class UserList(APIView):
             'message': 'Get User List Successfully',
             'data': serialized_data
         }, status=status.HTTP_200_OK)
-
+        
+class RetentionPeriodListCreate(generics.ListCreateAPIView): 
+    permission_classes = [permissions.IsAuthenticated] 
+    queryset = RetentionPeriod.objects.all() 
+    serializer_class = RetentionPeriodSerializer 
+    paginator = CustomPagination() 
+     
+     
+    def get_queryset(self): 
+        queryset = super().get_queryset() 
+        user = self.request.user 
+         
+        if user.is_authenticated:  # Check if user is authenticated 
+            name_query = self.request.GET.get('name', None)   
+             
+            queryset = queryset.filter(create_by=user, is_delete=False) 
+             
+            if name_query: 
+                queryset = queryset.filter(name__icontains=name_query) 
+                 
+            queryset = queryset.order_by(F('updated_at').desc()) 
+             
+        return queryset   
+     
+    def post(self, request): 
+         
+        serializer = RetentionPeriodSerializer(data=request.data) 
+        if serializer.is_valid(): 
+            serializer.validated_data['create_by'] = request.user    
+            serializer.validated_data['owner'] = request.user 
+            serializer.save() 
+            return Response({'status':201, 
+                             'message':'created successfully', 
+                             'data':serializer.data},  
+                             status=status.HTTP_201_CREATED) 
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST) 
+class RetentionPeriodUpdateDelete(generics.RetrieveUpdateDestroyAPIView): 
+    permission_classes = [permissions.IsAuthenticated] 
+    def get_object(self, pk): 
+        try: 
+            return RetentionPeriod.objects.get(pk=pk) 
+        except RetentionPeriod.DoesNotExist: 
+            raise Http404("RetentionPeriod not found") 
+    def get(self, request, pk): 
+        retentionperiod = self.get_object(pk) 
+        serializer = RetentionPeriodSerializer(retentionperiod) 
+        return Response({'status':201, 
+                        'message':'found', 
+                        'data':serializer.data},status=status.HTTP_302_FOUND) 
+ 
+ 
+    def patch(self, request, pk): 
+        retentionperiod = self.get_object(pk) 
+        serializer = RetentionPeriodSerializer(retentionperiod, data=request.data, partial=True) 
+        if serializer.is_valid(): 
+            serializer.validated_data['updated_at'] = timezone.now() 
+            serializer.validated_data['editor'] = request.user    
+ 
+             
+            serializer.save() 
+            return Response({'status':201, 
+                             'message':'created successfully', 
+                             'data':serializer.data},status=status.HTTP_200_OK) 
+        return Response({'status':400, 
+                        'message':serializer.errors},status=status.HTTP_400_BAD_REQUEST) 
+ 
+    def delete(self, request, pk): 
+        retentionperiod  = RetentionPeriod.objects.get(pk=pk)  
+        retentionperiod.soft_delete(request)  # Xóa bảng Portfolio 
+        serializer = RetentionPeriodSerializer(retentionperiod) 
+ 
+        return Response({ 
+                'status': 200, 
+                'message': 'delete successfully', 
+                'dataport': serializer.data, 
+        }) 
+         
+         
+ 
+ 
+class LanguageListCreate(generics.ListCreateAPIView): 
+    permission_classes = [permissions.IsAuthenticated]
+    queryset = Language.objects.all() 
+    serializer_class = LanguageSerializer 
+    paginator = CustomPagination() 
+     
+     
+    def get_queryset(self): 
+        queryset = super().get_queryset() 
+        user = self.request.user 
+         
+        if user.is_authenticated:  # Check if user is authenticated 
+            name_query = self.request.GET.get('name', None)   
+             
+            queryset = queryset.filter(create_by=user, is_delete=False) 
+             
+            if name_query: 
+                queryset = queryset.filter(name__icontains=name_query) 
+                 
+            queryset = queryset.order_by(F('updated_at').desc()) 
+             
+        return queryset    
+     
+    def post(self, request): 
+         
+        serializer = LanguageSerializer(data=request.data) 
+        if serializer.is_valid(): 
+            serializer.validated_data['create_by'] = request.user    
+            serializer.validated_data['owner'] = request.user 
+            serializer.save() 
+            return Response({'status':201, 
+                             'message':'created successfully', 
+                             'data':serializer.data},  
+                             status=status.HTTP_201_CREATED) 
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST) 
+class LanguageUpdateDelete(generics.RetrieveUpdateDestroyAPIView): 
+    permission_classes = [permissions.IsAuthenticated] 
+    def get_object(self, pk): 
+        try: 
+            return Language.objects.get(pk=pk) 
+        except Language.DoesNotExist: 
+            raise Http404("Language not found") 
+    def get(self, request, pk): 
+        language = self.get_object(pk) 
+        serializer = LanguageSerializer(language) 
+        return Response({'status':201, 
+                        'message':'found', 
+                        'data':serializer.data},status=status.HTTP_302_FOUND) 
+ 
+    def patch(self, request, pk): 
+        language = self.get_object(pk) 
+        serializer = LanguageSerializer(language, data=request.data, partial=True) 
+        if serializer.is_valid(): 
+            serializer.validated_data['updated_at'] = timezone.now() 
+            serializer.validated_data['editor'] = request.user    
+ 
+             
+            serializer.save() 
+            return Response({'status':201, 
+                             'message':'created successfully', 
+                             'data':serializer.data},status=status.HTTP_200_OK) 
+        return Response({'status':400, 
+                        'message':serializer.errors},status=status.HTTP_400_BAD_REQUEST) 
+ 
+    def delete(self, request, pk): 
+        language  = Language.objects.get(pk=pk)  
+        language.soft_delete(request)  # Xóa bảng Portfolio 
+        serializer = LanguageSerializer(language) 
+ 
+        return Response({ 
+                'status': 200, 
+                'message': 'delete successfully', 
+                'dataport': serializer.data, 
+        })

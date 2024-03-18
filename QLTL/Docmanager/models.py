@@ -9,7 +9,11 @@ class UserProfile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
     phone = models.CharField(max_length=15, null = True)
 
-
+class Organization(models.Model):
+    name = models.CharField(max_length=255, null = True)
+    user = models.OneToOneField(User, on_delete=models.CASCADE)
+    description = models.CharField(max_length=1000, null = True)
+    
 class Base(models.Model):
     id = models.AutoField(primary_key=True)
     is_delete = models.BooleanField(default=False)
@@ -101,7 +105,7 @@ class Portfolio(Base):
     status = models.CharField(max_length=100, choices=[(tag.value, tag.name) for tag in ChoicesStatus], default=ChoicesStatus.wait.value)
 
 class Folder(Base):
-    name = models.CharField(max_length=255)
+    name = models.CharField(max_length=255, null = True)
     parent_folder = models.ForeignKey('self', on_delete=models.CASCADE, null=True, related_name='subfolders') 
     path = models.CharField(max_length=255, null=True)
     files = models.FileField(upload_to='files/',null=True)
