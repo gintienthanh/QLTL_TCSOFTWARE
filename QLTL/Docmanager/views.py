@@ -699,10 +699,7 @@ class APIGroupUpdateDestroy(generics.RetrieveUpdateDestroyAPIView):
             permission_ids_list = [int(permission_id) for permission_id in permission_ids.split(',') if permission_id.isdigit()]
             permissions = Permission.objects.filter(id__in=permission_ids_list)
             # Lấy danh sách permission đã tồn tại trong nhóm
-            existing_permissions = instance.permissions.all()
-            existing_permissions.delete()
-           
-            
+            instance.permissions.clear()
             # Thêm các permission từ danh sách thêm
             for permission in permissions:
                 instance.permissions.add(permission)
@@ -757,7 +754,7 @@ class GroupUserView(APIView):
 class GroupPermissionView(APIView):
 
     def get(self, request, pk):
-        permissions = Permission.objects.filter(group=pk)
+        permissions = Permission.objects.filter(group=pk).order_by('content_type')
         serializer = PermissionSerializer(permissions,many=True)
         return Response({'status':200,
                         'message':'Data found successfully',
@@ -765,7 +762,7 @@ class GroupPermissionView(APIView):
 class PermissionNotIncludedInGroup(APIView):
     def get(self, request, pk):
         permissions = Permission.objects.filter(group=pk)
-        permission_without_in_group = Permission.objects.exclude(id__in = permissions)
+        permission_without_in_group = Permission.objects.exclude(id__in = permissions).order_by('content_type')
 
         serializer = PermissionSerializer(permission_without_in_group,many=True)
         return Response({'status':200,
