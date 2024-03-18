@@ -705,10 +705,7 @@ class APIGroupUpdateDestroy(generics.RetrieveUpdateDestroyAPIView):
             permission_ids_list = [int(permission_id) for permission_id in permission_ids.split(',') if permission_id.isdigit()]
             permissions = Permission.objects.filter(id__in=permission_ids_list)
             # Lấy danh sách permission đã tồn tại trong nhóm
-            existing_permissions = instance.permissions.all()
-            existing_permissions.delete()
-           
-            
+            instance.permissions.clear()
             # Thêm các permission từ danh sách thêm
             for permission in permissions:
                 instance.permissions.add(permission)
