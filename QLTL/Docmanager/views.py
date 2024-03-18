@@ -115,17 +115,11 @@ class PortfolioListCreate(generics.ListAPIView):
     def get_queryset(self, *args, **kwargs):
         queryset = super().get_queryset()
         user = self.request.user
-
         if user.is_authenticated:  # Check if user is authenticated
-            title_query = self.request.GET.get('title', None)  
-            
-            
+            title_query = self.request.GET.get('title', None)   
             queryset = queryset.filter(create_by=user, is_delete=False)
-            
             if title_query:
-                queryset = queryset.filter(title__icontains=title_query)
-            
-                
+                queryset = queryset.filter(title__icontains=title_query)   
             queryset = queryset.order_by(F('updated_at').desc())
             
         return queryset  
@@ -1242,19 +1236,7 @@ class BulkDeleteAPI(APIView):
             }
             return Response(data, status=status.HTTP_400_BAD_REQUEST)
         
-        if success_count > 0:
-            data = {
-                'status': status.HTTP_200_OK,
-                'message': f'Deleted {success_count} items successfully'
-            }
-            return Response(data, status=status.HTTP_200_OK)
-        
-        if success_count == 0:
-                    data = {
-                        'status': status.HTTP_500_INTERNAL_SERVER_ERROR,
-                        'message': 'Failed to delete items'
-                    }
-                    return Response(data, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+       
 
 
 ######USER#####                
