@@ -1153,14 +1153,12 @@ class BulkDeleteAPI(APIView):
         document_ids = request.data.get('document_ids', [])
         folder_ids = request.data.get('folder_ids', [])
         success_count = 0
-         
+        
         # Soft delete portfolios and associated documents
         for portfolio_id in portfolio_ids:
             try:
                 portfolio = Portfolio.objects.get(id=int(portfolio_id))
                 portfolio.soft_delete(request)
-                documents = Document.objects.filter(portfolio=portfolio)
-                documents.update(is_delete=True, delete_at=timezone.now())
                 success_count += 1
             except Portfolio.DoesNotExist:
                 data = {
@@ -1197,7 +1195,7 @@ class BulkDeleteAPI(APIView):
                     # Get the shelf related to the boxcase
                     shelf = warehouse.parent_warehouse
                     shelf.soft_delete(request)
-                else:
+                else: 
                     # Get all subwarehouses related to the warehouse
                     subwarehouses = warehouse.subwarehouse.all()
                     for subwarehouse in subwarehouses:
@@ -1213,7 +1211,7 @@ class BulkDeleteAPI(APIView):
                     
         # Soft delete folders
         
-        try:
+        if folder_ids:
             for folder_id in folder_ids:
                 folder =  Folder.objects.get(id=folder_id)
                 folders = Folder.objects.filter(path__startswith=folder.path)
@@ -1223,13 +1221,12 @@ class BulkDeleteAPI(APIView):
                 data = {
                         'status': '200',
                         'message':'Deleted successfully'
-                        # 'message': f'Deleted {success_count} items successfully'
                     }
                 return Response(data, status=status.HTTP_200_OK)
-        except Exception as e:
+        else:
             data = {
                 'status': '500',
-                'message': e
+                'message': 'khong co id'
             }
             return Response(data, status=status.HTTP_400_BAD_REQUEST)
         
