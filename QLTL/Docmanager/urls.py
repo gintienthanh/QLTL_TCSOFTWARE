@@ -74,7 +74,8 @@ file_urls = [
     path('download/<int:folder_id>/', DownloadFile.as_view(), name='file-download'),
 ]
 user_urls =  [
-    path('userlist/',UserList.as_view(),name="userlist"),
+    path('userlist/',UserListApiView.as_view(),name="userlist"),
+    path('user-create/',UserCreateApiView.as_view(),name="userlist"),
 ]
 urlpatterns = [
     path('folder', include((folder_urls, 'folder'))),

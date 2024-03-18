@@ -1271,24 +1271,31 @@ class UserUpdateDelete(APIView):
         return Response({'status': 204,
                          'message': 'deleted successfully'})
    
-class UserList(APIView):
+class UserListApiView(APIView):
     permission_classes = [IsAdminUser]
 
     def get(self, request):
-        users = User.objects.all().prefetch_related('groups', 'user_permissions')
+        users = User.objects.all().prefetch_related('groups', 'user_permissions','userprofile')
         serialized_data = []
         for user in users:
-            # user_info = UserProfile.objects.get(user=user)
-            # print(user_info)
+            try:
+                user_profile = UserProfile.objects.get(user=user)
+                user_profile_data = {
+                    'phone': user_profile.phone,  
+                }
+            except UserProfile.DoesNotExist:
+                user_profile_data = {}
+            
             group_data = [{'id': group.id, 'name': group.name} for group in user.groups.all()]
             permission_data = [{'id': permission.id, 'name': permission.name} for permission in user.user_permissions.all()]
             user_data = {
                 'id': user.id,
                 'username': user.username,
                 'email': user.email,
+                'user_profile': user_profile_data,  
                 'is_active': user.is_active,
                 'groups': group_data,  
-                'user_permissions': permission_data,  
+                'user_permissions': permission_data, 
             }
             serialized_data.append(user_data)
 
@@ -1298,3 +1305,7 @@ class UserList(APIView):
             'data': serialized_data
         }, status=status.HTTP_200_OK)
 
+class UserCreateApiView(APIView):
+    permission_classes = [IsAdminUser]
+    def post(self,request):
+          return   

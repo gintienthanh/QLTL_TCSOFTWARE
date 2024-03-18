@@ -92,21 +92,9 @@ def user_create(email, password=None, **extra_fields) -> User:
     user.save()
     return user
 def generate_strong_password(length):
-    lowercase_letters = string.ascii_lowercase.replace('"', '').replace("'", '').replace('/', '')
-    uppercase_letters = string.ascii_uppercase.replace('"', '').replace("'", '').replace('/', '')
-    digits = string.digits.replace('"', '').replace("'", '').replace('/', '')
-    punctuation = string.punctuation.replace('"', '').replace("'", '').replace('/', '')
+    characters = string.ascii_letters + string.digits + ".@!"
 
-    password = random.choice(lowercase_letters)
-    password += random.choice(uppercase_letters)
-    password += random.choice(digits)
-    password += random.choice(punctuation)
-
-    remaining_length = length - 4
-    password += ''.join(random.choice(lowercase_letters + uppercase_letters + digits + punctuation) for i in range(remaining_length))
-
-    password_list = list(password)
-    random.shuffle(password_list)
-    password = ''.join(password_list)
-    
+    # Tạo mật khẩu
+    password = ''.join(random.choices(characters, k=length)) + '.'
     return password
+    
