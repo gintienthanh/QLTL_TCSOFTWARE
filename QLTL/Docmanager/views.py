@@ -1155,34 +1155,34 @@ class BulkDeleteAPI(APIView):
         success_count = 0
         
         # Soft delete portfolios and associated documents
-        for portfolio_id in portfolio_ids:
-            try:
+        try:
+            for portfolio_id in portfolio_ids:
                 portfolio = Portfolio.objects.get(id=int(portfolio_id))
                 portfolio.soft_delete(request)
                 success_count += 1
-            except Portfolio.DoesNotExist:
-                data = {
-                    'status': status.HTTP_404_NOT_FOUND,
-                    'message': f'portfolio with ID {portfolio_id} not found'
-                }
-                return Response(data, status=status.HTTP_404_NOT_FOUND)
+        except Portfolio.DoesNotExist:
+            data = {
+                'status': status.HTTP_404_NOT_FOUND,
+                'message': f'portfolio with ID {portfolio_id} not found'
+            }
+            return Response(data, status=status.HTTP_404_NOT_FOUND)
 
         # Soft delete documents
-        for document_id in document_ids:
-            try:
+        try:
+            for document_id in document_ids:
                 document = Document.objects.get(id=int(document_id))
                 document.soft_delete(request)
                 success_count += 1
-            except Document.DoesNotExist:
-                data = {
-                    'status': status.HTTP_404_NOT_FOUND,
-                    'message': f'Document with ID {document_id} not found'
-                }
-                return Response(data, status=status.HTTP_404_NOT_FOUND)
+        except Document.DoesNotExist:
+            data = {
+                'status': status.HTTP_404_NOT_FOUND,
+                'message': f'Document with ID {document_id} not found'
+            }
+            return Response(data, status=status.HTTP_404_NOT_FOUND)
                     
         # Soft delete warehouses
-        for warehouse_id in warehouse_ids:
-            try:
+        try:
+            for warehouse_id in warehouse_ids:
                 warehouse = Warehouse.objects.get(id=int(warehouse_id))
                 warehouse.soft_delete(request)
 
@@ -1202,12 +1202,12 @@ class BulkDeleteAPI(APIView):
                         subwarehouse.soft_delete(request)
 
                 success_count += 1
-            except Warehouse.DoesNotExist:
-                data = {
-                    'status': status.HTTP_404_NOT_FOUND,
-                    'message': f'Folder with ID {folder_id} not found'
-                }
-                return Response(data, status=status.HTTP_404_NOT_FOUND)
+        except Warehouse.DoesNotExist:
+            data = {
+                'status': status.HTTP_404_NOT_FOUND,
+                'message': f'Folder with ID {success_count} not found'
+            }
+            return Response(data, status=status.HTTP_404_NOT_FOUND)
                     
         # Soft delete folders
         
