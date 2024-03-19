@@ -18,12 +18,11 @@ class UserSerializer(serializers.ModelSerializer):
         model = User
         fields = ['id','email','username']
 class UserRegistrationSerializer(serializers.ModelSerializer):
+    username = serializers.CharField(max_length = 255,required = True)
     class Meta:
         model = User
-        fields = ['email']
-    def create(self, validate_data):
-        username = validate_data['email']
-        return User.objects.create_user(**validate_data,username=username)
+        fields = ['email','username']
+    
         
 class EmailVerificationSerializer(serializers.ModelSerializer):
     token = serializers.CharField(max_length=555)
