@@ -331,34 +331,27 @@ class FolderListCreate(generics.ListAPIView):
                     new_name = re.sub(r'\(\d+\)$', f'({number})', name)
                     name = new_name
         return name
+    
     def post(self, request):
         serializer = FolderSerializer(data=request.data,partial=True)
         files = request.FILES.getlist('files')
-        name = request.POST.get('name')
-        parent_folder_id = request.POST.get('parent_folder')
+        name = request.data.get('name')
+        parent_folder_id = request.data.get('parent_folder')
         user = request.user
         if name and name != '':
             name = name.rstrip()
         else:
             name = 'New Folder'
-        if not parent_folder_id:
-            parent_folder_id = request.data.get('parent_folder')
         if serializer.is_valid():
             if parent_folder_id:
                 parent_folder = Folder.objects.get(id=parent_folder_id)
-                queryset = Folder.objects.filter(parent_folder = parent_folder)
                 owner = parent_folder.owner
                 path = parent_folder.path
             else:
                 parent_folder = None
                 path = ''
-                owner = request.user
-                queryset = Folder.objects.filter(parent_folder = None)
-            serializer_db = FolderSerializer(queryset,many=True)
-            data = serializer_db.data
-            name_list = []
-            for i in data:
-                name_list.append(i['name'])
+                owner = user
+            name_list = Folder.objects.filter(name__startswith=name,parent_folder = parent_folder).values_list('name', flat=True)
             if files:
                 type = 'File'
                 for file in files:
@@ -367,20 +360,16 @@ class FolderListCreate(generics.ListAPIView):
                     name_default = name[:start_index] + "(1)" + name[start_index:]
                     if name not in name_list: 
                         newname = name
-                    elif name_default not in name_list and name in name_list:
-                        newname = name_default
-                    elif name_default in name_list and name in name_list:
-                        newname = self.extract_and_convert_to_integer(name_default,data)
+                    else:
+                        newname = self.extract_and_convert_to_integer(name_default,name_list)
                     serializer.save(type= type, files=file,file_size = file.size, path = path + newname, name = newname,parent_folder=parent_folder,create_by = user,owner=owner)
             else:
                 type = 'Folder'
                 name_default = name + " (1)"
                 if name not in name_list: 
                     newname = name
-                elif name_default not in name_list and name in name_list:
-                    newname = name_default
-                elif name_default in name_list and name in name_list:
-                    newname = self.extract_and_convert_to_integer(name_default,data)
+                elif name in name_list:
+                    newname = self.extract_and_convert_to_integer(name_default,name_list)
                 serializer.save(type = type,file_size = 0,path = path + newname + "/",name = newname,parent_folder=parent_folder,create_by = user,owner=owner)
             response = {
                 "status": 200,
@@ -389,59 +378,6 @@ class FolderListCreate(generics.ListAPIView):
             }
             return Response(response, status=status.HTTP_201_CREATED)
         return Response({'status':400}, status=status.HTTP_400_BAD_REQUEST)
-    def patch(self, request, pk):
-        folder = self.get_object(pk)
-        serializer = FolderSerializer(folder, data=request.data,partial=True)
-        name = request.POST.get('name')
-        user = request.user
-        if name:
-            name = name.rstrip()
-        else:
-            name = request.data.get('name')
-            if name:
-                name = name.rstrip()
-            else:
-                name = folder.name
-        parent_folder_id = request.POST.get('parent_folder')
-        if not parent_folder_id:
-            parent_folder_id = request.data.get('parent_folder')
-        if serializer.is_valid():
-            if parent_folder_id:
-                parent_folder = Folder.objects.get(id=parent_folder_id)
-                queryset = Folder.objects.filter(parent_folder = parent_folder)
-                path = parent_folder.path
-            else:
-                parent_folder = None
-                path = ''
-                queryset = Folder.objects.filter(parent_folder = None)
-            serializer_db = FolderSerializer(queryset,many=True)
-            data = serializer_db.data
-            name_list = []
-            for i in data:
-                name_list.append(i['name'])
-                
-            if folder.type == "Folder":
-                name_default = name + " (1)"
-            else:
-                start_index = name.rfind('.')
-                name_default = name[:start_index] + "(1)" + name[start_index:]
-            if name not in name_list: 
-                newname = name
-            elif name_default not in name_list and name in name_list:
-                newname = name_default
-            elif name_default in name_list and name in name_list:
-                newname = FolderListCreate.extract_and_convert_to_integer(name_default,data)
-            serializer.save(path = path + newname + "/", name = newname,parent_folder=parent_folder,update_by = user)
-            response = {
-                "status":200,
-                "message": "updated successfully",
-                "data": {
-                    "folder": serializer.data,  
-                }
-            }
-            return Response(response, status=status.HTTP_200_OK)
-        return Response({'status':400}, status=status.HTTP_400_BAD_REQUEST)
-
 class FolderUpdateDelete(APIView):
     permission_classes = [permissions.IsAuthenticated]
     def get_folder(self, pk):
@@ -456,42 +392,32 @@ class FolderUpdateDelete(APIView):
                              'message':'found successfully',
                              'data':serializer.data},status=status.HTTP_302_FOUND)
     def patch(self, request, pk):
-        folder = self.get_folder(pk)
+        folder = self.get_object(pk)
         serializer = FolderSerializer(folder, data=request.data,partial=True)
-        name = request.POST.get('name')
+        name = request.data.get('name')
         user = request.user
-        if name:
+        if name and name != '':
             name = name.rstrip()
         else:
-            name = request.data.get('name')
-            if name:
-                name = name.rstrip()
-            else:
-                name = folder.name
-        parent_folder_id = request.POST.get('parent_folder')
-        if not parent_folder_id:
-            parent_folder_id = request.data.get('parent_folder')
+            name = folder.name
+        parent_folder_id = request.data.get('parent_folder')
         if serializer.is_valid():
             if parent_folder_id:
                 parent_folder = Folder.objects.get(id=parent_folder_id)
-                queryset = Folder.objects.filter(parent_folder = parent_folder)
                 path = parent_folder.path
             else:
                 parent_folder = None
-                path = '/'
-                queryset = Folder.objects.filter(parent_folder = None)
-            serializer_db = FolderSerializer(queryset,many=True)
-            data = serializer_db.data
-            name_list = []
-            for i in data:
-                name_list.append(i['name'])
-            name_default = name + " (1)"
+                path = ''
+            name_list = Folder.objects.filter(name__startswith=name,parent_folder = parent_folder).values_list('name', flat=True)
+            if folder.type == "Folder":
+                name_default = name + " (1)"
+            else:
+                start_index = name.rfind('.')
+                name_default = name[:start_index] + "(1)" + name[start_index:]
             if name not in name_list: 
                 newname = name
-            elif name_default not in name_list and name in name_list:
-                newname = name_default
-            elif name_default in name_list and name in name_list:
-                newname = FolderListCreate.extract_and_convert_to_integer(name_default,data)
+            else:
+                newname = FolderListCreate.extract_and_convert_to_integer(name_default,name_list)
             serializer.save(path = path + newname + "/", name = newname,parent_folder=parent_folder,update_by = user)
             response = {
                 "status":200,
@@ -504,7 +430,7 @@ class FolderUpdateDelete(APIView):
         return Response({'status':400}, status=status.HTTP_400_BAD_REQUEST)
     
     def delete(self,request,pk):
-            folder = self.get_object(pk)
+            folder = self.get_folder(pk)
             try:
                 folders = Folder.objects.filter(path__startswith=folder.path)
                 for i in folders:
