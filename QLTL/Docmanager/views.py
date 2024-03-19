@@ -632,6 +632,7 @@ class APIPermissionUpdateDestroy(generics.RetrieveUpdateDestroyAPIView):
         return Response({'status':200,'message':'destroyed'},status=status.HTTP_204_NO_CONTENT)  
 
 class GroupFilter(filters.FilterSet):
+    name = filters.CharFilter(field_name='name', lookup_expr='icontains')
     class Meta:
         model = Group
         fields = ['name']
@@ -779,23 +780,7 @@ class UserPermissionView(APIView):
         serializer = PermissionSerializer(permissions,many=True)
         return Response(serializer.data)
         
-    # def post(self, request, pk):
-    #     group_id = pk
-    #     user_ids = request.query_params.get('user_ids', '')
-    #     user_ids_list = [int(user_id) for user_id in user_ids.split(',') if user_id.isdigit()]
-        
-
-    #     try:
-    #         group = Group.objects.get(id=group_id)
-    #         users = User.objects.filter(id__in=user_ids_list)
-    #         for user in users:
-    #             user.groups.add(group)
-    #         return Response({'message': 'Users added to group successfully.'}, status=status.HTTP_200_OK)
-
-    #     except Group.DoesNotExist:
-    #         return Response({'error': 'Group not found.'}, status=status.HTTP_404_NOT_FOUND)
-    #     except Exception as e:
-    #         return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
    
     def put(seft, request,pk):
         user_id = pk
