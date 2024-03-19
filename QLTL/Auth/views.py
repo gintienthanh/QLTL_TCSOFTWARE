@@ -22,7 +22,7 @@ from .services import generate_strong_password
 from Auth.services import  facebookValidate
 
 class UserRegistrationView(APIView):
-    # permission_classes = [IsAdminUser]
+    permission_classes = [IsAdminUser]
     renderer_classes = [UserRenderer]
     def post(self,request,format=None):
         try:
@@ -43,12 +43,12 @@ class UserRegistrationView(APIView):
             password = generate_strong_password(12)
             user.set_password(password)
             user.save() 
-            # context = {'password':password}
-            # html_message = render_to_string('Inform_password.html', context )
-            # data = {'body': html_message, 'to_email': user.email,
-            #         'subject': 'Password to login'}
-            # Util.send_email(data)
-            return Response({}, status=status.HTTP_201_CREATED)
+            context = {'password':password}
+            html_message = render_to_string('Inform_password.html', context )
+            data = {'body': html_message, 'to_email': user.email,
+                    'subject': 'Password to login'}
+            Util.send_email(data)
+            return Response({'status':200,'message':'Create user successfully'}, status=status.HTTP_201_CREATED)
         except: 
             return Response({'errors':{'non_field_errors':['Error when create user']}}, status=status.HTTP_400_BAD_REQUEST)
 class UserLoginView(APIView):
