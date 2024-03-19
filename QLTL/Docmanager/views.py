@@ -338,7 +338,7 @@ class FolderUpdateDelete(APIView):
         if name and name != '':
             name = name.rstrip()
         else:
-            name = "new"
+            name = folder.name
         parent_folder_id = request.data.get('parent_folder')
         if serializer.is_valid():
             if parent_folder_id:
