@@ -75,7 +75,7 @@ file_urls = [
 ]
 user_urls =  [
     path('userlist/',UserListApiView.as_view(),name="userlist"),
-    path('user-create/',UserCreateApiView.as_view(),name="userlist"),
+   
 ]
 
 
