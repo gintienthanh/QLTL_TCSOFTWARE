@@ -5,15 +5,17 @@ from django.utils import timezone
 from enum import Enum
 
 # Create your models here.
+class Organization(models.Model):
+    name = models.CharField(max_length=255, null = True)
+    description = models.CharField(max_length=1000, null = True)
+    
+
 class UserProfile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
     phone = models.CharField(max_length=15, null = True)
+    organization = models.OneToOneField(Organization, on_delete=models.SET_NULL, null=True)
 
-class Organization(models.Model):
-    name = models.CharField(max_length=255, null = True)
-    user = models.OneToOneField(User, on_delete=models.CASCADE)
-    description = models.CharField(max_length=1000, null = True)
-    
+
 class Base(models.Model):
     id = models.AutoField(primary_key=True)
     is_delete = models.BooleanField(default=False)
