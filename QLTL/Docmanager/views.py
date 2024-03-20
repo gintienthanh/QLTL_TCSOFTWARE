@@ -453,12 +453,13 @@ class APIShareListCreate(generics.ListCreateAPIView):
     filter_backends = [filters.DjangoFilterBackend]
     filterset_class = ShareFilter
     paginator = CustomPagination()
-    def get_permissions(self):
-        if self.request.method == 'POST':
-            return [permissions.IsAuthenticated(), check_group_permisison_factory('share')(self)]
-        elif self.request.method == 'GET':
-            return [permissions.IsAuthenticated()]
-        return super().get_permissions()
+    permission_classes = [check_group_permisison_factory('share')]
+    # def get_permissions(self):
+    #     if self.request.method == 'POST':
+    #         return [permissions.IsAuthenticated(), ]
+    #     elif self.request.method == 'GET':
+    #         return [permissions.IsAuthenticated()]
+    #     return super().get_permissions()
     def get_queryset(self):
         user = self.request.user
         if user.is_authenticated: 
@@ -511,6 +512,7 @@ class APIShareUpdateDestroy(generics.RetrieveUpdateDestroyAPIView):
         return Response({'status':200,'message':'destroyed'},status=status.HTTP_204_NO_CONTENT)  
 
 class PermissionFilter(filters.FilterSet):
+    name = filters.CharFilter(field_name='name', lookup_expr='icontains')
     class Meta:
         model = Permission
         fields = ['name']
@@ -679,13 +681,18 @@ class GroupUserView(APIView):
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
 class GroupPermissionView(APIView):
-
     def get(self, request, pk):
-        permissions = Permission.objects.filter(group=pk).order_by('content_type')
-        serializer = PermissionSerializer(permissions,many=True)
+        queryset = Permission.objects.filter(group=pk).order_by('content_type')
+        filterset = PermissionFilter(request.GET, queryset=queryset)
+        # Kiểm tra xem FilterSet có hợp lệ không 
+        if filterset.is_valid():
+            queryset = filterset.qs
+        else:
+            return Response(filterset.errors, status=400)
+        serializer = PermissionSerializer(queryset, many=True)
         return Response({'status':200,
                         'message':'Data found successfully',
-                        'data':serializer.data},status=status.HTTP_200_OK)
+                        'data':serializer.data}, status=status.HTTP_200_OK)
 class PermissionNotIncludedInGroup(APIView):
     def get(self, request, pk):
         permissions = Permission.objects.filter(group=pk)
