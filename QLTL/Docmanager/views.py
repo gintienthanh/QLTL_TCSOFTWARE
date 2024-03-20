@@ -533,12 +533,13 @@ class APIShareListCreate(generics.ListCreateAPIView):
     filter_backends = [filters.DjangoFilterBackend]
     filterset_class = ShareFilter
     paginator = CustomPagination()
-    def get_permissions(self):
-        if self.request.method == 'POST':
-            return [permissions.IsAuthenticated(), check_group_permisison_factory('share')(self)]
-        elif self.request.method == 'GET':
-            return [permissions.IsAuthenticated()]
-        return super().get_permissions()
+    permission_classes = [check_group_permisison_factory('share')]
+    # def get_permissions(self):
+    #     if self.request.method == 'POST':
+    #         return [permissions.IsAuthenticated(), ]
+    #     elif self.request.method == 'GET':
+    #         return [permissions.IsAuthenticated()]
+    #     return super().get_permissions()
     def get_queryset(self):
         user = self.request.user
         if user.is_authenticated: 
