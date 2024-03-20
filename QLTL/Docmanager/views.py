@@ -1144,7 +1144,8 @@ class BulkDeleteAPI(APIView):
        
 
 
-######USER#####                
+######USER#####   
+             
 class UserFilter(filters.FilterSet):
     username = filters.CharFilter(field_name='username', lookup_expr='icontains')
     class Meta:
