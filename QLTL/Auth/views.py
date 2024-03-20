@@ -11,9 +11,10 @@ import json
 from django.utils import timezone
 from allauth.socialaccount.models import SocialAccount, SocialApp
 from rest_framework.permissions import IsAdminUser
-
+from django.contrib.auth.models import User, Permission
 
 from django.contrib.auth.models import User
+from Docmanager.models import *
 from Auth.serializers import UserRegistrationSerializer,UserLoginSerializer,UserChangePasswordSerializer,SendPasswordResetEmailSerializer,UserPasswordResetSerializer,LogoutSerializer,UserSerializer
 from Auth.renderers import UserRenderer
 from .utils import Util
@@ -25,10 +26,20 @@ class UserRegistrationView(APIView):
     renderer_classes = [UserRenderer]
     def post(self,request,format=None):
         try:
+            print('data: ',request.data)
+            email = request.data.get('email')
+            phone = request.data.get('phone')
+            user_name = request.data.get('username')
+            permission_ids = request.data.get('permissions')
+            organization_id = request.data.get('organization_id')
             serializer = UserRegistrationSerializer(data=request.data)
             serializer.is_valid(raise_exception=True)
-            user = serializer.save()
-            user_data = serializer.data
+            user = User.objects.create(email=email,username=user_name)    
+            organization = Organization.objects.get(id=organization_id)
+            profile_user = UserProfile.objects.create(user=user,phone=phone,organization=organization)
+            for permission_id in permission_ids:
+                permission = Permission.objects.get(id=permission_id)
+                user.user_permissions.add(permission)
             password = generate_strong_password(12)
             user.set_password(password)
             user.save() 
@@ -37,7 +48,7 @@ class UserRegistrationView(APIView):
             data = {'body': html_message, 'to_email': user.email,
                     'subject': 'Password to login'}
             Util.send_email(data)
-            return Response(user_data, status=status.HTTP_201_CREATED)
+            return Response({'status':200,'message':'Create user successfully'}, status=status.HTTP_201_CREATED)
         except: 
             return Response({'errors':{'non_field_errors':['Error when create user']}}, status=status.HTTP_400_BAD_REQUEST)
 class UserLoginView(APIView):
