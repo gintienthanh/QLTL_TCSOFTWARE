@@ -44,7 +44,7 @@ group_urls = [
     path('', APIGroupListCreate.as_view(), name='group-list'),
     path('/<int:pk>', APIGroupUpdateDestroy.as_view(), name='group-detail'),
     path('/user_groups/<int:pk>/', GroupUserView.as_view(), name='group-users'),
-    path('/group_permissions/<int:pk>/', GroupPermissionView.as_view(), name='group-permissions'),
+    path('/group_permissions/<int:pk>', GroupPermissionView.as_view(), name='group-permissions'),
 ]
 
 portfolio_urls = [
