@@ -261,13 +261,18 @@ class FolderListCreate(generics.ListAPIView):
         return queryset
     def extract_and_convert_to_integer(self,name,name_list):
         while name in name_list:
-            match = re.search(r'\((\d+)\)$', name)
-            if match:
+            match = re.search(r'\((\d+)\)$|\((\d+)\)\.', name)
+            if match.group(1):
                 number_str = match.group(1)
                 number = int(number_str)
                 number += 1
                 new_name = re.sub(r'\(\d+\)$', f'({number})', name)
-                name = new_name
+            if match.group(2):
+                number_str = match.group(2)
+                number = int(number_str)
+                number += 1
+                new_name = re.sub(r'\((\d+)\)\.', f'({number}).', name)
+            name = new_name
         return name
     def post(self, request):
         serializer = FolderSerializer(data=request.data,partial=True)
@@ -288,16 +293,19 @@ class FolderListCreate(generics.ListAPIView):
                 parent_folder = None
                 path = ''
                 owner = user
-            name_list = Folder.objects.filter(name__startswith=name,parent_folder = parent_folder).values_list('name', flat=True)
+            queryset = Folder.objects.filter(parent_folder=parent_folder)
+            serializer_db = FolderSerializer(queryset, many=True)
+            data = serializer_db.data
+            name_list = [item['name'] for item in data]
             if files:
                 type = 'File'
                 for file in files:
                     name = file.name
                     start_index = name.rfind('.')
-                    name_default = name[:start_index] + "(1)" + name[start_index:]
+                    name_default = name[:start_index] + " (1)" + name[start_index:]
                     if name not in name_list: 
                         newname = name
-                    else:
+                    elif name in name_list:
                         newname = self.extract_and_convert_to_integer(name_default,name_list)
                     serializer.save(type= type, files=file,file_size = file.size, path = path + newname, name = newname,parent_folder=parent_folder,create_by = user,owner=owner)
             else:
@@ -318,46 +326,38 @@ class FolderListCreate(generics.ListAPIView):
 
 
 class FolderUpdateDelete(APIView):
-    # permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated]
+    def __init__(self, *args, **kwargs):
+        self.change_name = kwargs.pop('change_name', False)
+        self.change_folder = kwargs.pop('change_folder', False)
+        super().__init__(*args, **kwargs)
+
     def get_object(self, pk):
         try:
             return Folder.objects.get(pk=pk)
         except Folder.DoesNotExist:
             raise status.HTTP_404_NOT_FOUND
-    def get(self, request, pk):
-        folder = self.get_object(pk)
-        serializer = FolderSerializer(folder)
-        return Response({'status':302,
-                             'message':'found successfully',
-                             'data':serializer.data},status=status.HTTP_302_FOUND)
-    def patch(self, request, pk):
+    def patch(self, request, pk,change_name=False, change_folder=False):
+        if change_name:
+            return self.patch_change_name(request, pk)
+        elif change_folder:
+            return self.patch_change_folder(request, pk)
+        else:
+            return Response({'message': 'Yêu cầu không hợp lệ'})
+    def patch_change_folder(self, request, pk):
         folder = self.get_object(pk)
         serializer = FolderSerializer(folder, data=request.data,partial=True)
-        name = request.data.get('name')
         user = request.user
-        if name and name != '':
-            name = name.rstrip()
-        else:
-            name = folder.name
         parent_folder_id = request.data.get('parent_folder')
         if serializer.is_valid():
             if parent_folder_id:
                 parent_folder = Folder.objects.get(id=parent_folder_id)
                 path = parent_folder.path
             else:
+                parent_folder_id = folder.parent_folder
                 parent_folder = None
                 path = ''
-            name_list = Folder.objects.filter(name__startswith=name,parent_folder = parent_folder).values_list('name', flat=True)
-            if folder.type == "Folder":
-                name_default = name + " (1)"
-            else:
-                start_index = name.rfind('.')
-                name_default = name[:start_index] + "(1)" + name[start_index:]
-            if name not in name_list: 
-                newname = name
-            else:
-                newname = FolderListCreate.extract_and_convert_to_integer(name_default,name_list)
-            serializer.save(path = path + newname + "/", name = newname,parent_folder=parent_folder,update_by = user)
+            serializer.save(path = path + folder.name + "/",parent_folder=parent_folder,update_by = user)
             response = {
                 "status":200,
                 "message": "updated successfully",
@@ -367,7 +367,43 @@ class FolderUpdateDelete(APIView):
             }
             return Response(response, status=status.HTTP_200_OK)
         return Response({'status':400}, status=status.HTTP_400_BAD_REQUEST)
-
+    def patch_change_name(self,request,pk):
+        folder = self.get_object(pk)
+        serializer = FolderSerializer(folder, data=request.data,partial=True)
+        name = request.data.get('name')
+        user = request.user
+        if name and name != '':
+            name = name.rstrip()
+        else:
+            name = folder.name
+        parent_folder_id = folder.parent_folder_id
+        if serializer.is_valid():
+            if parent_folder_id:
+                parent_folder = Folder.objects.get(id=parent_folder_id)
+                path = parent_folder.path
+            else:
+                parent_folder = None
+                path = ''
+            queryset = Folder.objects.filter(parent_folder=parent_folder)
+            serializer_db = FolderSerializer(queryset, many=True)
+            data = serializer_db.data
+            name_list = [item['name'] for item in data]
+            if folder.type == "Folder":
+                name_default = name + " (1)"
+            if name not in name_list:
+                newname = name
+            else:
+                newname = FolderListCreate.extract_and_convert_to_integer(self,name_default,name_list)
+            serializer.save(path = path + newname + '/', name = newname,parent_folder=parent_folder,update_by = user)
+            response = {
+                "status":200,
+                "message": "updated successfully",
+                "data": {
+                    "folder": serializer.data,  
+                }
+            }
+            return Response(response, status=status.HTTP_200_OK)
+        return Response({'status':400}, status=status.HTTP_400_BAD_REQUEST)
 class ShareFilter(filters.FilterSet):
     class Meta:
         model = Share
@@ -827,23 +863,59 @@ class BulkDeleteAPI(APIView):
     def delete(self, request, *args, **kwargs):
         portfolio_ids = request.data.get('portfolio_ids', [])
         warehouse_ids = request.data.get('warehouse_ids', [])
-        folder_ids = request.data.get('folder_ids',[])
+        document_ids = request.data.get('document_ids', [])
+        folder_ids = request.data.get('folder_ids', [])
         success_count = 0
-
+        
         # Soft delete portfolios and associated documents
-        for portfolio_id in portfolio_ids:
-            try:
+        try:
+            for portfolio_id in portfolio_ids:
                 portfolio = Portfolio.objects.get(id=int(portfolio_id))
                 portfolio.soft_delete(request)
-                documents = Document.objects.filter(portfolio=portfolio)
-                documents.update(is_delete=True, delete_at=timezone.now())
+                document = Document.objects.get(portfolio=portfolio_id)
+                document.soft_delete(request)
                 success_count += 1
-            except Portfolio.DoesNotExist:
-                pass
+                data = {
+                        'status': '200',
+                        'message':'Deleted successfully'
+                }
+        except Portfolio.DoesNotExist:
+            data = {
+                'status': status.HTTP_404_NOT_FOUND,
+                'message': f'portfolio with ID {portfolio_id} not found'
+            }
+            return Response(data, status=status.HTTP_404_NOT_FOUND)
+        except Document.DoesNotExist:
+            for portfolio_id in portfolio_ids:
+                portfolio = Portfolio.objects.get(id=int(portfolio_id))
+                portfolio.soft_delete(request)
+                success_count += 1
+            data = {
+                'status': '200',
+                'message':'Deleted successfully'
+            }
+            return Response(data, status=status.HTTP_200_OK)
 
+        # Soft delete documents
+        try:
+            for document_id in document_ids:
+                document = Document.objects.get(id=int(document_id))
+                document.soft_delete(request)
+                success_count += 1
+                data = {
+                        'status': '200',
+                        'message':'Deleted successfully'
+                    }
+        except Document.DoesNotExist:
+            data = {
+                'status': status.HTTP_404_NOT_FOUND,
+                'message': f'Document with ID {document_id} not found'
+            }
+            return Response(data, status=status.HTTP_404_NOT_FOUND)
+                    
         # Soft delete warehouses
-        for warehouse_id in warehouse_ids:
-            try:
+        try:
+            for warehouse_id in warehouse_ids:
                 warehouse = Warehouse.objects.get(id=int(warehouse_id))
                 warehouse.soft_delete(request)
 
@@ -852,21 +924,31 @@ class BulkDeleteAPI(APIView):
                     boxcases = Warehouse.objects.filter(parent_warehouse=warehouse)
                     for boxcase in boxcases:
                         boxcase.soft_delete(request)
-                elif warehouse.type_warehouse == ChoicesTypeWarehouse.BoxCase.value:
-                    # Get the shelf related to the boxcase
-                    shelf = warehouse.parent_warehouse
-                    shelf.soft_delete(request)
-                else:
+                
+                if warehouse.type_warehouse == ChoicesTypeWarehouse.Warehouse.value:
                     # Get all subwarehouses related to the warehouse
-                    subwarehouses = warehouse.subwarehouse.all()
-                    for subwarehouse in subwarehouses:
-                        subwarehouse.soft_delete(request)
+                    warehouse = Warehouse.objects.get(id=int(warehouse_id))
+                    warehouse.soft_delete(request)
+                    shelf = Warehouse.objects.get(parent_warehouse=warehouse)
+                    shelf.soft_delete(request)
+                    boxcases = Warehouse.objects.get(parent_warehouse=shelf)
+                    boxcases.soft_delete(request)
 
                 success_count += 1
-            except Warehouse.DoesNotExist:
-                pass
-            
-        if folder_ids:
+                data = {
+                        'status': '200',
+                        'message':'Deleted successfully'
+                    }
+            # return Response(data, status=status.HTTP_200_OK)
+        except Warehouse.DoesNotExist:
+            data = {
+                'status': status.HTTP_404_NOT_FOUND,
+                'message': f'Folder with ID {success_count} not found'
+            }
+            return Response(data, status=status.HTTP_404_NOT_FOUND)
+                    
+        # Soft delete folders
+        try:
             for folder_id in folder_ids:
                 folder =  Folder.objects.get(id=folder_id)
                 folders = Folder.objects.filter(path__startswith=folder.path)
@@ -876,13 +958,14 @@ class BulkDeleteAPI(APIView):
                         'status': '200',
                         'message':'Deleted successfully'
                     }
-                return Response(data, status=status.HTTP_200_OK)
-        else:
+        except:
             data = {
                 'status': '500',
                 'message': 'không tìm thấy id'
             }
-            return Response(data, status=status.HTTP_404_NOT_FOUND)
+            return Response(data, status=status.HTTP_200_OK)
+        return Response(data, status=status.HTTP_404_NOT_FOUND)
+        
 
 class UserFilter(filters.FilterSet):
     username = filters.CharFilter(field_name='username', lookup_expr='icontains')
