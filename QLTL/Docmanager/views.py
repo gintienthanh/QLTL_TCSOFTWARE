@@ -1192,14 +1192,25 @@ class UserUpdateDelete(APIView):
 
 
     def patch(self, request, pk):
-        user = self.get_user(pk)
-        serializer = UserSerializer(user, data=request.data, partial=True)
-        if serializer.is_valid():
-            serializer.save()
-            return Response({'status':201,
-                             'message':'created successfully',
-                             'data':serializer.data},status=status.HTTP_200_OK)
-        return Response({'status':400,
+        try:
+            user = self.get_user(pk)
+            permission_ids = request.data.get('permissions')
+            is_active = request.data.get('is_active')
+            serializer = UserSerializer(user, data=request.data, partial=True)
+            if not permission_ids:
+                user.user_permissions.clear()
+            for permission_id in permission_ids:
+                    permission = Permission.objects.get(id=permission_id)
+                    user.user_permissions.add(permission)
+            user.is_active = is_active
+            user.save()
+            if serializer.is_valid():
+                serializer.save()
+                return Response({'status':201,
+                                'message':'update successfully'
+                                },status=status.HTTP_200_OK)
+        except:
+            return Response({'status':400,
                         'message':serializer.errors},status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self, request, pk):

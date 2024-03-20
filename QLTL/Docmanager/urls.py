@@ -73,8 +73,8 @@ watchlist_urls = [
 file_urls = [
     path('download/<int:folder_id>/', DownloadFile.as_view(), name='file-download'),
 ]
-user_urls =  [
-    path('userlist/',UserListApiView.as_view(),name="userlist"),
+user_list_urls =  [
+    path('',UserListApiView.as_view(),name="userlist"),
    
 ]
 
@@ -106,7 +106,7 @@ urlpatterns = [
     path('document', include((document_urls, 'document'))),
     path('user', include((user_urls, 'user'))),
     path('watchlist', include((watchlist_urls, 'watchlist'))),
-    path('user/',include((user_urls, 'userurl'))),
+    path('userlist/',include((user_list_urls, 'userurl'))),
     path('retentionperiod', include((retentionperiod_urls, 'storagetime'))),
     path('language', include((language_urls, 'language'))),
     
