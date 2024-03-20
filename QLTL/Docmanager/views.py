@@ -1108,94 +1108,102 @@ class BulkDeleteAPI(APIView):
         # Soft delete portfolios and associated documents
         try:
             for portfolio_id in portfolio_ids:
-                portfolio = Portfolio.objects.get(id=int(portfolio_id))
-                portfolio.soft_delete(request)
-                document = Document.objects.get(portfolio=portfolio_id)
-                document.soft_delete(request)
-                success_count += 1
-        except Portfolio.DoesNotExist:
-            data = {
-                'status': status.HTTP_404_NOT_FOUND,
-                'message': f'portfolio with ID {portfolio_id} not found'
-            }
-            return Response(data, status=status.HTTP_404_NOT_FOUND)
-        except Document.DoesNotExist:
-            for portfolio_id in portfolio_ids:
-                portfolio = Portfolio.objects.get(id=int(portfolio_id))
-                portfolio.soft_delete(request)
-                success_count += 1
-            data = {
-                'status': '200',
-                'message':'Deleted successfully'
-            }
-            return Response(data, status=status.HTTP_200_OK)
+                try:
+                    portfolio = Portfolio.objects.get(id=int(portfolio_id))
+                    portfolio.soft_delete(request)
+                    document = Document.objects.get(portfolio=portfolio_id)
+                    document.soft_delete(request)
+                    success_count += 1
+                    data = {
+                            'status': '200',
+                            'message':'Deleted successfully'
+                    }
+                except Portfolio.DoesNotExist:
+                    data = {
+                        'status': status.HTTP_404_NOT_FOUND,
+                        'message': f'portfolio with ID {portfolio_id} not found'
+                    }
+                    return Response(data, status=status.HTTP_404_NOT_FOUND)
+                except Document.DoesNotExist:
+                    for portfolio_id in portfolio_ids:
+                        portfolio = Portfolio.objects.get(id=int(portfolio_id))
+                        portfolio.soft_delete(request)
+                        success_count += 1
+                    data = {
+                        'status': '200',
+                        'message':'Deleted successfully'
+                    }
+                    return Response(data, status=status.HTTP_200_OK)
 
         # Soft delete documents
-        try:
-            for document_id in document_ids:
-                document = Document.objects.get(id=int(document_id))
-                document.soft_delete(request)
-                success_count += 1
-
-        except Document.DoesNotExist:
-            data = {
-                'status': status.HTTP_404_NOT_FOUND,
-                'message': f'Document with ID {document_id} not found'
-            }
-            return Response(data, status=status.HTTP_404_NOT_FOUND)
-                    
-        # Soft delete warehouses
-        try:
-            for warehouse_id in warehouse_ids:
-                warehouse = Warehouse.objects.get(id=int(warehouse_id))
-                warehouse.soft_delete(request)
-
-                if warehouse.type_warehouse == ChoicesTypeWarehouse.Shelf.value:
-                    # Get all boxcases related to the shelf
-                    boxcases = Warehouse.objects.filter(parent_warehouse=warehouse)
-                    for boxcase in boxcases:
-                        boxcase.soft_delete(request)
+            try:
+                for document_id in document_ids:
+                    document = Document.objects.get(id=int(document_id))
+                    document.soft_delete(request)
+                    success_count += 1
+                    data = {
+                            'status': '200',
+                            'message':'Deleted successfully'
+                        }
+            except Document.DoesNotExist:
+                data = {
+                    'status': status.HTTP_404_NOT_FOUND,
+                    'message': f'Document with ID {document_id} not found'
+                }
+                return Response(data, status=status.HTTP_404_NOT_FOUND)
                         
-                if warehouse.type_warehouse == ChoicesTypeWarehouse.Warehouse.value:
-                    # Get all subwarehouses related to the warehouse
+        # Soft delete warehouses
+            try:
+                for warehouse_id in warehouse_ids:
                     warehouse = Warehouse.objects.get(id=int(warehouse_id))
                     warehouse.soft_delete(request)
-                    shelf = Warehouse.objects.get(parent_warehouse=warehouse)
-                    shelf.soft_delete(request)
-                    boxcases = Warehouse.objects.get(parent_warehouse=shelf)
-                    boxcases.soft_delete(request)
 
-                success_count += 1
-
-        except Warehouse.DoesNotExist:
-            data = {
-                'status': status.HTTP_404_NOT_FOUND,
-                'message': f'Warehouse with ID {success_count} not found'
-            }
-            return Response(data, status=status.HTTP_404_NOT_FOUND)
-        
+                    if warehouse.type_warehouse == ChoicesTypeWarehouse.Shelf.value:
+                        # Get all boxcases related to the shelf
+                        boxcases = Warehouse.objects.filter(parent_warehouse=warehouse)
+                        for boxcase in boxcases:
+                            boxcase.soft_delete(request)
                     
+                    if warehouse.type_warehouse == ChoicesTypeWarehouse.Warehouse.value:
+                        # Get all subwarehouses related to the warehouse
+                        warehouse = Warehouse.objects.get(id=int(warehouse_id))
+                        warehouse.soft_delete(request)
+                        shelf = Warehouse.objects.get(parent_warehouse=warehouse)
+                        shelf.soft_delete(request)
+                        boxcases = Warehouse.objects.get(parent_warehouse=shelf)
+                        boxcases.soft_delete(request)
+                        success_count += 1
+                    data = {
+                            'status': '200',
+                            'message':'Deleted successfully'
+                        }
+                # return Response(data, status=status.HTTP_200_OK)
+            except Warehouse.DoesNotExist:
+                data = {
+                    'status': status.HTTP_404_NOT_FOUND,
+                    'message': f'Folder with ID {success_count} not found'
+                }
+                return Response(data, status=status.HTTP_404_NOT_FOUND)
+                        
         # Soft delete folders
-        
-        try:
             for folder_id in folder_ids:
-                folder =  Folder.objects.get(id=folder_id)
-                folders = Folder.objects.filter(path__startswith=folder.path)
-                for i in folders:
-                    i.soft_delete(request)
-                
-            
-        except Folder.DoesNotExist:
-            data = {
-                'status': '500',
-                'message': 'không tìm thấy id'
-            }
+                try:
+                    folder =  Folder.objects.get(id=folder_id)
+                    folders = Folder.objects.filter(path__startswith=folder.path)
+                    for i in folders:
+                        i.soft_delete(request)
+                    data = {
+                            'status': '200',
+                            'message':'Deleted successfully'
+                        }
+                except:
+                    data = {
+                        'status': '500',
+                        'message': 'không tìm thấy id'
+                    }
+            return Response(data, status=status.HTTP_200_OK)
+        except:
             return Response(data, status=status.HTTP_404_NOT_FOUND)
-        
-        return Response(data = {
-                    'status': '200',
-                    'message':'Deleted successfully'
-                }, status=status.HTTP_200_OK)
        
 
 
