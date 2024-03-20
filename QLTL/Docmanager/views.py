@@ -1064,6 +1064,8 @@ class Multi_portfolio_DownloadConvertAPIView(APIView):
         response = HttpResponse(zip_file.getvalue(), content_type='application/zip')
         response['Content-Disposition'] = 'attachment; filename=data.zip'
         return response  
+
+   
 class BulkDeleteAPI(APIView):
     def delete(self, request, *args, **kwargs):
         portfolio_ids = request.data.get('portfolio_ids', [])
@@ -1077,6 +1079,8 @@ class BulkDeleteAPI(APIView):
             for portfolio_id in portfolio_ids:
                 portfolio = Portfolio.objects.get(id=int(portfolio_id))
                 portfolio.soft_delete(request)
+                document = Document.objects.get(portfolio=portfolio_id)
+                document.soft_delete(request)
                 success_count += 1
         except Portfolio.DoesNotExist:
             data = {
@@ -1084,6 +1088,16 @@ class BulkDeleteAPI(APIView):
                 'message': f'portfolio with ID {portfolio_id} not found'
             }
             return Response(data, status=status.HTTP_404_NOT_FOUND)
+        except Document.DoesNotExist:
+            for portfolio_id in portfolio_ids:
+                portfolio = Portfolio.objects.get(id=int(portfolio_id))
+                portfolio.soft_delete(request)
+                success_count += 1
+            data = {
+                'status': '200',
+                'message':'Deleted successfully'
+            }
+            return Response(data, status=status.HTTP_200_OK)
 
         # Soft delete documents
         try:
@@ -1091,6 +1105,7 @@ class BulkDeleteAPI(APIView):
                 document = Document.objects.get(id=int(document_id))
                 document.soft_delete(request)
                 success_count += 1
+
         except Document.DoesNotExist:
             data = {
                 'status': status.HTTP_404_NOT_FOUND,
@@ -1109,49 +1124,52 @@ class BulkDeleteAPI(APIView):
                     boxcases = Warehouse.objects.filter(parent_warehouse=warehouse)
                     for boxcase in boxcases:
                         boxcase.soft_delete(request)
-                elif warehouse.type_warehouse == ChoicesTypeWarehouse.BoxCase.value:
-                    # Get the shelf related to the boxcase
-                    shelf = warehouse.parent_warehouse
-                    shelf.soft_delete(request)
-                else: 
+                        
+                if warehouse.type_warehouse == ChoicesTypeWarehouse.Warehouse.value:
                     # Get all subwarehouses related to the warehouse
-                    subwarehouses = warehouse.subwarehouse.all()
-                    for subwarehouse in subwarehouses:
-                        subwarehouse.soft_delete(request)
+                    warehouse = Warehouse.objects.get(id=int(warehouse_id))
+                    warehouse.soft_delete(request)
+                    shelf = Warehouse.objects.get(parent_warehouse=warehouse)
+                    shelf.soft_delete(request)
+                    boxcases = Warehouse.objects.get(parent_warehouse=shelf)
+                    boxcases.soft_delete(request)
 
                 success_count += 1
+
         except Warehouse.DoesNotExist:
             data = {
                 'status': status.HTTP_404_NOT_FOUND,
-                'message': f'Folder with ID {success_count} not found'
+                'message': f'Warehouse with ID {success_count} not found'
             }
             return Response(data, status=status.HTTP_404_NOT_FOUND)
+        
                     
         # Soft delete folders
         
-        if folder_ids:
+        try:
             for folder_id in folder_ids:
                 folder =  Folder.objects.get(id=folder_id)
                 folders = Folder.objects.filter(path__startswith=folder.path)
                 for i in folders:
                     i.soft_delete(request)
-                success_count += 1
-                data = {
-                        'status': '200',
-                        'message':'Deleted successfully'
-                    }
-                return Response(data, status=status.HTTP_200_OK)
-        else:
+                
+            
+        except Folder.DoesNotExist:
             data = {
                 'status': '500',
-                'message': 'khong co id'
+                'message': 'không tìm thấy id'
             }
-            return Response(data, status=status.HTTP_400_BAD_REQUEST)
+            return Response(data, status=status.HTTP_404_NOT_FOUND)
         
+        return Response(data = {
+                    'status': '200',
+                    'message':'Deleted successfully'
+                }, status=status.HTTP_200_OK)
        
 
 
-######USER#####                
+######USER#####   
+             
 class UserFilter(filters.FilterSet):
     username = filters.CharFilter(field_name='username', lookup_expr='icontains')
     class Meta:
@@ -1313,7 +1331,7 @@ class RetentionPeriodUpdateDelete(generics.RetrieveUpdateDestroyAPIView):
              
             serializer.save() 
             return Response({'status':201, 
-                             'message':'created successfully', 
+                             'message':'updated successfully', 
                              'data':serializer.data},status=status.HTTP_200_OK) 
         return Response({'status':400, 
                         'message':serializer.errors},status=status.HTTP_400_BAD_REQUEST) 
@@ -1391,14 +1409,16 @@ class LanguageUpdateDelete(generics.RetrieveUpdateDestroyAPIView):
              
             serializer.save() 
             return Response({'status':201, 
-                             'message':'created successfully', 
+                             'message':'updated successfully', 
                              'data':serializer.data},status=status.HTTP_200_OK) 
         return Response({'status':400, 
                         'message':serializer.errors},status=status.HTTP_400_BAD_REQUEST) 
  
+ 
+ 
     def delete(self, request, pk): 
         language  = Language.objects.get(pk=pk)  
-        language.soft_delete(request)  # Xóa bảng Portfolio 
+        language.soft_delete(request)  
         serializer = LanguageSerializer(language) 
  
         return Response({ 

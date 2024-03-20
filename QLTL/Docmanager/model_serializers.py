@@ -21,10 +21,7 @@ class BaseSerializer(serializers.ModelSerializer):
     class Meta:
         model = Base
         fields = '__all__'
-class UserSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = User
-        fields = ['id','email','username','is_active']
+
 
 class FolderSerializer(serializers.ModelSerializer):
     parent_folder = serializers.PrimaryKeyRelatedField(required =False,read_only=True)
@@ -108,6 +105,7 @@ class RetentionPeriodSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 class LanguageSerializer(serializers.ModelSerializer):
+    
     class Meta: 
         model = Language
-        field = '__all__'
+        fields = '__all__'
