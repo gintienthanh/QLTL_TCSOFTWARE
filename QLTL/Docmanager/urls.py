@@ -23,6 +23,8 @@ schema_view = get_schema_view(
 folder_urls = [
     path('', FolderListCreate.as_view(), name='folder-list'),
     path('/<int:pk>', FolderUpdateDelete.as_view(), name='folder-detail'),
+    path('/change-name/<int:pk>', FolderUpdateDelete.as_view(),{'change_name': True}, name='change-name'),
+    path('/change-folder/<int:pk>', FolderUpdateDelete.as_view(),{'change_folder': True}, name='change-folder')
 ]
 
 warehouse_urls = [

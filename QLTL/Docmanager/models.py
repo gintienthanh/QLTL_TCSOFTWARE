@@ -12,8 +12,8 @@ class Organization(models.Model):
 
 class UserProfile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
-    phone = models.CharField(max_length=15, null = True)
-    organization = models.OneToOneField(Organization, on_delete=models.SET_NULL, null=True)
+    phone = models.CharField(max_length=15, null=True)
+    organization = models.ForeignKey(Organization, on_delete=models.SET_NULL, null=True)
 
 
 class Base(models.Model):
@@ -80,11 +80,13 @@ class RetentionPeriod(Base):
     
     name = models.CharField(max_length=200, null = True)
     description = models.CharField(max_length=1000, null = True)
+    
     def __str__(self):
         return self.name
 class Language(Base):
     name = models.CharField(max_length=200, null = True )
     description = models.CharField(max_length=1000, null = True)
+    
     def __str__(self):
         return self.name
 
