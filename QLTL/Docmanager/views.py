@@ -353,18 +353,24 @@ class FolderListCreate(generics.ListAPIView):
             }
             return Response(response, status=status.HTTP_201_CREATED)
         return Response({'status':400}, status=status.HTTP_400_BAD_REQUEST)
+
+
 class FolderUpdateDelete(APIView):
     permission_classes = [permissions.IsAuthenticated]
-    def init(self, *args, **kwargs):
+    def __init__(self, *args, **kwargs):
         self.change_name = kwargs.pop('change_name', False)
         self.change_folder = kwargs.pop('change_folder', False)
-        super().init(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
     def get_object(self, pk):
         try:
             return Folder.objects.get(pk=pk)
         except Folder.DoesNotExist:
             raise status.HTTP_404_NOT_FOUND
+    def change(self,path,old_name,new_name):
+        new_folder_path = path.replace(old_name,new_name)
+        print(new_folder_path)
+        return new_folder_path
     def patch(self, request, pk,change_name=False, change_folder=False):
         if change_name:
             return self.patch_change_name(request, pk)
@@ -385,7 +391,11 @@ class FolderUpdateDelete(APIView):
                 parent_folder_id = folder.parent_folder
                 parent_folder = None
                 path = ''
-            serializer.save(path = path + folder.name + "/",parent_folder=parent_folder,update_by = user)
+            if folder.type == "Folder":
+                path = path + folder.name + "/"
+            else:
+                path = path + folder.name
+            serializer.save(path = path,parent_folder=parent_folder,update_by = user)
             response = {
                 "status":200,
                 "message": "updated successfully",
@@ -398,6 +408,8 @@ class FolderUpdateDelete(APIView):
     def patch_change_name(self,request,pk):
         folder = self.get_object(pk)
         serializer = FolderSerializer(folder, data=request.data,partial=True)
+        old_path = folder.path
+        old_name = folder.name
         name = request.data.get('name')
         user = request.user
         if name and name != '':
@@ -416,13 +428,18 @@ class FolderUpdateDelete(APIView):
             serializer_db = FolderSerializer(queryset, many=True)
             data = serializer_db.data
             name_list = [item['name'] for item in data]
-            if folder.type == "Folder":
-                name_default = name + " (1)"
+            name_default = name + " (1)"
             if name not in name_list:
-                newname = name
+                new_name = name
             else:
-                newname = FolderListCreate.extract_and_convert_to_integer(self,name_default,name_list)
-            serializer.save(path = path + newname + '/', name = newname,parent_folder=parent_folder,update_by = user)
+                new_name = FolderListCreate.extract_and_convert_to_integer(self,name_default,name_list)
+            child_fol = Folder.objects.filter(path__startswith = old_path)
+            new_path = path + new_name + '/'
+            for i in child_fol:
+                path_child = self.change(i.path,old_name,new_name)
+                i.path = path_child
+                i.save()
+            serializer.save(path = new_path, name = new_name,update_by = user)
             response = {
                 "status":200,
                 "message": "updated successfully",
@@ -432,18 +449,6 @@ class FolderUpdateDelete(APIView):
             }
             return Response(response, status=status.HTTP_200_OK)
         return Response({'status':400}, status=status.HTTP_400_BAD_REQUEST)
-    
-    def delete(self,request,pk):
-            folder = self.get_folder(pk)
-            try:
-                folders = Folder.objects.filter(path__startswith=folder.path)
-                for i in folders:
-                    i.soft_delete(request)
-                return Response({'status':200,
-                                'message':'delete successfully'
-                                }, status=status.HTTP_200_OK)
-            except:
-                return Response({'status':400}, status=status.HTTP_400_BAD_REQUEST)
 
 
 class ShareFilter(filters.FilterSet):
@@ -1259,13 +1264,44 @@ class UserUpdateDelete(APIView):
         return Response({'status': 204,
                          'message': 'deleted successfully'})
    
-class UserListApiView(APIView):
+class UserListApiView(generics.ListAPIView):
     permission_classes = [IsAdminUser]
+    pagination_class = CustomPagination  # Sử dụng custom pagination ở đây
 
-    def get(self, request):
-        users = User.objects.all().prefetch_related('groups', 'user_permissions','userprofile')
-        serialized_data = []
-        for user in users:
+    def get_queryset(self):
+        return User.objects.all().prefetch_related('groups', 'user_permissions', 'userprofile')
+
+    def get(self, request, *args, **kwargs):
+        queryset = self.get_queryset()
+        page = self.paginate_queryset(queryset)
+        serilazed_data = []
+        
+        if page is not None:
+            for user in page:
+                try:
+                    user_profile = UserProfile.objects.get(user=user)
+                    user_profile_data = {
+                        'phone': user_profile.phone,  
+                    }
+                except UserProfile.DoesNotExist:
+                    user_profile_data = {}
+                
+                group_data = [{'id': group.id, 'name': group.name} for group in user.groups.all()]
+                permission_data = [{'id': permission.id, 'name': permission.name} for permission in user.user_permissions.all()]
+                user_data = {
+                    'id': user.id,
+                    'username': user.username,
+                    'email': user.email,
+                    'user_profile': user_profile_data,  
+                    'is_active': user.is_active,
+                    'groups': group_data,  
+                    'user_permissions': permission_data, 
+                }
+                serilazed_data.append(user_data)
+
+            return self.get_paginated_response(serilazed_data)
+
+        for user in queryset:
             try:
                 user_profile = UserProfile.objects.get(user=user)
                 user_profile_data = {
@@ -1285,12 +1321,12 @@ class UserListApiView(APIView):
                 'groups': group_data,  
                 'user_permissions': permission_data, 
             }
-            serialized_data.append(user_data)
+            serilazed_data.append(user_data)
 
         return Response({
             'status': 200,
             'message': 'Get User List Successfully',
-            'data': serialized_data
+            'data': serilazed_data
         }, status=status.HTTP_200_OK)
         
 class RetentionPeriodListCreate(generics.ListCreateAPIView): 
