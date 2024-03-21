@@ -1266,13 +1266,11 @@ class UserUpdateDelete(APIView):
    
 class UserListApiView(generics.ListAPIView):
     permission_classes = [IsAdminUser]
-    pagination_class = CustomPagination  # Sử dụng custom pagination ở đây
+    pagination_class = CustomPagination()  # Sử dụng custom pagination ở đây
 
-    def get_queryset(self):
-        return User.objects.all().prefetch_related('groups', 'user_permissions', 'userprofile')
 
     def get(self, request, *args, **kwargs):
-        queryset = self.get_queryset()
+        queryset = User.objects.all().prefetch_related('groups', 'user_permissions', 'userprofile')
         page = self.paginate_queryset(queryset)
         serilazed_data = []
         
@@ -1301,34 +1299,6 @@ class UserListApiView(generics.ListAPIView):
 
             return self.get_paginated_response(serilazed_data)
 
-        for user in queryset:
-            try:
-                user_profile = UserProfile.objects.get(user=user)
-                user_profile_data = {
-                    'phone': user_profile.phone,  
-                }
-            except UserProfile.DoesNotExist:
-                user_profile_data = {}
-            
-            group_data = [{'id': group.id, 'name': group.name} for group in user.groups.all()]
-            permission_data = [{'id': permission.id, 'name': permission.name} for permission in user.user_permissions.all()]
-            user_data = {
-                'id': user.id,
-                'username': user.username,
-                'email': user.email,
-                'user_profile': user_profile_data,  
-                'is_active': user.is_active,
-                'groups': group_data,  
-                'user_permissions': permission_data, 
-            }
-            serilazed_data.append(user_data)
-
-        return Response({
-            'status': 200,
-            'message': 'Get User List Successfully',
-            'data': serilazed_data
-        }, status=status.HTTP_200_OK)
-        
 class RetentionPeriodListCreate(generics.ListCreateAPIView): 
     permission_classes = [permissions.IsAuthenticated] 
     queryset = RetentionPeriod.objects.all() 
