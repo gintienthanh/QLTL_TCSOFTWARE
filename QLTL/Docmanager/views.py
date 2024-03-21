@@ -340,7 +340,6 @@ class FolderListCreate(generics.ListAPIView):
                         newname = self.extract_and_convert_to_integer(name_default,name_list)
                     newrecord = Folder(type= type, files=file,file_size = file_size, path = path + newname, name = newname,parent_folder=parent_folder,create_by = user,owner=owner)
                     newrecord.save()
-                    json_data = serializers.Serializer('json', [newrecord])
                 response = {
                     "status": 200,
                     "message": "created successfully",
