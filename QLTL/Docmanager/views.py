@@ -1275,7 +1275,6 @@ class UserListApiView(generics.ListAPIView):
 
     def get(self, request, *args, **kwargs):
         queryset = User.objects.all().prefetch_related('groups', 'user_permissions', 'userprofile')
- 
         page = self.paginate_queryset(queryset)
         serialized_data = []
         
