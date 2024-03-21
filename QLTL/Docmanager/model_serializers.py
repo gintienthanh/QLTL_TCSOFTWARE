@@ -79,6 +79,7 @@ class WarehouseSerializer(serializers.ModelSerializer):
         return None
         
 class ShareSerializer(serializers.ModelSerializer):
+    owner = UserSerializer(many=False, read_only=True)
     class Meta:
         model = Share
         fields = '__all__'
