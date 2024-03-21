@@ -331,13 +331,20 @@ class FolderListCreate(generics.ListAPIView):
                 type = 'File'
                 for file in files:
                     name = file.name
+                    file_size = file.size
                     start_index = name.rfind('.')
                     name_default = name[:start_index] + " (1)" + name[start_index:]
                     if name not in name_list: 
                         newname = name
                     elif name in name_list:
                         newname = self.extract_and_convert_to_integer(name_default,name_list)
-                    serializer.save(type= type, files=file,file_size = file.size, path = path + newname, name = newname,parent_folder=parent_folder,create_by = user,owner=owner)
+                    newrecord = Folder(type= type, files=file,file_size = file_size, path = path + newname, name = newname,parent_folder=parent_folder,create_by = user,owner=owner)
+                    newrecord.save()
+                    json_data = serializers.Serializer('json', [newrecord])
+                response = {
+                    "status": 200,
+                    "message": "created successfully",
+                }
             else:
                 type = 'Folder'
                 name_default = name + " (1)"
@@ -346,11 +353,11 @@ class FolderListCreate(generics.ListAPIView):
                 elif name in name_list:
                     newname = self.extract_and_convert_to_integer(name_default,name_list)
                 serializer.save(type = type,file_size = 0,path = path + newname + "/",name = newname,parent_folder=parent_folder,create_by = user,owner=owner)
-            response = {
-                "status": 200,
-                "message": "created successfully",
-                "data": serializer.data
-            }
+                response = {
+                    "status": 200,
+                    "message": "created successfully",
+                    "data": serializer.data
+                }
             return Response(response, status=status.HTTP_201_CREATED)
         return Response({'status':400}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -382,19 +389,33 @@ class FolderUpdateDelete(APIView):
         folder = self.get_object(pk)
         serializer = FolderSerializer(folder, data=request.data,partial=True)
         user = request.user
+        old_path = folder.path
+        parent_folder_id_old = folder.parent_folder_id
+        if parent_folder_id_old:
+            parent_old = Folder.objects.get(id = parent_folder_id_old)
+            parent_name_old = parent_old.name
+        else:
+            parent_name_old = ''
         parent_folder_id = request.data.get('parent_folder')
         if serializer.is_valid():
             if parent_folder_id:
                 parent_folder = Folder.objects.get(id=parent_folder_id)
                 path = parent_folder.path
+                parent_name = parent_folder.name
             else:
                 parent_folder_id = folder.parent_folder
                 parent_folder = None
                 path = ''
+                parent_name = ''
             if folder.type == "Folder":
                 path = path + folder.name + "/"
             else:
                 path = path + folder.name
+            child_fol = Folder.objects.filter(path__startswith = old_path)
+            for i in child_fol:
+                path_child = self.change(i.path,parent_name_old,parent_name)
+                i.path = path_child
+                i.save()
             serializer.save(path = path,parent_folder=parent_folder,update_by = user)
             response = {
                 "status":200,
@@ -907,7 +928,7 @@ class WatchListCreate(APIView):
     serializer_class = WatchListSerializer
     filter_backends = [filters.DjangoFilterBackend]
     filterset_class = WatchlistFilter
-    paginator = CustomPagination()
+    paginator = CustomPagination
     
     def get_queryset(self):
         
@@ -1202,23 +1223,7 @@ class UserFilter(filters.FilterSet):
     class Meta:
         model = User
         fields = ['username']
-class UserListCreate(generics.ListAPIView):
-    permission_classes = [permissions.IsAdminUser]
-    queryset = User.objects.all()
-    serializer_class = UserSerializer
-    filter_backends = [filters.DjangoFilterBackend]
-    filterset_class = UserFilter
-    paginator = CustomPagination()
-    
-    def post(self, request):
-        serializer = UserSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response({'status':201,
-                             'message':'created successfully',
-                             'data':serializer.data}, 
-                             status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
 
 class UserUpdateDelete(APIView):
     permission_classes = [permissions.IsAdminUser]
@@ -1266,20 +1271,28 @@ class UserUpdateDelete(APIView):
    
 class UserListApiView(generics.ListAPIView):
     permission_classes = [IsAdminUser]
-    pagination_class = CustomPagination()  # Sử dụng custom pagination ở đây
-
+    pagination_class = CustomPagination
 
     def get(self, request, *args, **kwargs):
         queryset = User.objects.all().prefetch_related('groups', 'user_permissions', 'userprofile')
+ 
         page = self.paginate_queryset(queryset)
-        serilazed_data = []
+        serialized_data = []
         
         if page is not None:
             for user in page:
                 try:
                     user_profile = UserProfile.objects.get(user=user)
+                    if user_profile.organization:
+                        organization_data = {
+                            'id': user_profile.organization.id,
+                            'name': user_profile.organization.name,
+                        }
+                    else:
+                        organization_data = None
                     user_profile_data = {
-                        'phone': user_profile.phone,  
+                        'phone': user_profile.phone,
+                        'organization': organization_data
                     }
                 except UserProfile.DoesNotExist:
                     user_profile_data = {}
@@ -1295,10 +1308,11 @@ class UserListApiView(generics.ListAPIView):
                     'groups': group_data,  
                     'user_permissions': permission_data, 
                 }
-                serilazed_data.append(user_data)
+                serialized_data.append(user_data)
 
-            return self.get_paginated_response(serilazed_data)
+            return self.get_paginated_response(serialized_data)
 
+        
 class RetentionPeriodListCreate(generics.ListCreateAPIView): 
     permission_classes = [permissions.IsAuthenticated] 
     queryset = RetentionPeriod.objects.all() 

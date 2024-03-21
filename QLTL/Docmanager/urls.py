@@ -62,7 +62,7 @@ document_urls = [
   
 ]
 user_urls = [
-    path('', UserListCreate.as_view(), name='user-listcreate'),
+    
     path('/<int:pk>', UserUpdateDelete.as_view(), name='document-list'),
   
 ]

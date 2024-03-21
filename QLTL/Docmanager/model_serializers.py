@@ -5,16 +5,34 @@ from django.contrib.auth.models import User,Permission,Group
 class AdjustedNameField(serializers.CharField):
     def to_internal_value(self, data):
         model = self.parent.Meta.model
-        # Kiểm tra và điều chỉnh tên trùng lặp
-        existing_names = model.objects.filter(name__startswith=data).values_list('name', flat=True)
-
-        if data in existing_names:
-            i = 1
-            while f"{data}({i})" in existing_names:
-                i += 1
-            data = f"{data}({i})"
+        
+       
+        if hasattr(model, 'title'):
+            existing_titles = model.objects.filter(title__startswith=data).values_list('title', flat=True)
+            if data in existing_titles:
+                i = 1
+                while f"{data}({i})" in existing_titles:
+                    i += 1
+                data = f"{data}({i})"
+                
+            return data
+        
+        if hasattr(model, 'name'):
+            type_warehouse = self.parent.initial_data.get('type_warehouse')
+            
+            existing_names = model.objects.filter(type_warehouse=type_warehouse).values_list('name', flat=True)
+            if data in existing_names:
+                data = self.generate_unique_name(data, existing_names)
+        
         return data
-
+    
+    def generate_unique_name(self, name, existing_names):
+        i = 1
+        new_name = name
+        while new_name in existing_names:
+            new_name = f"{name}({i})"
+            i += 1
+        return new_name
 
 
 class BaseSerializer(serializers.ModelSerializer):
