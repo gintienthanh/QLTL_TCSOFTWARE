@@ -185,43 +185,27 @@ class PortfolioUpdateDelete(APIView):
         
         
 #######DOCUMENT######
-class DocumentFilter(filters.FilterSet):
-    name = filters.CharFilter(field_name='name', lookup_expr='icontains')
 
-    class Meta:
-        model = Document
-        fields = ['name', 'folder_id']
 
     
 
 class DocumentListCreate(generics.ListCreateAPIView):
-
     permission_classes = [permissions.IsAuthenticated]
-    queryset = Document.objects.annotate(
-    compare_time=Coalesce(
-        Case(
-            When(created_at__gt=F('updated_at'), then=F('created_at')),
-            default=F('updated_at'),
-            output_field=CharField()
-        ),
-        Case(
-            When(created_at__gt=F('created_at'), then=F('updated_at')),
-            default=F('created_at'),
-            output_field=CharField()
-        )
-    )
-    ).order_by('-compare_time')
+    queryset = Document.objects.all()
     serializer_class = DocumentSerializer
-    filter_backends = [filters.DjangoFilterBackend]
-    filterset_class = DocumentFilter
     paginator = CustomPagination()
-    
     def get_queryset(self):
-        
         queryset = super().get_queryset()
         user = self.request.user
         if user.is_authenticated:  # Check if user is authenticated
+            name_query = self.request.GET.get('name', None)
+            portfolio_query = self.request.GET.get('portfolio_id', None)
             queryset = queryset.filter(create_by=user, is_delete=False)
+            if name_query:
+                queryset = queryset.filter(title__icontains=name_query)   
+            if portfolio_query:
+                queryset = queryset.filter(title__icontains=portfolio_query)   
+            queryset = queryset.order_by(F('updated_at').desc())
         return queryset 
     
     def post(self, request):
@@ -287,20 +271,7 @@ class FolderFilter(filters.FilterSet):
 
 class FolderListCreate(generics.ListAPIView):
     permission_classes = [permissions.IsAuthenticated]
-    queryset = Folder.objects.annotate(
-    compare_time=Coalesce(
-        Case(
-            When(created_at__gt=F('updated_at'), then=F('created_at')),
-            default=F('updated_at'),
-            output_field=CharField()
-        ),
-        Case(
-            When(created_at__gt=F('created_at'), then=F('updated_at')),
-            default=F('created_at'),
-            output_field=CharField()
-        )
-    )
-    ).order_by('-compare_time')
+    queryset = Folder.objects.all()
     serializer_class = FolderSerializer  
     filter_backends = [filters.DjangoFilterBackend]
     filterset_class = FolderFilter
@@ -316,6 +287,7 @@ class FolderListCreate(generics.ListAPIView):
                 queryset = queryset.filter(create_by=user, is_delete = False, parent_folder = parent_folder)
             else:
                 queryset = queryset.filter(create_by=user, is_delete = False, parent_folder = None)
+            queryset = queryset.order_by(F('updated_at').desc())
         return queryset
     def extract_and_convert_to_integer(self,name,name_list):
         while name in name_list:
