@@ -326,7 +326,7 @@ class FolderListCreate(generics.ListAPIView):
 
 
 class FolderUpdateDelete(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+    # permission_classes = [permissions.IsAuthenticated]
     def __init__(self, *args, **kwargs):
         self.change_name = kwargs.pop('change_name', False)
         self.change_folder = kwargs.pop('change_folder', False)
@@ -337,6 +337,10 @@ class FolderUpdateDelete(APIView):
             return Folder.objects.get(pk=pk)
         except Folder.DoesNotExist:
             raise status.HTTP_404_NOT_FOUND
+    def change(self,path,old_name,new_name):
+        new_folder_path = path.replace(old_name,new_name)
+        print(new_folder_path)
+        return new_folder_path
     def patch(self, request, pk,change_name=False, change_folder=False):
         if change_name:
             return self.patch_change_name(request, pk)
@@ -357,7 +361,11 @@ class FolderUpdateDelete(APIView):
                 parent_folder_id = folder.parent_folder
                 parent_folder = None
                 path = ''
-            serializer.save(path = path + folder.name + "/",parent_folder=parent_folder,update_by = user)
+            if folder.type == "Folder":
+                path = path + folder.name + "/"
+            else:
+                path = path + folder.name
+            serializer.save(path = path,parent_folder=parent_folder,update_by = user)
             response = {
                 "status":200,
                 "message": "updated successfully",
@@ -370,6 +378,8 @@ class FolderUpdateDelete(APIView):
     def patch_change_name(self,request,pk):
         folder = self.get_object(pk)
         serializer = FolderSerializer(folder, data=request.data,partial=True)
+        old_path = folder.path
+        old_name = folder.name
         name = request.data.get('name')
         user = request.user
         if name and name != '':
@@ -388,13 +398,18 @@ class FolderUpdateDelete(APIView):
             serializer_db = FolderSerializer(queryset, many=True)
             data = serializer_db.data
             name_list = [item['name'] for item in data]
-            if folder.type == "Folder":
-                name_default = name + " (1)"
+            name_default = name + " (1)"
             if name not in name_list:
-                newname = name
+                new_name = name
             else:
-                newname = FolderListCreate.extract_and_convert_to_integer(self,name_default,name_list)
-            serializer.save(path = path + newname + '/', name = newname,parent_folder=parent_folder,update_by = user)
+                new_name = FolderListCreate.extract_and_convert_to_integer(self,name_default,name_list)
+            child_fol = Folder.objects.filter(path__startswith = old_path)
+            new_path = path + new_name + '/'
+            for i in child_fol:
+                path_child = self.change(i.path,old_name,new_name)
+                i.path = path_child
+                i.save()
+            serializer.save(path = new_path, name = new_name,update_by = user)
             response = {
                 "status":200,
                 "message": "updated successfully",
@@ -870,101 +885,103 @@ class BulkDeleteAPI(APIView):
         # Soft delete portfolios and associated documents
         try:
             for portfolio_id in portfolio_ids:
-                portfolio = Portfolio.objects.get(id=int(portfolio_id))
-                portfolio.soft_delete(request)
-                document = Document.objects.get(portfolio=portfolio_id)
-                document.soft_delete(request)
-                success_count += 1
-                data = {
+                try:
+                    portfolio = Portfolio.objects.get(id=int(portfolio_id))
+                    portfolio.soft_delete(request)
+                    document = Document.objects.get(portfolio=portfolio_id)
+                    document.soft_delete(request)
+                    success_count += 1
+                    data = {
+                            'status': '200',
+                            'message':'Deleted successfully'
+                    }
+                except Portfolio.DoesNotExist:
+                    data = {
+                        'status': status.HTTP_404_NOT_FOUND,
+                        'message': f'portfolio with ID {portfolio_id} not found'
+                    }
+                    return Response(data, status=status.HTTP_404_NOT_FOUND)
+                except Document.DoesNotExist:
+                    for portfolio_id in portfolio_ids:
+                        portfolio = Portfolio.objects.get(id=int(portfolio_id))
+                        portfolio.soft_delete(request)
+                        success_count += 1
+                    data = {
                         'status': '200',
                         'message':'Deleted successfully'
-                }
-        except Portfolio.DoesNotExist:
-            data = {
-                'status': status.HTTP_404_NOT_FOUND,
-                'message': f'portfolio with ID {portfolio_id} not found'
-            }
-            return Response(data, status=status.HTTP_404_NOT_FOUND)
-        except Document.DoesNotExist:
-            for portfolio_id in portfolio_ids:
-                portfolio = Portfolio.objects.get(id=int(portfolio_id))
-                portfolio.soft_delete(request)
-                success_count += 1
-            data = {
-                'status': '200',
-                'message':'Deleted successfully'
-            }
-            return Response(data, status=status.HTTP_200_OK)
+                    }
+                    return Response(data, status=status.HTTP_200_OK)
 
         # Soft delete documents
-        try:
-            for document_id in document_ids:
-                document = Document.objects.get(id=int(document_id))
-                document.soft_delete(request)
-                success_count += 1
+            try:
+                for document_id in document_ids:
+                    document = Document.objects.get(id=int(document_id))
+                    document.soft_delete(request)
+                    success_count += 1
+                    data = {
+                            'status': '200',
+                            'message':'Deleted successfully'
+                        }
+            except Document.DoesNotExist:
                 data = {
-                        'status': '200',
-                        'message':'Deleted successfully'
-                    }
-        except Document.DoesNotExist:
-            data = {
-                'status': status.HTTP_404_NOT_FOUND,
-                'message': f'Document with ID {document_id} not found'
-            }
-            return Response(data, status=status.HTTP_404_NOT_FOUND)
-                    
+                    'status': status.HTTP_404_NOT_FOUND,
+                    'message': f'Document with ID {document_id} not found'
+                }
+                return Response(data, status=status.HTTP_404_NOT_FOUND)
+                        
         # Soft delete warehouses
-        try:
-            for warehouse_id in warehouse_ids:
-                warehouse = Warehouse.objects.get(id=int(warehouse_id))
-                warehouse.soft_delete(request)
-
-                if warehouse.type_warehouse == ChoicesTypeWarehouse.Shelf.value:
-                    # Get all boxcases related to the shelf
-                    boxcases = Warehouse.objects.filter(parent_warehouse=warehouse)
-                    for boxcase in boxcases:
-                        boxcase.soft_delete(request)
-                
-                if warehouse.type_warehouse == ChoicesTypeWarehouse.Warehouse.value:
-                    # Get all subwarehouses related to the warehouse
+            try:
+                for warehouse_id in warehouse_ids:
                     warehouse = Warehouse.objects.get(id=int(warehouse_id))
                     warehouse.soft_delete(request)
-                    shelf = Warehouse.objects.get(parent_warehouse=warehouse)
-                    shelf.soft_delete(request)
-                    boxcases = Warehouse.objects.get(parent_warehouse=shelf)
-                    boxcases.soft_delete(request)
 
-                success_count += 1
-                data = {
-                        'status': '200',
-                        'message':'Deleted successfully'
-                    }
-            # return Response(data, status=status.HTTP_200_OK)
-        except Warehouse.DoesNotExist:
-            data = {
-                'status': status.HTTP_404_NOT_FOUND,
-                'message': f'Folder with ID {success_count} not found'
-            }
-            return Response(data, status=status.HTTP_404_NOT_FOUND)
+                    if warehouse.type_warehouse == ChoicesTypeWarehouse.Shelf.value:
+                        # Get all boxcases related to the shelf
+                        boxcases = Warehouse.objects.filter(parent_warehouse=warehouse)
+                        for boxcase in boxcases:
+                            boxcase.soft_delete(request)
                     
-        # Soft delete folders
-        try:
-            for folder_id in folder_ids:
-                folder =  Folder.objects.get(id=folder_id)
-                folders = Folder.objects.filter(path__startswith=folder.path)
-                for i in folders:
-                    i.soft_delete(request)
+                    if warehouse.type_warehouse == ChoicesTypeWarehouse.Warehouse.value:
+                        # Get all subwarehouses related to the warehouse
+                        warehouse = Warehouse.objects.get(id=int(warehouse_id))
+                        warehouse.soft_delete(request)
+                        shelf = Warehouse.objects.get(parent_warehouse=warehouse)
+                        shelf.soft_delete(request)
+                        boxcases = Warehouse.objects.get(parent_warehouse=shelf)
+                        boxcases.soft_delete(request)
+
+                    success_count += 1
+                    data = {
+                            'status': '200',
+                            'message':'Deleted successfully'
+                        }
+                # return Response(data, status=status.HTTP_200_OK)
+            except Warehouse.DoesNotExist:
                 data = {
-                        'status': '200',
-                        'message':'Deleted successfully'
+                    'status': status.HTTP_404_NOT_FOUND,
+                    'message': f'Folder with ID {success_count} not found'
+                }
+                return Response(data, status=status.HTTP_404_NOT_FOUND)
+                        
+        # Soft delete folders
+            for folder_id in folder_ids:
+                try:
+                    folder =  Folder.objects.get(id=folder_id)
+                    folders = Folder.objects.filter(path__startswith=folder.path)
+                    for i in folders:
+                        i.soft_delete(request)
+                    data = {
+                            'status': '200',
+                            'message':'Deleted successfully'
+                        }
+                except:
+                    data = {
+                        'status': '500',
+                        'message': 'không tìm thấy id'
                     }
+                return Response(data, status=status.HTTP_200_OK)
         except:
-            data = {
-                'status': '500',
-                'message': 'không tìm thấy id'
-            }
-            return Response(data, status=status.HTTP_200_OK)
-        return Response(data, status=status.HTTP_404_NOT_FOUND)
+            return Response(data, status=status.HTTP_404_NOT_FOUND)
         
 
 class UserFilter(filters.FilterSet):
