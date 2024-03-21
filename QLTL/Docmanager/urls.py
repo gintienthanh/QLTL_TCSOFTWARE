@@ -23,6 +23,8 @@ schema_view = get_schema_view(
 folder_urls = [
     path('', FolderListCreate.as_view(), name='folder-list'),
     path('/<int:pk>', FolderUpdateDelete.as_view(), name='folder-detail'),
+    path('/change-name/<int:pk>', FolderUpdateDelete.as_view(),{'change_name': True}, name='change-name'),
+    path('/change-folder/<int:pk>', FolderUpdateDelete.as_view(),{'change_folder': True}, name='change-folder')
 ]
 
 warehouse_urls = [
@@ -60,7 +62,7 @@ document_urls = [
   
 ]
 user_urls = [
-    path('', UserListCreate.as_view(), name='user-listcreate'),
+    
     path('/<int:pk>', UserUpdateDelete.as_view(), name='document-list'),
   
 ]
@@ -73,8 +75,8 @@ watchlist_urls = [
 file_urls = [
     path('download/<int:folder_id>/', DownloadFile.as_view(), name='file-download'),
 ]
-user_urls =  [
-    path('userlist/',UserListApiView.as_view(),name="userlist"),
+user_list_urls =  [
+    path('',UserListApiView.as_view(),name="userlist"),
    
 ]
 
@@ -106,7 +108,7 @@ urlpatterns = [
     path('document', include((document_urls, 'document'))),
     path('user', include((user_urls, 'user'))),
     path('watchlist', include((watchlist_urls, 'watchlist'))),
-    path('user/',include((user_urls, 'userurl'))),
+    path('userlist/',include((user_list_urls, 'userurl'))),
     path('retentionperiod', include((retentionperiod_urls, 'storagetime'))),
     path('language', include((language_urls, 'language'))),
     

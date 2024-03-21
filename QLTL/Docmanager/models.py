@@ -12,9 +12,8 @@ class Organization(models.Model):
 
 class UserProfile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
-    phone = models.CharField(max_length=15, null = True)
-    organization = models.OneToOneField(Organization, on_delete=models.SET_NULL, null=True)
-
+    phone = models.CharField(max_length=15, null=True)
+    organization = models.ForeignKey(Organization, on_delete=models.SET_NULL, null=True)
 
 class Base(models.Model):
     id = models.AutoField(primary_key=True)
@@ -66,6 +65,7 @@ class Warehouse(Base):
     name = models.CharField(max_length = 255, null = True)
     code = models.CharField(max_length = 255, null = True)
     description = models.CharField(max_length = 255, null = True)
+    unit = models.CharField(max_length = 255, null = True)
     type_warehouse = models.CharField(max_length=100, choices=[(tag.value, tag.name) for tag in ChoicesTypeWarehouse], default=ChoicesTypeWarehouse.Warehouse.value)
     parent_warehouse = models.ForeignKey('self', on_delete=models.CASCADE, null=True, related_name='subwarehouse') 
     def __str__(self) :
@@ -80,11 +80,13 @@ class RetentionPeriod(Base):
     
     name = models.CharField(max_length=200, null = True)
     description = models.CharField(max_length=1000, null = True)
+    code = models.CharField(max_length = 255, null = True)
     def __str__(self):
         return self.name
 class Language(Base):
     name = models.CharField(max_length=200, null = True )
     description = models.CharField(max_length=1000, null = True)
+    code = models.CharField(max_length = 255, null = True)
     def __str__(self):
         return self.name
 

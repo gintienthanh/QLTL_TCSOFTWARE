@@ -37,6 +37,8 @@ class UserRegistrationView(APIView):
             user = User.objects.create(email=email,username=user_name)    
             organization = Organization.objects.get(id=organization_id)
             profile_user = UserProfile.objects.create(user=user,phone=phone,organization=organization)
+            if not permission_ids:
+                permission_ids = [] 
             for permission_id in permission_ids:
                 permission = Permission.objects.get(id=permission_id)
                 user.user_permissions.add(permission)
