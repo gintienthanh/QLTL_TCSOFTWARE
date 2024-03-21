@@ -1265,7 +1265,7 @@ class UserUpdateDelete(APIView):
                          'message': 'deleted successfully'})
    
 class UserListApiView(generics.ListAPIView):
-    permission_classes = [IsAdminUser]
+    # permission_classes = [IsAdminUser]
     pagination_class = CustomPagination  # Sử dụng custom pagination ở đây
 
     def get_queryset(self):
@@ -1280,8 +1280,16 @@ class UserListApiView(generics.ListAPIView):
             for user in page:
                 try:
                     user_profile = UserProfile.objects.get(user=user)
+                    if user_profile.organization:
+                        organization_data = {
+                            'id': user_profile.organization.id,
+                            'name': user_profile.organization.name,
+                        }
+                    else:
+                        organization_data = None
                     user_profile_data = {
-                        'phone': user_profile.phone,  
+                        'phone': user_profile.phone,
+                        'organization':organization_data
                     }
                 except UserProfile.DoesNotExist:
                     user_profile_data = {}
@@ -1301,33 +1309,33 @@ class UserListApiView(generics.ListAPIView):
 
             return self.get_paginated_response(serilazed_data)
 
-        for user in queryset:
-            try:
-                user_profile = UserProfile.objects.get(user=user)
-                user_profile_data = {
-                    'phone': user_profile.phone,  
-                }
-            except UserProfile.DoesNotExist:
-                user_profile_data = {}
+        # for user in queryset:
+        #     try:
+        #         user_profile = UserProfile.objects.get(user=user)
+        #         user_profile_data = {
+        #             'phone': user_profile.phone,  
+        #         }
+        #     except UserProfile.DoesNotExist:
+        #         user_profile_data = {}
             
-            group_data = [{'id': group.id, 'name': group.name} for group in user.groups.all()]
-            permission_data = [{'id': permission.id, 'name': permission.name} for permission in user.user_permissions.all()]
-            user_data = {
-                'id': user.id,
-                'username': user.username,
-                'email': user.email,
-                'user_profile': user_profile_data,  
-                'is_active': user.is_active,
-                'groups': group_data,  
-                'user_permissions': permission_data, 
-            }
-            serilazed_data.append(user_data)
+        #     group_data = [{'id': group.id, 'name': group.name} for group in user.groups.all()]
+        #     permission_data = [{'id': permission.id, 'name': permission.name} for permission in user.user_permissions.all()]
+        #     user_data = {
+        #         'id': user.id,
+        #         'username': user.username,
+        #         'email': user.email,
+        #         'user_profile': user_profile_data,  
+        #         'is_active': user.is_active,
+        #         'groups': group_data,  
+        #         'user_permissions': permission_data, 
+        #     }
+        #     serilazed_data.append(user_data)
 
-        return Response({
-            'status': 200,
-            'message': 'Get User List Successfully',
-            'data': serilazed_data
-        }, status=status.HTTP_200_OK)
+        # return Response({
+        #     'status': 200,
+        #     'message': 'Get User List Successfully',
+        #     'data': serilazed_data
+        # }, status=status.HTTP_200_OK)
         
 class RetentionPeriodListCreate(generics.ListCreateAPIView): 
     permission_classes = [permissions.IsAuthenticated] 
