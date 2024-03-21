@@ -15,6 +15,7 @@ from django.http import FileResponse
 import mimetypes
 import tkinter as tk
 from tkinter import filedialog
+from django.core import serializers
 # from Docmanager.permissions import CheckOwnerFactory, CheckSharedGroupdFactory
 from .model_serializers import*
 from .models import*
@@ -338,13 +339,20 @@ class FolderListCreate(generics.ListAPIView):
                 type = 'File'
                 for file in files:
                     name = file.name
+                    file_size = file.size
                     start_index = name.rfind('.')
                     name_default = name[:start_index] + " (1)" + name[start_index:]
                     if name not in name_list: 
                         newname = name
                     elif name in name_list:
                         newname = self.extract_and_convert_to_integer(name_default,name_list)
-                    serializer.save(type= type, files=file,file_size = file.size, path = path + newname, name = newname,parent_folder=parent_folder,create_by = user,owner=owner)
+                    newrecord = Folder(type= type, files=file,file_size = file_size, path = path + newname, name = newname,parent_folder=parent_folder,create_by = user,owner=owner)
+                    newrecord.save()
+                    json_data = serializers.Serializer('json', [newrecord])
+                response = {
+                    "status": 200,
+                    "message": "created successfully",
+                }
             else:
                 type = 'Folder'
                 name_default = name + " (1)"
@@ -353,11 +361,11 @@ class FolderListCreate(generics.ListAPIView):
                 elif name in name_list:
                     newname = self.extract_and_convert_to_integer(name_default,name_list)
                 serializer.save(type = type,file_size = 0,path = path + newname + "/",name = newname,parent_folder=parent_folder,create_by = user,owner=owner)
-            response = {
-                "status": 200,
-                "message": "created successfully",
-                "data": serializer.data
-            }
+                response = {
+                    "status": 200,
+                    "message": "created successfully",
+                    "data": serializer.data
+                }
             return Response(response, status=status.HTTP_201_CREATED)
         return Response({'status':400}, status=status.HTTP_400_BAD_REQUEST)
 
