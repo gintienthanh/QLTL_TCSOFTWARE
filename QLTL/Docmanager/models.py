@@ -111,7 +111,7 @@ class Portfolio(Base):
 class Folder(Base):
     name = models.CharField(max_length=255, null = True)
     parent_folder = models.ForeignKey('self', on_delete=models.CASCADE, null=True, related_name='subfolders') 
-    path = models.CharField(max_length=255, null=True)
+    path = models.TextField(null=True)
     files = models.FileField(upload_to='files/',null=True)
     file_size = models.BigIntegerField(null=True)
     type = models.CharField(max_length=100, choices=[(tag.value, tag.name) for tag in ChoicesType], default=ChoicesType.Folder.value)
