@@ -98,6 +98,12 @@ class WarehouseSerializer(serializers.ModelSerializer):
         return None
         
 class ShareSerializer(serializers.ModelSerializer):
+    # owner = UserSerializer(many=False, read_only=True)
+    owner = serializers.SerializerMethodField()
+    def get_owner(self,obj):
+        # user = User.objects.get(id=obj.owner)
+        return obj.owner.username
+
     class Meta:
         model = Share
         fields = '__all__'

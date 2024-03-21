@@ -481,7 +481,7 @@ class APIShareListCreate(generics.ListCreateAPIView):
     filter_backends = [filters.DjangoFilterBackend]
     filterset_class = ShareFilter
     paginator = CustomPagination()
-    permission_classes = [check_group_permisison_factory('share')]
+    # permission_classes = [check_group_permisison_factory('share')]
     # def get_permissions(self):
     #     if self.request.method == 'POST':
     #         return [permissions.IsAuthenticated(), ]
@@ -537,7 +537,8 @@ class APIShareUpdateDestroy(generics.RetrieveUpdateDestroyAPIView):
         instance.delete_at=timezone.now() 
         instance.delete_by=request.user
         self.perform_update(instance)
-        return Response({'status':200,'message':'destroyed'},status=status.HTTP_204_NO_CONTENT)  
+        return Response({'status':200,'message':'destroyed'},status=status.HTTP_204_NO_CONTENT)
+  
 
 class PermissionFilter(filters.FilterSet):
     name = filters.CharFilter(field_name='name', lookup_expr='icontains')
