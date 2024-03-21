@@ -1,5 +1,5 @@
 from django.urls import path
-from Auth.views import UnLockAccountView,LockAccountView,GoogleLoginApi,FacebookSocialAuthView,UserRegistrationView,UserLoginView,UserChangePasswordView,SendPasswordResetEmailView,UserPasswordResetView,LogoutAPIView
+from Auth.views import CheckLockAccountView,UnLockAccountView,LockAccountView,GoogleLoginApi,FacebookSocialAuthView,UserRegistrationView,UserLoginView,UserChangePasswordView,SendPasswordResetEmailView,UserPasswordResetView,LogoutAPIView
 from rest_framework_simplejwt.views import (
     TokenRefreshView
 )
@@ -15,6 +15,8 @@ urlpatterns = [
     path('refresh-token/', TokenRefreshView.as_view(), name='refresh-token'),
     path('lock-account/', LockAccountView.as_view(), name='lock-account'),
     path('unlock-account/', UnLockAccountView.as_view(), name='unlock-account'),
+    path('check-account/', CheckLockAccountView.as_view(), name='check-account'),
+
     # oauth
     path('oauth/google/', GoogleLoginApi.as_view(), name="google"),
     path('oauth/facebook/', FacebookSocialAuthView.as_view(), name="facebook"),

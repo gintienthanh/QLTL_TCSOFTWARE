@@ -2,16 +2,34 @@ from rest_framework import serializers
 from .models import *
 from django_filters import rest_framework as filters
 import django_filters
+from django.contrib.auth.models import User,Permission,Group
+
+class AdjustedNameField(serializers.CharField):
+    def to_internal_value(self, data):
+        model = self.parent.Meta.model
+        # Kiểm tra và điều chỉnh tên trùng lặp
+        existing_names = model.objects.filter(name__startswith=data).values_list('name', flat=True)
+
+        if data in existing_names:
+            i = 1
+            while f"{data}({i})" in existing_names:
+                i += 1
+            data = f"{data}({i})"
+        return data
+
+
+
 class BaseSerializer(serializers.ModelSerializer):
     class Meta:
         model = Base
         fields = '__all__'
-    
+
 
 class FolderSerializer(serializers.ModelSerializer):
     parent_folder = serializers.PrimaryKeyRelatedField(required =False,read_only=True)
     file_size = serializers.SerializerMethodField()
 
+    
     def get_file_size(self, obj):
         if obj.file_size == 0:
             return None
@@ -27,6 +45,9 @@ class FolderSerializer(serializers.ModelSerializer):
     class Meta:
         model = Folder
         fields = '__all__'
+
+
+
 class DocumentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Document
@@ -61,31 +82,32 @@ class ShareSerializer(serializers.ModelSerializer):
         model = Share
         fields = '__all__'
         
-class WatchlistSerializer(serializers.ModelSerializer):
+class PermissionSerializer(serializers.ModelSerializer):
     class Meta:
-        model = Watchlist
+        model = Permission
         fields = '__all__'
-        read_only_fields = ['created_at', 'updated_at','is_visibale','is_delete']
-
+class GroupSerializer(serializers.ModelSerializer):
+   
+    class Meta:
+        model = Group
+        fields = ['id', 'name']
+class UserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = '__all__'
+        
 class ClassificationSerializer(serializers.ModelSerializer):
     class Meta: 
         model = ClassifyVariant
         fields = '__all__'
-        read_only_fields = ['created_at', 'updated_at','is_visibale','is_delete']
 
-class StorageTimeSerializer(serializers.ModelSerializer):
+class RetentionPeriodSerializer(serializers.ModelSerializer):
     class Meta: 
-        model = ClassifyVariant
+        model = RetentionPeriod
         fields = '__all__'
-        read_only_fields = ['created_at', 'updated_at','is_visibale','is_delete']
 
-class LanguagesSerializer(serializers.ModelSerializer):
+class LanguageSerializer(serializers.ModelSerializer):
+    
     class Meta: 
-        model = ClassifyVariant
+        model = Language
         fields = '__all__'
-        read_only_fields = ['created_at', 'updated_at','is_visibale','is_delete']
-
-class UserSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = User
-        fields = ['id','email','username','is_active']

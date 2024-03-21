@@ -5,10 +5,15 @@ from django.utils import timezone
 from enum import Enum
 from datetime import datetime
 # Create your models here.
+class Organization(models.Model):
+    name = models.CharField(max_length=255, null = True)
+    description = models.CharField(max_length=1000, null = True)
+    
+
 class UserProfile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
-    phone = models.CharField(max_length=100, null = True)
-
+    phone = models.CharField(max_length=15, null=True)
+    organization = models.ForeignKey(Organization, on_delete=models.SET_NULL, null=True)
 
 class Base(models.Model):
     id = models.AutoField(primary_key=True)
@@ -65,6 +70,7 @@ class Warehouse(Base):
     name = models.CharField(max_length = 255, null = True)
     code = models.CharField(max_length = 255, null = True)
     description = models.CharField(max_length = 255, null = True)
+    unit = models.CharField(max_length = 255, null = True)
     type_warehouse = models.CharField(max_length=100, choices=[(tag.value, tag.name) for tag in ChoicesTypeWarehouse], default=ChoicesTypeWarehouse.Warehouse.value)
     parent_warehouse = models.ForeignKey('self', on_delete=models.CASCADE, null=True, related_name='subwarehouse') 
     def __str__(self) :
@@ -79,11 +85,13 @@ class RetentionPeriod(Base):
     
     name = models.CharField(max_length=200, null = True)
     description = models.CharField(max_length=1000, null = True)
+    code = models.CharField(max_length = 255, null = True)
     def __str__(self):
         return self.name
 class Language(Base):
     name = models.CharField(max_length=200, null = True )
     description = models.CharField(max_length=1000, null = True)
+    code = models.CharField(max_length = 255, null = True)
     def __str__(self):
         return self.name
 
@@ -106,7 +114,7 @@ class Portfolio(Base):
     status = models.CharField(max_length=100, choices=[(tag.value, tag.name) for tag in ChoicesStatus], default=ChoicesStatus.wait.value)
 
 class Folder(Base):
-    name = models.CharField(max_length=255)
+    name = models.CharField(max_length=255, null = True)
     parent_folder = models.ForeignKey('self', on_delete=models.CASCADE, null=True, related_name='subfolders') 
     path = models.CharField(max_length=255, null=True)
     files = models.FileField(upload_to='files/',null=True)
@@ -148,3 +156,4 @@ class Share(Base):
     document = models.ForeignKey(Document, on_delete=models.CASCADE, null=True)
     folder = models.ForeignKey(Folder, on_delete=models.CASCADE, null=True)
     type = models.CharField(max_length=100, choices=[(tag.value, tag.name) for tag in ChoicesSharingType], default=ChoicesSharingType.ONLY_VIEW.value )
+    
