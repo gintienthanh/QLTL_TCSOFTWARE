@@ -837,6 +837,7 @@ class WarehouseUpdateDelete(APIView):
         return Response({'status':400,
                              'message':'update fail'
                              },status=status.HTTP_400_BAD_REQUEST)
+        
     def delete(self, request, pk):
         warehouse = self.get_warehouse(pk)
         try:
@@ -846,24 +847,34 @@ class WarehouseUpdateDelete(APIView):
                 # Lấy tất cả boxcase liên quan đến shelf
                 boxcases = Warehouse.objects.filter(parent_warehouse=warehouse)
                 for boxcase in boxcases:
-                    if  boxcase.soft_delete(request):
-                        return Response({"message": "Xóa thành công"}, status=status.HTTP_200_OK)
-            elif warehouse.type_warehouse == ChoicesTypeWarehouse.BoxCase.value:
-                # Lấy shelf liên quan đến boxcase
-                shelf = warehouse.parent_warehouse
-                if  shelf.soft_delete(request):
-                    return Response({"message": "Xóa thành công"}, status=status.HTTP_200_OK)
-            else:
+                    boxcase.soft_delete(request)
+                
+            if warehouse.type_warehouse == ChoicesTypeWarehouse.Warehouse.value:
                 # Lấy tất cả warehouse con liên quan đến warehouse
                 subwarehouses = warehouse.subwarehouse.all()
                 for subwarehouse in subwarehouses:
-                    if  subwarehouse.soft_delete(request):
-                        return Response({"message": "Xóa thành công"}, status=status.HTTP_200_OK)
-            
+                    subwarehouse.soft_delete(request)
+                    
+                    # Xóa tất cả shelf liên quan đến warehouse con
+                    shelves = Warehouse.objects.filter(parent_warehouse=subwarehouse)
+                    for shelf in shelves:
+                        shelf.soft_delete(request)
+                        
+                        # Lấy tất cả boxcase liên quan đến shelf
+                        boxcases = Warehouse.objects.filter(parent_warehouse=shelf)
+                        for boxcase in boxcases:
+                            boxcase.soft_delete(request)
+                            
+
+                    
             return Response({'status': 200, 'message': 'Xóa thành công'}, status=status.HTTP_200_OK)
         
-        except:
-            return Response({'status': 400}, status=status.HTTP_400_BAD_REQUEST)
+        except Warehouse.DoesNotExist:
+            data = {
+                'status': status.HTTP_404_NOT_FOUND,
+                'message': f'Warehouse with ID {pk} not found'
+            }
+            return Response(data, status=status.HTTP_404_NOT_FOUND)
 
 
 #######WatchList#######
