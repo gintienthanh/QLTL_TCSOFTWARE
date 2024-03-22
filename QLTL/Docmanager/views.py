@@ -779,31 +779,18 @@ class  WarehouseFilter(filters.FilterSet):
 
 class WarehouseListCreate(generics.ListAPIView):
     permission_classes = [permissions.IsAuthenticated]
-    queryset = Warehouse.objects.annotate(
-    compare_time=Coalesce(
-        Case(
-            When(created_at__gt=F('updated_at'), then=F('created_at')),
-            default=F('updated_at'),
-            output_field=CharField()
-        ),
-        Case(
-            When(created_at__gt=F('created_at'), then=F('updated_at')),
-            default=F('created_at'),
-            output_field=CharField()
-        )
-    )
-    ).order_by('-compare_time')
+    queryset = Warehouse.objects.all()
     serializer_class = WarehouseSerializer 
     filter_backends = [filters.DjangoFilterBackend]
     filterset_class = WarehouseFilter
     paginator = CustomPagination()
     
     def get_queryset(self):
-        
         queryset = super().get_queryset()
         user = self.request.user
         if user.is_authenticated:  # Check if user is authenticated
             queryset = queryset.filter(create_by=user, is_delete = False)
+        queryset = queryset.order_by(F('updated_at').desc())
         return queryset 
         
     def post(self, request):

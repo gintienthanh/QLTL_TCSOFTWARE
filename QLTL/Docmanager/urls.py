@@ -111,9 +111,7 @@ urlpatterns = [
     path('userlist/',include((user_list_urls, 'userurl'))),
     path('retentionperiod', include((retentionperiod_urls, 'storagetime'))),
     path('language', include((language_urls, 'language'))),
-    path('warehousewithshelflist/', WarehouseWithShelvesList.as_view(), name='warehouse-with-shelves-list'),
-  
-
+     path('warehousewithshelf', WarehouseWithShelvesList.as_view(), name='warehouse-with-shelves-list'),
     
     path('file/', include((file_urls, 'file'))),
     path('docs/swagger.json', schema_view.without_ui(cache_timeout=0), name='schema-swagger-json'),
