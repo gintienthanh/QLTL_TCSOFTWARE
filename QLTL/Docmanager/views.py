@@ -348,7 +348,6 @@ class FolderListCreate(generics.ListAPIView):
                         newname = self.extract_and_convert_to_integer(name_default,name_list)
                     newrecord = Folder(type= type, files=file,file_size = file_size, path = path + newname, name = newname,parent_folder=parent_folder,create_by = user,owner=owner)
                     newrecord.save()
-                    json_data = serializers.Serializer('json', [newrecord])
                 response = {
                     "status": 200,
                     "message": "created successfully",
@@ -424,13 +423,10 @@ class FolderUpdateDelete(APIView):
                 path_child = self.change(i.path,parent_name_old,parent_name)
                 i.path = path_child
                 i.save()
-            serializer.save(path = path,parent_folder=parent_folder,update_by = user)
+            serializer.save(path = path,parent_folder=parent_folder,editor = user)
             response = {
                 "status":200,
                 "message": "updated successfully",
-                "data": {
-                    "folder": serializer.data,  
-                }
             }
             return Response(response, status=status.HTTP_200_OK)
         return Response({'status':400}, status=status.HTTP_400_BAD_REQUEST)
@@ -468,13 +464,10 @@ class FolderUpdateDelete(APIView):
                 path_child = self.change(i.path,old_name,new_name)
                 i.path = path_child
                 i.save()
-            serializer.save(path = new_path, name = new_name,update_by = user)
+            serializer.save(path = new_path, name = new_name,editor = user)
             response = {
                 "status":200,
                 "message": "updated successfully",
-                "data": {
-                    "folder": serializer.data,  
-                }
             }
             return Response(response, status=status.HTTP_200_OK)
         return Response({'status':400}, status=status.HTTP_400_BAD_REQUEST)
@@ -1013,7 +1006,6 @@ class DownloadFile(APIView):
                 response = HttpResponse(open(file_path, 'rb'), content_type=content_type)
                 # Tạo response từ tệp tin
                 response['Content-Disposition'] = f'attachment; filename="{file.files.name}"'
-                print(file_path)
                 # shutil.copy2(file_path, save_path)
                 return response
             

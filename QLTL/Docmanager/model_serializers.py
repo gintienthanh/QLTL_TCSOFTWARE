@@ -28,8 +28,7 @@ class BaseSerializer(serializers.ModelSerializer):
 class FolderSerializer(serializers.ModelSerializer):
     parent_folder = serializers.PrimaryKeyRelatedField(required =False,read_only=True)
     file_size = serializers.SerializerMethodField()
-
-    
+    owner_name = serializers.SerializerMethodField()
     def get_file_size(self, obj):
         if obj.file_size == 0:
             return None
@@ -42,6 +41,13 @@ class FolderSerializer(serializers.ModelSerializer):
             else:
                 return f"{size_in_mb:.2f} MB"
         return None
+    
+    def get_owner_name(self, obj):
+        if obj.owner:
+            return obj.owner.username
+        else:
+            return None
+        
     class Meta:
         model = Folder
         fields = '__all__'
