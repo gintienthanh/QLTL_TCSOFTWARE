@@ -234,6 +234,7 @@ class DocumentUpdateDelete(APIView):
                         'data':serializer.data},status=status.HTTP_302_FOUND)
 
 
+
     def patch(self, request, pk):
         document = self.get_document(pk)
         serializer = DocumentSerializer(document, data=request.data, partial=True)
