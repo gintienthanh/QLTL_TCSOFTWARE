@@ -891,13 +891,13 @@ class WarehouseUpdateDelete(APIView):
             return Response(data, status=status.HTTP_404_NOT_FOUND)
 class WarehouseWithShelvesList(generics.ListAPIView):
     serializer_class = WarehouseSimpleSerializer
-
+    paginator = CustomPagination()
     def get_queryset(self):
         # Lọc các kho có type_warehouse là "shelf" và parent_warehouse_id là NULL
-        shelf_queryset = Warehouse.objects.filter(type_warehouse="shelf", parent_warehouse_id__isnull=False)
+        queryset = Warehouse.objects.filter(type_warehouse="shelf", parent_warehouse_id__isnull=False)
         # print('11111: ', shelf_queryset)
         # Lấy danh sách các parent_warehouse_id của các kho shelf
-        shelf_parent_ids = shelf_queryset.values_list('parent_warehouse_id', flat=True)
+        shelf_parent_ids = queryset.values_list('parent_warehouse_id', flat=True)
         # print('2222222: ', shelf_parent_ids)
         # Lấy thông tin của các kho cha tương ứng với parent_warehouse_id và in ra id kèm theo tên
         parent_warehouses = Warehouse.objects.filter(id__in=shelf_parent_ids)
