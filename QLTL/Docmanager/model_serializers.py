@@ -47,7 +47,7 @@ class BaseSerializer(serializers.ModelSerializer):
 class WarehouseSimpleSerializer(serializers.ModelSerializer):
     class Meta:
         model = Warehouse
-        fields = ['id', 'name']
+        fields = '__all__'
 
 
 class FolderSerializer(serializers.ModelSerializer):
