@@ -50,6 +50,27 @@ class WarehouseSimpleSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 
+class AllWarehouseSerializer(serializers.ModelSerializer):
+    subwarehouse = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Warehouse
+        fields = ['id', 'name', 'code', 'description', 'unit', 'type_warehouse', 'parent_warehouse', 'subwarehouse']
+
+    def get_subwarehouse(self, obj):
+        # Kiểm tra nếu đây là cấp cuối (ví dụ: hộp/cặp) thì không cần load subwarehouse
+        if obj.type_warehouse == ChoicesTypeWarehouse.BoxCase.value:
+            return []  # hoặc return None nếu bạn muốn trả về giá trị null khi không có subwarehouse
+        # Lấy tất cả subwarehouse của warehouse hiện tại
+        subwarehouses = Warehouse.objects.filter(parent_warehouse=obj)
+        # Serialize danh sách subwarehouses
+        return WarehouseSerializer(subwarehouses, many=True).data
+
+
+
+
+
+
 class FolderSerializer(serializers.ModelSerializer):
     parent_folder = serializers.PrimaryKeyRelatedField(required =False,read_only=True)
     file_size = serializers.SerializerMethodField()

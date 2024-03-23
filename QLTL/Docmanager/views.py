@@ -895,10 +895,10 @@ class WarehouseWithShelvesList(generics.ListAPIView):
     def get_queryset(self):
         # Lọc các kho có type_warehouse là "shelf" và parent_warehouse_id là NULL
         queryset = Warehouse.objects.filter(type_warehouse="shelf", parent_warehouse_id__isnull=False)
-        # print('11111: ', shelf_queryset)
+        
         # Lấy danh sách các parent_warehouse_id của các kho shelf
         shelf_parent_ids = queryset.values_list('parent_warehouse_id', flat=True)
-        # print('2222222: ', shelf_parent_ids)
+        
         # Lấy thông tin của các kho cha tương ứng với parent_warehouse_id và in ra id kèm theo tên
         parent_warehouses = Warehouse.objects.filter(id__in=shelf_parent_ids)
 
@@ -907,7 +907,13 @@ class WarehouseWithShelvesList(generics.ListAPIView):
 
         return parent_warehouses
 
-    
+
+class AllWarehouseAPIView(APIView):
+    def get(self, request):
+        # Lấy tất cả các kho không có cấp cha, tức là kho cấp cao nhất
+        top_level_warehouses = Warehouse.objects.filter(parent_warehouse__isnull=True)
+        serializer = AllWarehouseSerializer(top_level_warehouses, many=True)
+        return Response(serializer.data)  
     
     
 
