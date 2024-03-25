@@ -39,14 +39,15 @@ class AdjustedNameField(serializers.CharField):
         return new_name
 
 
-class BaseSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Base
-        fields = '__all__'
+
 
 class WarehouseSimpleSerializer(serializers.ModelSerializer):
     class Meta:
         model = Warehouse
+        fields = '__all__'
+class ClassifyVariantSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ClassifyVariant
         fields = '__all__'
 
 
@@ -108,10 +109,7 @@ class DocumentSerializer(serializers.ModelSerializer):
         fields = '__all__'
         
 
-class PortfolioSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Portfolio
-        fields = '__all__'
+
         
 class WatchListSerializer(serializers.ModelSerializer):
     class Meta:
@@ -171,3 +169,14 @@ class LanguageSerializer(serializers.ModelSerializer):
     class Meta: 
         model = Language
         fields = '__all__'
+        
+class PortfolioSerializer(serializers.ModelSerializer): 
+    title = AdjustedNameField() 
+    classification = ClassifyVariantSerializer() 
+    retention_period = RetentionPeriodSerializer() 
+    languege = LanguageSerializer() 
+    warehouse = WarehouseSerializer() 
+     
+    class Meta: 
+        model = Portfolio 
+        fields = ['title','retention_period', 'languege', 'classification','identification_code','usage_policy','start_date','end_date','physical_condition','warehouse','keywords','annotation','barcode','status']
