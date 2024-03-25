@@ -908,13 +908,14 @@ class WarehouseWithShelvesList(generics.ListAPIView):
         return parent_warehouses
 
 
-class AllWarehouseAPIView(APIView):
-    def get(self, request):
-        # Lấy tất cả các kho không có cấp cha, tức là kho cấp cao nhất
-        top_level_warehouses = Warehouse.objects.filter(parent_warehouse__isnull=True)
-        serializer = AllWarehouseSerializer(top_level_warehouses, many=True)
-        return Response(serializer.data)  
-    
+class AllWarehouseAPIView(generics.ListAPIView):
+    permission_classes = [permissions.IsAuthenticated]
+    filter_backends = [filters.DjangoFilterBackend]
+    queryset = Warehouse.objects.filter(parent_warehouse__isnull=True)
+    serializer_class = AllWarehouseSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    filterset_class = WarehouseFilter
+    pagination_class = CustomPagination
     
 
 #######WatchList#######
@@ -1361,6 +1362,8 @@ class RetentionPeriodListCreate(generics.ListCreateAPIView):
                              'data':serializer.data},  
                              status=status.HTTP_201_CREATED) 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST) 
+    
+    
 class RetentionPeriodUpdateDelete(generics.RetrieveUpdateDestroyAPIView): 
     permission_classes = [permissions.IsAuthenticated] 
     def get_object(self, pk): 
@@ -1440,6 +1443,8 @@ class LanguageListCreate(generics.ListCreateAPIView):
                              'data':serializer.data},  
                              status=status.HTTP_201_CREATED) 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST) 
+    
+    
 class LanguageUpdateDelete(generics.RetrieveUpdateDestroyAPIView): 
     permission_classes = [permissions.IsAuthenticated] 
     def get_object(self, pk): 
