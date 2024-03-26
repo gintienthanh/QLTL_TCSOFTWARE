@@ -475,7 +475,6 @@ class ShareFilter(filters.FilterSet):
     class Meta:
         model = Share
         fields = ['owner', 'create_by', 'document', 'folder']
-   
 class APIShareListCreate(generics.ListCreateAPIView):
     serializer_class = ShareSerializer
     filter_backends = [filters.DjangoFilterBackend]
@@ -538,6 +537,7 @@ class APIShareUpdateDestroy(generics.RetrieveUpdateDestroyAPIView):
         instance.delete_by=request.user
         self.perform_update(instance)
         return Response({'status':200,'message':'destroyed'},status=status.HTTP_204_NO_CONTENT)
+    
   
 
 class PermissionFilter(filters.FilterSet):
@@ -1220,11 +1220,21 @@ class BulkDeleteAPI(APIView):
              
 class UserFilter(filters.FilterSet):
     username = filters.CharFilter(field_name='username', lookup_expr='icontains')
+    # email = filters.CharFilter(field_name='email', lookup_expr='icontains')
     class Meta:
         model = User
-        fields = ['username']
-
-
+        fields = ['username','email']
+class APIUserListView(generics.ListAPIView):
+    queryset = User.objects.all()
+    serializer_class = UserSerializer
+    permission_classes = [IsAdminUser]
+    pagination_class = CustomPagination
+    filter_backends = [filters.DjangoFilterBackend]
+    filterset_class = UserFilter 
+    def list(self, request, *args, **kwargs):
+        queryset = self.filter_queryset(self.get_queryset()).values('id','username', 'email')
+        return Response(list(queryset), status=status.HTTP_200_OK)
+    
 class UserUpdateDelete(APIView):
     permission_classes = [permissions.IsAdminUser]
     def get_user(self, pk):
