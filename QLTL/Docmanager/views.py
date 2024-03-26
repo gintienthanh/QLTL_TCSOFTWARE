@@ -1076,6 +1076,7 @@ class DownloadFile(APIView):
                 print(e)
         
 
+
                                                                                            
 class Multi_portfolio_DownloadConvertAPIView(APIView):
     def get(self, request, ids, *args, **kwargs):
@@ -1421,7 +1422,6 @@ class LanguageListCreate(generics.ListCreateAPIView):
          
         if user.is_authenticated:  # Check if user is authenticated 
             name_query = self.request.GET.get('name', None)   
-             
             queryset = queryset.filter(create_by=user, is_delete=False) 
              
             if name_query: 
@@ -1443,6 +1443,9 @@ class LanguageListCreate(generics.ListCreateAPIView):
                              'data':serializer.data},  
                              status=status.HTTP_201_CREATED) 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST) 
+   
+  
+    
     
     
 class LanguageUpdateDelete(generics.RetrieveUpdateDestroyAPIView): 
@@ -1473,6 +1476,7 @@ class LanguageUpdateDelete(generics.RetrieveUpdateDestroyAPIView):
                              'data':serializer.data},status=status.HTTP_200_OK) 
         return Response({'status':400, 
                         'message':serializer.errors},status=status.HTTP_400_BAD_REQUEST) 
+ 
  
  
  
