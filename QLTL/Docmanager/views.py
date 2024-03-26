@@ -1247,9 +1247,21 @@ class APIUserListView(generics.ListAPIView):
     pagination_class = CustomPagination
     filter_backends = [filters.DjangoFilterBackend]
     filterset_class = UserFilter 
-    def list(self, request, *args, **kwargs):
+    def get(self, request, *args, **kwargs):
         queryset = self.filter_queryset(self.get_queryset()).values('id','username', 'email')
-        return Response(list(queryset), status=status.HTTP_200_OK)
+        response_data = {
+            "status":200,
+            "message": "Success",
+            "data": list(queryset)
+        }
+        if not queryset:
+            response_data = {
+                "status":200,
+                "message": "User doesn't exist",
+                "data": list(queryset)
+            }
+            return Response(response_data, status=status.HTTP_404_NOT_FOUND)
+        return Response(response_data, status=status.HTTP_200_OK)
     
 class UserUpdateDelete(APIView):
     permission_classes = [permissions.IsAdminUser]
