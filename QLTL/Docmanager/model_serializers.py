@@ -127,18 +127,18 @@ class WarehouseSerializer(serializers.ModelSerializer):
     def get_parent_warehouse(self, obj):
         if obj.parent_warehouse:
             return WarehouseSerializer(obj.parent_warehouse).data
-        return None
-        
+        return None  
 class ShareSerializer(serializers.ModelSerializer):
-    # owner = UserSerializer(many=False, read_only=True)
-    owner = serializers.SerializerMethodField()
-    def get_owner(self,obj):
-        # user = User.objects.get(id=obj.owner)
-        return obj.owner.username
-
+    owner = serializers.SerializerMethodField(read_only = True)
     class Meta:
         model = Share
         fields = '__all__'
+     
+    def get_owner(self, obj):
+        owner = obj.owner
+        if owner:
+            return {'id': owner.id, 'username': owner.username, 'email': owner.email}
+        return None
         
 class PermissionSerializer(serializers.ModelSerializer):
     class Meta:
