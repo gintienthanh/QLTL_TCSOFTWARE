@@ -15,6 +15,7 @@ from rest_framework.response import Response
 from django.http import FileResponse, Http404, HttpResponse
 from django_filters import rest_framework as filters
 from rest_framework.pagination import PageNumberPagination
+
 import mimetypes
 import pandas as pd
 from io import BytesIO
@@ -47,8 +48,10 @@ class CustomPagination(PageNumberPagination):
 
         try:
             limit = int(limit_param)
-            if limit < 0:
+            if limit <= 0:
                 limit = self.page_size
+           
+
         except ValueError:
             limit = self.page_size
 
@@ -1308,12 +1311,16 @@ class UserUpdateDelete(APIView):
                          'message': 'deleted successfully'})
    
 class UserListApiView(generics.ListAPIView):
+    serializer_class = UserSerializer 
     permission_classes = [IsAdminUser]
     pagination_class = CustomPagination
-
+    
+   
     def get(self, request, *args, **kwargs):
-        queryset = User.objects.all().prefetch_related('groups', 'user_permissions', 'userprofile')
+        queryset = User.objects.all().prefetch_related('groups', 'user_permissions', 'userprofile') 
         page = self.paginate_queryset(queryset)
+       
+        
         serialized_data = []
         
         if page is not None:
