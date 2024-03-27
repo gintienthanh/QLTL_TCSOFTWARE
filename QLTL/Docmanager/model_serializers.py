@@ -39,16 +39,43 @@ class AdjustedNameField(serializers.CharField):
         return new_name
 
 
-class BaseSerializer(serializers.ModelSerializer):
+
+
+class WarehouseSimpleSerializer(serializers.ModelSerializer):
     class Meta:
-        model = Base
+        model = Warehouse
         fields = '__all__'
+class ClassifyVariantSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ClassifyVariant
+        fields = '__all__'
+
+
+class AllWarehouseSerializer(serializers.ModelSerializer):
+    subwarehouse = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Warehouse
+        fields = ['id', 'name', 'code', 'description', 'unit', 'type_warehouse', 'parent_warehouse', 'subwarehouse']
+
+    def get_subwarehouse(self, obj):
+        # Kiểm tra nếu đây là cấp cuối (ví dụ: hộp/cặp) thì không cần load subwarehouse
+        if obj.type_warehouse == ChoicesTypeWarehouse.BoxCase.value:
+            return []  # hoặc return None nếu bạn muốn trả về giá trị null khi không có subwarehouse
+        # Lấy tất cả subwarehouse của warehouse hiện tại
+        subwarehouses = Warehouse.objects.filter(parent_warehouse=obj)
+        # Serialize danh sách subwarehouses
+        return WarehouseSerializer(subwarehouses, many=True).data
+
+
+
+
 
 
 class FolderSerializer(serializers.ModelSerializer):
     parent_folder = serializers.PrimaryKeyRelatedField(required =False,read_only=True)
     file_size = serializers.SerializerMethodField()
-
+    owner_name = serializers.SerializerMethodField()
     
     def get_file_size(self, obj):
         if obj.file_size == 0:
@@ -62,6 +89,14 @@ class FolderSerializer(serializers.ModelSerializer):
             else:
                 return f"{size_in_mb:.2f} MB"
         return None
+    
+    def get_owner_name(self, obj):
+        if obj.owner:
+            return obj.owner.username
+        else:
+            return None
+    
+    
     class Meta:
         model = Folder
         fields = '__all__'
@@ -74,10 +109,7 @@ class DocumentSerializer(serializers.ModelSerializer):
         fields = '__all__'
         
 
-class PortfolioSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Portfolio
-        fields = '__all__'
+
         
 class WatchListSerializer(serializers.ModelSerializer):
     class Meta:
@@ -137,3 +169,14 @@ class LanguageSerializer(serializers.ModelSerializer):
     class Meta: 
         model = Language
         fields = '__all__'
+        
+class PortfolioSerializer(serializers.ModelSerializer): 
+    title = AdjustedNameField() 
+    classification = ClassifyVariantSerializer() 
+    retention_period = RetentionPeriodSerializer() 
+    languege = LanguageSerializer() 
+    warehouse = WarehouseSerializer() 
+    
+    class Meta: 
+        model = Portfolio 
+        fields = ['id','title','retention_period', 'languege', 'classification','identification_code','usage_policy','start_date','end_date','physical_condition','warehouse','keywords','annotation','barcode','status']

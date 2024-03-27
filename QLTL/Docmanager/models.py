@@ -60,6 +60,7 @@ class ChoicesSharingType(Enum):
     EDIT = 'edit'
 
 
+
 class Warehouse(Base):
 
     name = models.CharField(max_length = 255, null = True)

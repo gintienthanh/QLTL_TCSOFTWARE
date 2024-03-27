@@ -234,6 +234,7 @@ class DocumentUpdateDelete(APIView):
                         'data':serializer.data},status=status.HTTP_302_FOUND)
 
 
+
     def patch(self, request, pk):
         document = self.get_document(pk)
         serializer = DocumentSerializer(document, data=request.data, partial=True)
@@ -817,31 +818,18 @@ class  WarehouseFilter(filters.FilterSet):
 
 class WarehouseListCreate(generics.ListAPIView):
     permission_classes = [permissions.IsAuthenticated]
-    queryset = Warehouse.objects.annotate(
-    compare_time=Coalesce(
-        Case(
-            When(created_at__gt=F('updated_at'), then=F('created_at')),
-            default=F('updated_at'),
-            output_field=CharField()
-        ),
-        Case(
-            When(created_at__gt=F('created_at'), then=F('updated_at')),
-            default=F('created_at'),
-            output_field=CharField()
-        )
-    )
-    ).order_by('-compare_time')
+    queryset = Warehouse.objects.all()
     serializer_class = WarehouseSerializer 
     filter_backends = [filters.DjangoFilterBackend]
     filterset_class = WarehouseFilter
     paginator = CustomPagination()
     
     def get_queryset(self):
-        
         queryset = super().get_queryset()
         user = self.request.user
         if user.is_authenticated:  # Check if user is authenticated
             queryset = queryset.filter(create_by=user, is_delete = False)
+        queryset = queryset.order_by(F('updated_at').desc())
         return queryset 
         
     def post(self, request):
@@ -940,7 +928,34 @@ class WarehouseUpdateDelete(APIView):
                 'message': f'Warehouse with ID {pk} not found'
             }
             return Response(data, status=status.HTTP_404_NOT_FOUND)
+class WarehouseWithShelvesList(generics.ListAPIView):
+    serializer_class = WarehouseSimpleSerializer
+    paginator = CustomPagination()
+    def get_queryset(self):
+        # Lọc các kho có type_warehouse là "shelf" và parent_warehouse_id là NULL
+        queryset = Warehouse.objects.filter(type_warehouse="shelf", parent_warehouse_id__isnull=False)
+        
+        # Lấy danh sách các parent_warehouse_id của các kho shelf
+        shelf_parent_ids = queryset.values_list('parent_warehouse_id', flat=True)
+        
+        # Lấy thông tin của các kho cha tương ứng với parent_warehouse_id và in ra id kèm theo tên
+        parent_warehouses = Warehouse.objects.filter(id__in=shelf_parent_ids)
 
+        for warehouse in parent_warehouses:
+            print(f"ID: {warehouse.id}, Name: {warehouse.name}")
+
+        return parent_warehouses
+
+
+class AllWarehouseAPIView(generics.ListAPIView):
+    permission_classes = [permissions.IsAuthenticated]
+    filter_backends = [filters.DjangoFilterBackend]
+    queryset = Warehouse.objects.filter(parent_warehouse__isnull=True)
+    serializer_class = AllWarehouseSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    filterset_class = WarehouseFilter
+    pagination_class = CustomPagination
+    
 
 #######WatchList#######
 class WatchlistFilter(filters.FilterSet):
@@ -1099,6 +1114,7 @@ class DownloadFile(APIView):
             for e in set_file_fail:
                 print(e)
         
+
 
                                                                                            
 class Multi_portfolio_DownloadConvertAPIView(APIView):
@@ -1408,6 +1424,8 @@ class RetentionPeriodListCreate(generics.ListCreateAPIView):
                              'data':serializer.data},  
                              status=status.HTTP_201_CREATED) 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST) 
+    
+    
 class RetentionPeriodUpdateDelete(generics.RetrieveUpdateDestroyAPIView): 
     permission_classes = [permissions.IsAuthenticated] 
     def get_object(self, pk): 
@@ -1465,7 +1483,6 @@ class LanguageListCreate(generics.ListCreateAPIView):
          
         if user.is_authenticated:  # Check if user is authenticated 
             name_query = self.request.GET.get('name', None)   
-             
             queryset = queryset.filter(create_by=user, is_delete=False) 
              
             if name_query: 
@@ -1487,6 +1504,11 @@ class LanguageListCreate(generics.ListCreateAPIView):
                              'data':serializer.data},  
                              status=status.HTTP_201_CREATED) 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST) 
+   
+  
+    
+    
+    
 class LanguageUpdateDelete(generics.RetrieveUpdateDestroyAPIView): 
     permission_classes = [permissions.IsAuthenticated] 
     def get_object(self, pk): 
@@ -1515,6 +1537,7 @@ class LanguageUpdateDelete(generics.RetrieveUpdateDestroyAPIView):
                              'data':serializer.data},status=status.HTTP_200_OK) 
         return Response({'status':400, 
                         'message':serializer.errors},status=status.HTTP_400_BAD_REQUEST) 
+ 
  
  
  
