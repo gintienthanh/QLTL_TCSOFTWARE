@@ -496,26 +496,65 @@ class APIShareListCreate(generics.ListCreateAPIView):
         if user.is_superuser:
             queryset = Share.objects.all().get_queryset()
             return queryset
-    
+    # def get(self,request):
+    #     shares = Share.objects.filter(user = request.user)
+    #     serializer = ShareSerializer(shares,many=True)
+    #     return Response(serializer.data)
     def post(self, request):
         try:
-            serializer = ShareSerializer(data=request.data)
-            if serializer.is_valid(raise_exception=True):
-                share = Share.objects.get(
-                    folder=serializer.validated_data.get('folder'),
-                    document=serializer.validated_data.get('document'),
-                    create_by=request.user,
-                    owner=serializer.validated_data.get('owner'),
-                    type=serializer.validated_data.get('type')
-                    )
-                serializer = ShareSerializer(share)
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
             
-        except Share.DoesNotExist:
-            serializer.save(create_by=request.user)
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
+            data_copy = request.data.copy()
+            owner_ids = request.data.get('owner', '')
+            if request.data.get('folder') is None and request.data.get('document') is None:
+                return Response({'status': 404, 'message': "Data is not valid."}, status=status.HTTP_400_BAD_REQUEST)
+            serializer = None
+
+            if 'owner' in data_copy :
+                data_copy['owner'] = None
+            if 'folder' in data_copy and data_copy['folder'] is not None and 'document' in data_copy:
+                data_copy.pop('document')
+            if 'document' in data_copy and data_copy['document'] is not None and 'folder' in data_copy:
+                data_copy.pop('folder')
+            # owner_ids_list = [int(owner_id) for owner_id in owner_ids if owner_id.isdigit()]
+            owners = User.objects.filter(id__in=owner_ids) 
+          
+            shares = Share.objects.filter(
+                folder=data_copy.get('folder'),
+                document=data_copy.get('document'),
+                create_by=request.user,
+                owner__in=owner_ids,
+                type=data_copy.get('type')
+            ).values_list('owner', flat=True)
+            owner_ids = list(owners.values_list('id', flat=True))
+            share_ids = list(shares)
+            unique_elements = list(set(owner_ids) ^ set(share_ids))
+
+            print(unique_elements)
+            
+            
+            for o in unique_elements:
+                owner = User.objects.get(id=o)
+                folder = None
+                document = None
+                if 'folder' in data_copy:
+                    folder = Folder.objects.get(id=data_copy.get('folder'))
+                if 'document' in data_copy:    
+                    document = Document.objects.get(id = data_copy.get('document'))
+                share = Share(
+                        folder= folder,
+                        document = document,
+                        create_by= request.user,
+                        owner= owner,
+                        type= data_copy.get('type'))
+               
+                print(share)
+                # share_serializer.is_valid(raise_exception=True)
+                # serializer = ShareSerializer(shares)
+                share.save() 
+            return Response({"status": 201,
+                    "message": "created successfully"}, status=status.HTTP_201_CREATED)
         except serializers.ValidationError as e:
-            return Response({"error": "Có lỗi xảy ra"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
         
 class APIShareUpdateDestroy(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [check_shared_group_factory(Share(),'edit') | Check_owner_factory(Share())]
