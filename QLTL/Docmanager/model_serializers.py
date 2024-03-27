@@ -176,7 +176,7 @@ class PortfolioSerializer(serializers.ModelSerializer):
     retention_period = RetentionPeriodSerializer() 
     languege = LanguageSerializer() 
     warehouse = WarehouseSerializer() 
-     
+    
     class Meta: 
         model = Portfolio 
-        fields = ['title','retention_period', 'languege', 'classification','identification_code','usage_policy','start_date','end_date','physical_condition','warehouse','keywords','annotation','barcode','status']
+        fields = ['id','title','retention_period', 'languege', 'classification','identification_code','usage_policy','start_date','end_date','physical_condition','warehouse','keywords','annotation','barcode','status']
