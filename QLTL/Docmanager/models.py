@@ -2,6 +2,7 @@ from django.contrib.auth.models import User
 from django.db import models
 from django.contrib.auth.models import Group
 from django.utils import timezone
+import datetime
 from enum import Enum
 
 # Create your models here.
@@ -18,8 +19,8 @@ class UserProfile(models.Model):
 class Base(models.Model):
     id = models.AutoField(primary_key=True)
     is_delete = models.BooleanField(default=False)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True, null=True)
+    created_at = models.DateTimeField(default=datetime.datetime.now())
+    updated_at = models.DateTimeField(default=datetime.datetime.now())
     delete_at = models.DateTimeField(auto_now=False,null=True)
     owner = models.ForeignKey(User, null=True, on_delete=models.CASCADE)
     create_by = models.ForeignKey(User, null=True, on_delete=models.CASCADE, related_name='%(class)s_created')

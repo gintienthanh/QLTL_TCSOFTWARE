@@ -8,6 +8,7 @@ from django.shortcuts import render
 from Docmanager.permissions import Check_owner_factory, check_shared_group_factory, check_group_permisison_factory
 from QLTL.settings import EXPORT_PATH_FILE
 from .model_serializers import*
+from rest_framework import  viewsets
 from .models import*
 from rest_framework import authentication, permissions, status, generics
 from rest_framework.views import APIView
@@ -28,6 +29,9 @@ from django.db.models import F, Case, When, Value, CharField
 from django.db.models.functions import Coalesce
 from django.contrib.auth.models import User,Permission,Group
 from rest_framework.permissions import IsAdminUser
+from django.db.models import Count
+from django.http import JsonResponse
+from datetime import datetime
 
 # Create your views here.
 class CustomPagination(PageNumberPagination):
@@ -158,7 +162,7 @@ class PortfolioUpdateDelete(APIView):
         portfolio = self.get_portfolio(pk)
         serializer = PortfolioSerializer(portfolio, data=request.data, partial=True)
         if serializer.is_valid():
-            serializer.validated_data['updated_at'] = timezone.now()
+            serializer.validated_data['updated_at'] = datetime.datetime.now()
             serializer.validated_data['editor'] = request.user
             serializer.save()
             return Response({'status':201,
@@ -242,7 +246,7 @@ class DocumentUpdateDelete(APIView):
         document = self.get_document(pk)
         serializer = DocumentSerializer(document, data=request.data, partial=True)
         if serializer.is_valid():
-            serializer.validated_data['updated_at'] = timezone.now()
+            serializer.validated_data['updated_at'] = datetime.datetime.now()
             serializer.validated_data['editor'] = request.user
             serializer.save()
             return Response({'status':201,
@@ -566,7 +570,7 @@ class APIShareUpdateDestroy(generics.RetrieveUpdateDestroyAPIView):
     
     def update(self, request, *args, **kwargs):
         instance = self.get_object()
-        instance.updated_at = timezone.now()
+        instance.updated_at = datetime.datetime.now()
         instance.editor = request.user
         serializer = self.get_serializer(instance, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
@@ -615,7 +619,7 @@ class APIPermissionUpdateDestroy(generics.RetrieveUpdateDestroyAPIView):
 
     def update(self, request, *args, **kwargs):
         instance = self.get_object()
-        instance.updated_at = timezone.now()
+        instance.updated_at = datetime.datetime.now()
         instance.editor = request.user
         serializer = self.get_serializer(instance, data=request.data, partial=True)
         if not serializer.is_valid():
@@ -1452,7 +1456,7 @@ class RetentionPeriodUpdateDelete(generics.RetrieveUpdateDestroyAPIView):
         retentionperiod = self.get_object(pk) 
         serializer = RetentionPeriodSerializer(retentionperiod, data=request.data, partial=True) 
         if serializer.is_valid(): 
-            serializer.validated_data['updated_at'] = timezone.now() 
+            serializer.validated_data['updated_at'] = datetime.datetime.now()
             serializer.validated_data['editor'] = request.user    
  
              
@@ -1534,7 +1538,7 @@ class LanguageUpdateDelete(generics.RetrieveUpdateDestroyAPIView):
         language = self.get_object(pk) 
         serializer = LanguageSerializer(language, data=request.data, partial=True) 
         if serializer.is_valid(): 
-            serializer.validated_data['updated_at'] = timezone.now() 
+            serializer.validated_data['updated_at'] = datetime.datetime.now()
             serializer.validated_data['editor'] = request.user    
  
              
@@ -1558,3 +1562,7 @@ class LanguageUpdateDelete(generics.RetrieveUpdateDestroyAPIView):
                 'message': 'delete successfully', 
                 'dataport': serializer.data, 
         })
+
+
+
+
