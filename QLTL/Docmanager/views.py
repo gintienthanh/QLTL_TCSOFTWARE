@@ -953,11 +953,10 @@ class WarehouseWithShelvesList(generics.ListAPIView):
 
         return parent_warehouses
 
-
 class AllWarehouseAPIView(generics.ListAPIView):
     permission_classes = [permissions.IsAuthenticated]
     filter_backends = [filters.DjangoFilterBackend]
-    queryset = Warehouse.objects.filter(parent_warehouse__isnull=True)
+    queryset = Warehouse.objects.filter(type_warehouse='warehouse')
     serializer_class = AllWarehouseSerializer
     permission_classes = [permissions.IsAuthenticated]
     filterset_class = WarehouseFilter

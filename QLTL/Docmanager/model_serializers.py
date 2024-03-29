@@ -38,36 +38,38 @@ class AdjustedNameField(serializers.CharField):
             i += 1 
         return new_name
 
-
-
-
-class WarehouseSimpleSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Warehouse
-        fields = '__all__'
 class ClassifyVariantSerializer(serializers.ModelSerializer):
     class Meta:
         model = ClassifyVariant
         fields = '__all__'
 
 
-class AllWarehouseSerializer(serializers.ModelSerializer):
+class WarehouseSimpleSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Warehouse
+        fields = '__all__'
+
+class WarehouseSimple1Serializer(serializers.ModelSerializer):
     subwarehouse = serializers.SerializerMethodField()
+
+    def get_subwarehouse(self, obj):
+        subwarehouses = obj.subwarehouse.all()
+        serializer = WarehouseSimpleSerializer(subwarehouses, many=True)
+        return serializer.data
 
     class Meta:
         model = Warehouse
         fields = ['id', 'name', 'code', 'description', 'unit', 'type_warehouse', 'parent_warehouse', 'subwarehouse']
 
-    def get_subwarehouse(self, obj):
-        # Kiểm tra nếu đây là cấp cuối (ví dụ: hộp/cặp) thì không cần load subwarehouse
-        if obj.type_warehouse == ChoicesTypeWarehouse.BoxCase.value:
-            return []  # hoặc return None nếu bạn muốn trả về giá trị null khi không có subwarehouse
-        # Lấy tất cả subwarehouse của warehouse hiện tại
-        subwarehouses = Warehouse.objects.filter(parent_warehouse=obj)
-        # Serialize danh sách subwarehouses
-        return WarehouseSerializer(subwarehouses, many=True).data
 
+class AllWarehouseSerializer(serializers.ModelSerializer):
+    subwarehouse = WarehouseSimple1Serializer(many=True)
 
+    class Meta:
+        model = Warehouse
+        fields = ['id', 'name', 'code', 'description', 'unit', 'type_warehouse', 'parent_warehouse', 'subwarehouse']
+
+   
 
 
 
