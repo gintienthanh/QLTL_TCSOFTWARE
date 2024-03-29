@@ -64,11 +64,15 @@ def Check_owner_factory(Model):
                 id = view.kwargs.get('pk')
                 
                 if(id):
-                    getObject = type(Model).objects.get(id=id)
-                    if getObject.owner == request.user:
+                    obj = type(Model).objects.get(id=id)
+                    if obj.owner == request.user:
                         return True 
                     else:
                         return False
+                # list_object =  type(Model).object.get(owner = request.user)
+                # if list_object:
+                #     return True
+                # return False
             except ValueError:
                 return False
             
