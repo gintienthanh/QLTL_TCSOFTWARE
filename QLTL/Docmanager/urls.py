@@ -114,7 +114,7 @@ urlpatterns = [
     path('language', include((language_urls, 'language'))),
     path('warehousewithshelf', WarehouseWithShelvesList.as_view(), name='warehouse-with-shelves-list'),
     path('allwarehouse', AllWarehouseAPIView.as_view(), name='all-warehouses'),
-   
+    path('count', CountTime.as_view() ,name='count'),
     
     path('file/', include((file_urls, 'file'))),
     path('docs/swagger.json', schema_view.without_ui(cache_timeout=0), name='schema-swagger-json'),

@@ -31,7 +31,7 @@ from django.contrib.auth.models import User,Permission,Group
 from rest_framework.permissions import IsAdminUser
 from django.db.models import Count
 from django.http import JsonResponse
-from datetime import datetime
+from datetime import datetime, timedelta
 
 # Create your views here.
 class CustomPagination(PageNumberPagination):
@@ -1516,7 +1516,7 @@ class LanguageListCreate(generics.ListCreateAPIView):
     
     
 class LanguageUpdateDelete(generics.RetrieveUpdateDestroyAPIView): 
-    permission_classes = [permissions.IsAuthenticated] 
+    permission_classes = [permissions.IsAdminUser] 
     def get_object(self, pk): 
         try: 
             return Language.objects.get(pk=pk) 
@@ -1558,6 +1558,46 @@ class LanguageUpdateDelete(generics.RetrieveUpdateDestroyAPIView):
                 'dataport': serializer.data, 
         })
 
+class CountTime(generics.ListAPIView):
+    permission_classes = [permissions.IsAuthenticated]
 
+    def get_data_within_time(self, queryset, time):
+        current_time = datetime.datetime.now().replace(tzinfo=None)
+        
+        count_within_time = 0
+        
+        for item in queryset:
+            time_difference = current_time - item.created_at.replace(tzinfo=None)
+            if time_difference <= timedelta(days=time):
+                
+                count_within_time += 1
+
+        return count_within_time
+
+    def list(self, request, *args, **kwargs):
+        user = self.request.user
+        if user.is_authenticated: 
+            time = int(request.query_params.get('time', 0))  # Lấy giá trị tham số 'time' từ query parameters
+
+            portfolio_queryset = Portfolio.objects.filter(create_by=user, is_delete=False)
+            portfolio_count = portfolio_queryset.count()  
+            portfolio_count_within_time = self.get_data_within_time(portfolio_queryset, time)
+
+            document_queryset = Document.objects.filter(create_by=user, is_delete=False)
+            document_count = document_queryset.count()
+            document_count_within_time = self.get_data_within_time(document_queryset, time)
+            
+            if time: 
+                data = {
+                'portfolio_count_within_time': portfolio_count_within_time,
+                'document_count_within_time': document_count_within_time,
+            }
+            else:
+                data = {
+                'portfolio_count': portfolio_count,
+                'document_count': document_count,
+            }
+                
+            return Response(data)
 
 
