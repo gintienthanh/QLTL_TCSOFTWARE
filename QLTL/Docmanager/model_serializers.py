@@ -172,29 +172,21 @@ class LanguageSerializer(serializers.ModelSerializer):
         model = Language
         fields = '__all__'
         
-class PortfolioSerializer(serializers.ModelSerializer):
-    title = AdjustedNameField()
-    # classification = ClassifyVariantSerializer()
-    # retention_period = RetentionPeriodSerializer()
-    # languege = LanguageSerializer()
-    # warehouse = WarehouseSerializer()
-    
-    
-    classification = serializers.PrimaryKeyRelatedField(queryset=ClassifyVariant.objects.all())
-    retention_period = serializers.PrimaryKeyRelatedField(queryset=RetentionPeriod.objects.all())
-    languege = serializers.PrimaryKeyRelatedField(queryset=Language.objects.all())
-    warehouse = serializers.PrimaryKeyRelatedField(queryset=Warehouse.objects.all())
-    
-    
-    class Meta:
-        model = Portfolio
-        # fields = '__all__'
-        fields = ['id','title','retention_period', 'languege', 'classification','identification_code','usage_policy','start_date','end_date','physical_condition','warehouse','keywords','annotation','barcode','status', 'is_delete','created_at', 'updated_at', 'delete_at', 'owner','create_by','delete_by', 'editor']
-    
-    def to_representation(self, instance):
-        data = super().to_representation(instance)
-        data['classification'] = ClassifyVariantSerializer(instance.classification).data
-        data['retention_period'] = RetentionPeriodSerializer(instance.retention_period).data
-        data['languege'] = LanguageSerializer(instance.languege).data
-        data['warehouse'] = WarehouseSerializer(instance.warehouse).data
+class PortfolioSerializer(serializers.ModelSerializer): 
+    title = AdjustedNameField() 
+     
+    class Meta: 
+        model = Portfolio 
+        # fields = ['id', 'title', 'identification_code', 'usage_policy', 'start_date', 'end_date', 'physical_condition', 'keywords', 'annotation', 'barcode', 'status', 'is_delete', 'created_at', 'updated_at', 'delete_at', 'owner', 'create_by', 'delete_by', 'editor'] 
+        fields = ['id','title','retention_period', 'languege', 'classification','identification_code','usage_policy','start_date','end_date','physical_condition','warehouse','keywords','annotation','barcode','status', 'is_delete','created_at', 'updated_at', 'delete_at', 'owner','create_by','delete_by', 'editor'] 
+    def to_representation(self, instance): 
+        data = super().to_representation(instance) 
+        if instance.classification: 
+            data['classification'] = ClassifyVariantSerializer(instance.classification).data 
+        if instance.retention_period: 
+            data['retention_period'] = RetentionPeriodSerializer(instance.retention_period).data 
+        if instance.languege: 
+            data['languege'] = LanguageSerializer(instance.languege).data 
+        if instance.warehouse: 
+            data['warehouse'] = WarehouseSerializer(instance.warehouse).data 
         return data
