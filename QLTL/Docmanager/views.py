@@ -209,9 +209,9 @@ class DocumentListCreate(generics.ListCreateAPIView):
             portfolio_query = self.request.GET.get('portfolio_id', None)
             queryset = queryset.filter(create_by=user, is_delete=False)
             if name_query:
-                queryset = queryset.filter(title__icontains=name_query)   
+                queryset = queryset.filter(name__icontains=name_query)   
             if portfolio_query:
-                queryset = queryset.filter(title__icontains=portfolio_query)   
+                queryset = queryset.filter(portfolio_id=portfolio_query)   
             queryset = queryset.order_by(F('updated_at').desc())
         return queryset 
     
