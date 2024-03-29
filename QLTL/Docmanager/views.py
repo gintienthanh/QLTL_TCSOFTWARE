@@ -488,13 +488,13 @@ class APIShareListCreate(generics.ListCreateAPIView):
     filter_backends = [filters.DjangoFilterBackend]
     filterset_class = ShareFilter
     paginator = CustomPagination()
-    # permission_classes = [check_group_permisison_factory('share')]
-    # def get_permissions(self):
-    #     if self.request.method == 'POST':
-    #         return [permissions.IsAuthenticated(), ]
-    #     elif self.request.method == 'GET':
-    #         return [permissions.IsAuthenticated()]
-    #     return super().get_permissions()
+    permission_classes = [check_group_permisison_factory('share')]
+    def get_permissions(self):
+        if self.request.method == 'POST':
+            return [permissions.IsAuthenticated() | check_shared_group_factory(Share(),'edit') | Check_owner_factory(Share()) ]
+        elif self.request.method == 'GET':
+            return [permissions.IsAuthenticated() | check_shared_group_factory(Share(),'only_view') | Check_owner_factory(Share()) ]
+        return super().get_permissions()
     def get_queryset(self):
         user = self.request.user
         if user.is_authenticated: 
@@ -530,38 +530,34 @@ class APIShareListCreate(generics.ListCreateAPIView):
                 document=data_copy.get('document'),
                 create_by=request.user,
                 owner__in=owner_ids,
-                type=data_copy.get('type')
-            ).values_list('owner', flat=True)
+                # type=data_copy.get('type')
+            )
+            shares.delete()
             owner_ids = list(owners.values_list('id', flat=True))
-            share_ids = list(shares)
-            unique_elements = list(set(owner_ids) ^ set(share_ids))
-
-            print(unique_elements)
-            
-            
-            for o in unique_elements:
+            for o in owner_ids:
                 owner = User.objects.get(id=o)
                 folder = None
                 document = None
                 if 'folder' in data_copy:
-                    folder = Folder.objects.get(id=data_copy.get('folder'))
+                    folder = data_copy.get('folder')
                 if 'document' in data_copy:    
-                    document = Document.objects.get(id = data_copy.get('document'))
-                share = Share(
-                        folder= folder,
-                        document = document,
-                        create_by= request.user,
-                        owner= owner,
-                        type= data_copy.get('type'))
+                    document = data_copy.get('document')
                
-                print(share)
-                # share_serializer.is_valid(raise_exception=True)
-                # serializer = ShareSerializer(shares)
-                share.save() 
+                share_serializer = ShareSerializer(data  = {
+                    'folder': folder,
+                    'document': document,
+                    'type': data_copy.get('type'),
+                    'create_by': request.user.id,
+                    'owner' : o
+                })
+                # serializer.is_valid(raise_exception = True)
+                share_serializer.is_valid(raise_exception=True)
+                share_serializer.save()
+
             return Response({"status": 201,
                     "message": "created successfully"}, status=status.HTTP_201_CREATED)
         except serializers.ValidationError as e:
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"error": 'Invalid value entered'}, status=status.HTTP_400_BAD_REQUEST)
         
 class APIShareUpdateDestroy(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [check_shared_group_factory(Share(),'edit') | Check_owner_factory(Share())]
