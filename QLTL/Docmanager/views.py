@@ -155,7 +155,7 @@ class PortfolioUpdateDelete(APIView):
         serializer = PortfolioSerializer(portfolio)
         return Response({'status':200,
                         'message':'found',
-                        'data':serializer.data},status=status.HTTP_302_FOUND)
+                        'data':serializer.data},status=status.HTTP_200_FOUND)
 
 
     def patch(self, request, pk):
