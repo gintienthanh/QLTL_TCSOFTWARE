@@ -1568,46 +1568,39 @@ class LanguageUpdateDelete(generics.RetrieveUpdateDestroyAPIView):
                 'dataport': serializer.data, 
         })
 
-class CountTime(generics.ListAPIView):
+class StatisticsCountTime(generics.ListAPIView):
     permission_classes = [permissions.IsAuthenticated]
-
-    def get_data_within_time(self, queryset, time):
-        current_time = datetime.datetime.now().replace(tzinfo=None)
-        
-        count_within_time = 0
-        
-        for item in queryset:
-            time_difference = current_time - item.created_at.replace(tzinfo=None)
-            if time_difference <= timedelta(days=time):
-                
-                count_within_time += 1
-
-        return count_within_time
 
     def list(self, request, *args, **kwargs):
         user = self.request.user
-        if user.is_authenticated: 
-            time = int(request.query_params.get('time', 0))  # Lấy giá trị tham số 'time' từ query parameters
+        if user.is_authenticated:
+            start_time_str = request.query_params.get('start_time')  
+            end_time_str = request.query_params.get('end_time')  
+
+           
+            start_time = datetime.strptime(start_time_str, '%Y-%m-%d').date() if start_time_str else None
+            end_time = datetime.strptime(end_time_str, '%Y-%m-%d').date() if end_time_str else None
 
             portfolio_queryset = Portfolio.objects.filter(create_by=user, is_delete=False)
-            portfolio_count = portfolio_queryset.count()  
-            portfolio_count_within_time = self.get_data_within_time(portfolio_queryset, time)
-
             document_queryset = Document.objects.filter(create_by=user, is_delete=False)
-            document_count = document_queryset.count()
-            document_count_within_time = self.get_data_within_time(document_queryset, time)
-            
-            if time: 
-                data = {
-                'portfolio_count_within_time': portfolio_count_within_time,
-                'document_count_within_time': document_count_within_time,
-            }
-            else:
-                data = {
-                'portfolio_count': portfolio_count,
-                'document_count': document_count,
-            }
-                
-            return Response(data)
+            folder_queryset = Folder.objects.filter(create_by=user, is_delete=False)
 
+            if start_time and end_time:
+                # Đếm dữ liệu trong khoảng thời gian
+                portfolio_count = portfolio_queryset.filter(created_at__date__range=[start_time, end_time]).count()
+                document_count = document_queryset.filter(created_at__date__range=[start_time, end_time]).count()
+                folder_count = folder_queryset.filter(created_at__date__range=[start_time, end_time]).count()
+            else:
+                # Đếm toàn bộ dữ liệu
+                portfolio_count = portfolio_queryset.count()
+                document_count = document_queryset.count()
+                folder_count = folder_queryset.count()
+
+            data = {
+                'portfolio_count_over_time': portfolio_count,
+                'document_count_over_time': document_count,
+                'folder_count_over_time': folder_count,
+            }
+
+            return Response(data)
 
