@@ -133,6 +133,7 @@ class PortfolioListCreate(generics.ListAPIView):
     def post(self, request):
         serializer = PortfolioSerializer(data=request.data)
         if serializer.is_valid():
+            serializer.validated_data['create_by'] = request.user  
             serializer.save()
             return Response({'status':201,
                              'message':'created successfully',
