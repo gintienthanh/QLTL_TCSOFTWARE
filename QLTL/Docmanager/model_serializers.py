@@ -174,11 +174,15 @@ class LanguageSerializer(serializers.ModelSerializer):
         
 class PortfolioSerializer(serializers.ModelSerializer): 
     title = AdjustedNameField() 
+    docsubport = serializers.SerializerMethodField() 
      
+    def get_docsubport(self, obj): 
+        docsubports = Document.objects.filter(portfolio=obj) 
+        serializer = DocumentSerializer(docsubports, many=True) 
+        return serializer.data 
     class Meta: 
         model = Portfolio 
-        # fields = ['id', 'title', 'identification_code', 'usage_policy', 'start_date', 'end_date', 'physical_condition', 'keywords', 'annotation', 'barcode', 'status', 'is_delete', 'created_at', 'updated_at', 'delete_at', 'owner', 'create_by', 'delete_by', 'editor'] 
-        fields = ['id','title','retention_period', 'languege', 'classification','identification_code','usage_policy','start_date','end_date','physical_condition','warehouse','keywords','annotation','barcode','status', 'is_delete','created_at', 'updated_at', 'delete_at', 'owner','create_by','delete_by', 'editor'] 
+        fields = ['id','title','retention_period', 'languege', 'classification','identification_code','usage_policy','start_date','end_date','physical_condition','warehouse','keywords','annotation','barcode','status', 'is_delete','created_at', 'updated_at', 'delete_at', 'owner','create_by','delete_by', 'editor', 'docsubport'] 
     def to_representation(self, instance): 
         data = super().to_representation(instance) 
         if instance.classification: 
