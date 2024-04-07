@@ -30,6 +30,7 @@ from django.db.models.functions import Coalesce
 from django.contrib.auth.models import User,Permission,Group
 from rest_framework.permissions import IsAdminUser
 from django.db.models import Count
+from django.db.models.functions import Length
 from django.http import JsonResponse
 from datetime import datetime, timedelta
 
@@ -478,7 +479,40 @@ class FolderUpdateDelete(APIView):
             }
             return Response(response, status=status.HTTP_200_OK)
         return Response({'status':400}, status=status.HTTP_400_BAD_REQUEST)
+class APIFolderPath(APIView):
+    # def get_queryset(self):
+        
+    #     queryset = super().get_queryset()
+    #     user = self.request.user
+    #     if user.is_authenticated:  # Check if user is authenticated
+    #         parent_folder = self.request.GET.get('parent_folder')
+    #         if parent_folder:
+    #             queryset = queryset.filter(create_by=user, is_delete = False, parent_folder = parent_folder)
+    #         else:
+    #             queryset = queryset.filter(create_by=user, is_delete = False, parent_folder = None)
+    #         queryset = queryset.order_by(F('updated_at').desc())
+    #     return queryset
+    def get_object(self, pk):
+        try:
+            return Folder.objects.get(pk=pk)
+        except Folder.DoesNotExist:
+            raise Http404
 
+    def get(self, request, pk, format=None):
+        folder = self.get_object(pk)
+        list_folder = folder.path.split("/")
+        list_folder.pop()
+        list_parent_folder = []
+        parent_folder = ''
+        for l in list_folder:
+            parent_folder = parent_folder + l + "/"
+            list_parent_folder.append(parent_folder)
+            print(parent_folder)
+        
+        matching_folders = Folder.objects.filter(path__in=list_parent_folder).order_by(Length('path').asc()).values('id','name')        
+        print(matching_folders)
+        return Response({'status': 200,"data": matching_folders}, status=status.HTTP_200_OK)
+    
 
 class ShareFilter(filters.FilterSet):
     class Meta:

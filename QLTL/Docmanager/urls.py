@@ -24,7 +24,8 @@ folder_urls = [
     path('', FolderListCreate.as_view(), name='folder-list'),
     path('/<int:pk>', FolderUpdateDelete.as_view(), name='folder-detail'),
     path('/change-name/<int:pk>', FolderUpdateDelete.as_view(),{'change_name': True}, name='change-name'),
-    path('/change-folder/<int:pk>', FolderUpdateDelete.as_view(),{'change_folder': True}, name='change-folder')
+    path('/change-folder/<int:pk>', FolderUpdateDelete.as_view(),{'change_folder': True}, name='change-folder'),
+    path('/folder-path/<int:pk>', APIFolderPath.as_view(), name='folder-path')
 ]
 
 warehouse_urls = [
