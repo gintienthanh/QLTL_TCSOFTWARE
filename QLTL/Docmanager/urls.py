@@ -24,7 +24,8 @@ folder_urls = [
     path('', FolderListCreate.as_view(), name='folder-list'),
     path('/<int:pk>', FolderUpdateDelete.as_view(), name='folder-detail'),
     path('/change-name/<int:pk>', FolderUpdateDelete.as_view(),{'change_name': True}, name='change-name'),
-    path('/change-folder/<int:pk>', FolderUpdateDelete.as_view(),{'change_folder': True}, name='change-folder')
+    path('/change-folder/<int:pk>', FolderUpdateDelete.as_view(),{'change_folder': True}, name='change-folder'),
+    path('/folder-path/<int:pk>', APIFolderPath.as_view(), name='folder-path')
 ]
 
 warehouse_urls = [
@@ -114,14 +115,13 @@ urlpatterns = [
     path('language', include((language_urls, 'language'))),
     path('warehousewithshelf', WarehouseWithShelvesList.as_view(), name='warehouse-with-shelves-list'),
     path('allwarehouse', AllWarehouseAPIView.as_view(), name='all-warehouses'),
-   
+    path('statisticscount', StatisticsCountTime.as_view() ,name='statisticscount'),  
+    
     
     path('file/', include((file_urls, 'file'))),
     path('docs/swagger.json', schema_view.without_ui(cache_timeout=0), name='schema-swagger-json'),
     path('docs', schema_view.with_ui('swagger', cache_timeout=0), name='schema-swagger-ui'),
-    path('bulk_delete/', BulkDeleteAPI.as_view(), name='portfolio-bulk-delete'),
+    path('bulk_delete/', BulkDeleteAPI.as_view(), name='bulk-delete'),
 
 
-
-    
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

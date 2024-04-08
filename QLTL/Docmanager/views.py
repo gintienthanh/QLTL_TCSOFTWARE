@@ -30,8 +30,9 @@ from django.db.models.functions import Coalesce
 from django.contrib.auth.models import User,Permission,Group
 from rest_framework.permissions import IsAdminUser
 from django.db.models import Count
+from django.db.models.functions import Length
 from django.http import JsonResponse
-from datetime import datetime
+from datetime import datetime, timedelta
 
 # Create your views here.
 class CustomPagination(PageNumberPagination):
@@ -133,6 +134,7 @@ class PortfolioListCreate(generics.ListAPIView):
     def post(self, request):
         serializer = PortfolioSerializer(data=request.data)
         if serializer.is_valid():
+            serializer.validated_data['create_by'] = request.user  
             serializer.save()
             return Response({'status':201,
                              'message':'created successfully',
@@ -477,7 +479,40 @@ class FolderUpdateDelete(APIView):
             }
             return Response(response, status=status.HTTP_200_OK)
         return Response({'status':400}, status=status.HTTP_400_BAD_REQUEST)
+class APIFolderPath(APIView):
+    # def get_queryset(self):
+        
+    #     queryset = super().get_queryset()
+    #     user = self.request.user
+    #     if user.is_authenticated:  # Check if user is authenticated
+    #         parent_folder = self.request.GET.get('parent_folder')
+    #         if parent_folder:
+    #             queryset = queryset.filter(create_by=user, is_delete = False, parent_folder = parent_folder)
+    #         else:
+    #             queryset = queryset.filter(create_by=user, is_delete = False, parent_folder = None)
+    #         queryset = queryset.order_by(F('updated_at').desc())
+    #     return queryset
+    def get_object(self, pk):
+        try:
+            return Folder.objects.get(pk=pk)
+        except Folder.DoesNotExist:
+            raise Http404
 
+    def get(self, request, pk, format=None):
+        folder = self.get_object(pk)
+        list_folder = folder.path.split("/")
+        list_folder.pop()
+        list_parent_folder = []
+        parent_folder = ''
+        for l in list_folder:
+            parent_folder = parent_folder + l + "/"
+            list_parent_folder.append(parent_folder)
+            print(parent_folder)
+        
+        matching_folders = Folder.objects.filter(path__in=list_parent_folder).order_by(Length('path').asc()).values('id','name')        
+        print(matching_folders)
+        return Response({'status': 200,"data": matching_folders}, status=status.HTTP_200_OK)
+    
 
 class ShareFilter(filters.FilterSet):
     class Meta:
@@ -1572,7 +1607,7 @@ class LanguageListCreate(generics.ListCreateAPIView):
     
     
 class LanguageUpdateDelete(generics.RetrieveUpdateDestroyAPIView): 
-    permission_classes = [permissions.IsAuthenticated] 
+    permission_classes = [permissions.IsAdminUser] 
     def get_object(self, pk): 
         try: 
             return Language.objects.get(pk=pk) 
@@ -1614,6 +1649,39 @@ class LanguageUpdateDelete(generics.RetrieveUpdateDestroyAPIView):
                 'dataport': serializer.data, 
         })
 
+class StatisticsCountTime(generics.ListAPIView):
+    permission_classes = [permissions.IsAuthenticated]
 
+    def list(self, request, *args, **kwargs):
+        user = self.request.user
+        if user.is_authenticated:
+            start_time_str = request.query_params.get('start_time')  
+            end_time_str = request.query_params.get('end_time')  
 
+           
+            start_time = datetime.strptime(start_time_str, '%Y-%m-%d').date() if start_time_str else None
+            end_time = datetime.strptime(end_time_str, '%Y-%m-%d').date() if end_time_str else None
+
+            portfolio_queryset = Portfolio.objects.filter(create_by=user, is_delete=False)
+            document_queryset = Document.objects.filter(create_by=user, is_delete=False)
+            folder_queryset = Folder.objects.filter(create_by=user, is_delete=False)
+
+            if start_time and end_time:
+                # Đếm dữ liệu trong khoảng thời gian
+                portfolio_count = portfolio_queryset.filter(created_at__date__range=[start_time, end_time]).count()
+                document_count = document_queryset.filter(created_at__date__range=[start_time, end_time]).count()
+                folder_count = folder_queryset.filter(created_at__date__range=[start_time, end_time]).count()
+            else:
+                # Đếm toàn bộ dữ liệu
+                portfolio_count = portfolio_queryset.count()
+                document_count = document_queryset.count()
+                folder_count = folder_queryset.count()
+
+            data = {
+                'portfolio_count_over_time': portfolio_count,
+                'document_count_over_time': document_count,
+                'folder_count_over_time': folder_count,
+            }
+
+            return Response(data)
 
