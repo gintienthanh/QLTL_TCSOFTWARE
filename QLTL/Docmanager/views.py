@@ -758,12 +758,23 @@ class APIGroupUpdateDestroy(generics.RetrieveUpdateDestroyAPIView):
             return Response({'status':400,"error": "Group name is exist"}, status=status.HTTP_400_BAD_REQUEST) 
 
     def destroy(self, request, *args, **kwargs):
-        instance = self.get_object()
-        instance.is_delete=True
-        instance.delete_at=timezone.now() 
-        instance.delete_by=request.user
-        self.perform_update(instance)
-        return Response({'status':200,'message':'destroyed'},status=status.HTTP_204_NO_CONTENT)  
+
+        # instance = self.get_object()
+        # instance.delete()
+        group_ids = request.data.get('group_ids', '')
+        group_ids_list = [int(group_id) for group_id in group_ids.split(',') if group_id.isdigit()]
+        groups = Group.objects.filter(id__in=group_ids_list).delete()
+        # Thêm các permission từ danh sách thêm
+        # for group in groups:
+        #     group.clear()
+        return Response({'status':200,
+                            'message':'remove successfully'
+                            },status=status.HTTP_200_OK)
+        # instance.is_delete=True
+        # instance.delete_at=timezone.now() 
+        # instance.delete_by=request.user
+        # self.perform_update(instance)
+        # return Response({'status':200,'message':'destroyed'},status=status.HTTP_204_NO_CONTENT)  
 
     
 
@@ -1334,20 +1345,55 @@ class APIUserListView(generics.ListAPIView):
     filter_backends = [filters.DjangoFilterBackend]
     filterset_class = UserFilter 
     def get(self, request, *args, **kwargs):
-        queryset = self.filter_queryset(self.get_queryset()).values('id','username', 'email')
-        response_data = {
-            "status":200,
-            "message": "Success",
-            "data": list(queryset)
-        }
-        if not queryset:
-            response_data = {
-                "status":200,
-                "message": "User doesn't exist",
-                "data": list(queryset)
-            }
-            return Response(response_data, status=status.HTTP_404_NOT_FOUND)
-        return Response(response_data, status=status.HTTP_200_OK)
+        queryset = self.filter_queryset(self.get_queryset())
+        # queryset = User.objects.all().prefetch_related('groups', 'user_permissions', 'userprofile') 
+        page = self.paginate_queryset(queryset)
+        serialized_data = []
+        if page is not None:
+            for user in page:
+                try:
+                    user_profile = UserProfile.objects.get(user=user)
+                    if user_profile.organization:
+                        organization_data = {
+                            'id': user_profile.organization.id,
+                            'name': user_profile.organization.name,
+                        }
+                    else:
+                        organization_data = None
+                    user_profile_data = {
+                        'phone': user_profile.phone,
+                        'organization': organization_data
+                    }
+                except UserProfile.DoesNotExist:
+                    user_profile_data = {}
+                
+                group_data = [{'id': group.id, 'name': group.name} for group in user.groups.all()]
+                permission_data = [{'id': permission.id, 'name': permission.name} for permission in user.user_permissions.all()]
+                user_data = {
+                    'id': user.id,
+                    'username': user.username,
+                    'email': user.email,
+                    'user_profile': user_profile_data,  
+                    'is_active': user.is_active,
+                    'groups': group_data,  
+                    'user_permissions': permission_data, 
+                }
+                serialized_data.append(user_data)
+
+            return self.get_paginated_response(serialized_data)
+        # response_data = {
+        #     "status":200,
+        #     "message": "Success",
+        #     "data": list(queryset)
+        # }
+        # if not queryset:
+        #     response_data = {
+        #         "status":200,
+        #         "message": "User doesn't exist",
+        #         "data": list(queryset)
+        #     }
+        #     return Response(response_data, status=status.HTTP_404_NOT_FOUND)
+        # return Response(response_data, status=status.HTTP_200_OK)
     
 class UserUpdateDelete(APIView):
     permission_classes = [permissions.IsAdminUser]
