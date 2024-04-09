@@ -5,6 +5,7 @@ import re
 import shutil
 from django.conf import settings
 from django.shortcuts import render
+from pdf2image import convert_from_path
 from Docmanager.permissions import Check_owner_factory, check_shared_group_factory, check_group_permisison_factory
 from QLTL.settings import EXPORT_PATH_FILE
 from .model_serializers import*
@@ -368,6 +369,8 @@ class FolderListCreate(generics.ListAPIView):
                 }
             return Response(response, status=status.HTTP_201_CREATED)
         return Response({'status':400}, status=status.HTTP_400_BAD_REQUEST)
+
+
 
 
 class FolderUpdateDelete(APIView):
@@ -1604,4 +1607,3 @@ class StatisticsCountTime(generics.ListAPIView):
             }
 
             return Response(data)
-
