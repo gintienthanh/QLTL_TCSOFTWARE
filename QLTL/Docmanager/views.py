@@ -164,7 +164,7 @@ class PortfolioUpdateDelete(APIView):
         portfolio = self.get_portfolio(pk)
         serializer = PortfolioSerializer(portfolio, data=request.data, partial=True)
         if serializer.is_valid():
-            serializer.validated_data['updated_at'] = datetime.datetime.now()
+            serializer.validated_data['updated_at'] = datetime.now()
             serializer.validated_data['editor'] = request.user
             serializer.save()
             return Response({'status':201,
