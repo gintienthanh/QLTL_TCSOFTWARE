@@ -1,5 +1,5 @@
 import concurrent.futures
-import datetime
+# import datetime
 import os
 import re
 import shutil
@@ -33,7 +33,7 @@ from rest_framework.permissions import IsAdminUser
 from django.db.models import Count
 from django.db.models.functions import Length
 from django.http import JsonResponse
-from datetime import datetime, timedelta
+# from datetime import datetime, timedelta
 
 # Create your views here.
 class CustomPagination(PageNumberPagination):
@@ -165,7 +165,7 @@ class PortfolioUpdateDelete(APIView):
         portfolio = self.get_portfolio(pk)
         serializer = PortfolioSerializer(portfolio, data=request.data, partial=True)
         if serializer.is_valid():
-            serializer.validated_data['updated_at'] = datetime.now()
+            serializer.validated_data['updated_at'] = datetime.datetime.now()
             serializer.validated_data['editor'] = request.user
             serializer.save()
             return Response({'status':201,
