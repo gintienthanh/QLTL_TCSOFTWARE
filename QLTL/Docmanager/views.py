@@ -1179,8 +1179,10 @@ class DownloadFile(APIView):
 
                                                                                            
 class Multi_portfolio_DownloadConvertAPIView(APIView):
-    def get(self, request, ids, *args, **kwargs):
-        # Chuyển đổi danh sách ID từ chuỗi thành danh sách các số nguyên
+    def get(self, request, *args, **kwargs):
+        # Lấy danh sách ID từ tham số 'down'
+        ids = request.GET.get('ids', '')
+        
         try:
             id_list = [int(id) for id in ids.split(',')]
         except ValueError:
