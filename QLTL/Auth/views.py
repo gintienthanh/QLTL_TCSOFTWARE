@@ -30,18 +30,25 @@ class UserRegistrationView(APIView):
             email = request.data.get('email')
             phone = request.data.get('phone')
             user_name = request.data.get('username')
-            permission_ids = request.data.get('permissions')
+            # permission_ids = request.data.get('permissions')
+            group_ids = request.data.get('groups')
             organization_id = request.data.get('organization_id')
             serializer = UserRegistrationSerializer(data=request.data)
             serializer.is_valid(raise_exception=True)
             user = User.objects.create(email=email,username=user_name)    
             organization = Organization.objects.get(id=organization_id)
             profile_user = UserProfile.objects.create(user=user,phone=phone,organization=organization)
-            if not permission_ids:
-                permission_ids = [] 
-            for permission_id in permission_ids:
-                permission = Permission.objects.get(id=permission_id)
-                user.user_permissions.add(permission)
+            if not group_ids:
+                group_ids = [] 
+            for group_id in group_ids:
+                group = Group.objects.get(id=group_id)
+                user.groups.add(group)
+                # user.groups
+            # if not permission_ids:
+            #     permission_ids = [] 
+            # for permission_id in permission_ids:
+            #     permission = Permission.objects.get(id=permission_id)
+            #     user.user_permissions.add(permission)
             password = generate_strong_password(12)
             user.set_password(password)
             user.save() 
@@ -51,7 +58,7 @@ class UserRegistrationView(APIView):
                     'subject': 'Password to login'}
             Util.send_email(data)
             return Response({'status':200,'message':'Create user successfully'}, status=status.HTTP_201_CREATED)
-        except: 
+        except :
             return Response({'errors':{'non_field_errors':['Error when create user']}}, status=status.HTTP_400_BAD_REQUEST)
 class UserLoginView(APIView):
     renderer_classes = [UserRenderer]
