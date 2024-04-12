@@ -1,3 +1,4 @@
+import ast
 import concurrent.futures
 # import datetime
 import os
@@ -820,6 +821,7 @@ class APIGroupUpdateDestroy(generics.RetrieveUpdateDestroyAPIView):
         # instance = self.get_object()
         # instance.delete()
         group_ids = request.data.get('group_ids', '')
+        print(group_ids)
         group_ids_list = [int(group_id) for group_id in group_ids.split(',') if group_id.isdigit()]
         groups = Group.objects.filter(id__in=group_ids_list).delete()
         # Thêm các permission từ danh sách thêm
@@ -837,7 +839,8 @@ class APIGroupUpdateDestroy(generics.RetrieveUpdateDestroyAPIView):
 class ApiDeleteGroups(APIView):
     def delete(seft, request):
         group_ids = request.data.get('group_ids', '')
-        group_ids_list = [int(group_id) for group_id in group_ids.split(',') if group_id.isdigit()]
+        group_ids_list = ast.literal_eval(group_ids)
+      
         groups = Group.objects.filter(id__in=group_ids_list).delete()
         # Thêm các permission từ danh sách thêm
         # for group in groups:
