@@ -839,8 +839,7 @@ class APIGroupUpdateDestroy(generics.RetrieveUpdateDestroyAPIView):
 class ApiDeleteGroups(APIView):
     def delete(seft, request):
         group_ids = request.data.get('group_ids', '')
-        group_ids_list = ast.literal_eval(group_ids)
-      
+        group_ids_list = group_ids
         groups = Group.objects.filter(id__in=group_ids_list).delete()
         # Thêm các permission từ danh sách thêm
         # for group in groups:
