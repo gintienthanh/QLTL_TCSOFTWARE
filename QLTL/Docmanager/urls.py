@@ -54,7 +54,7 @@ group_urls = [
 portfolio_urls = [
     path('', PortfolioListCreate.as_view(), name='portfolio-list'),
     path('/<int:pk>', PortfolioUpdateDelete.as_view(), name='portfolio-detail'),
-    path('/multi_download/<str:ids>/', Multi_portfolio_DownloadConvertAPIView.as_view(), name='multi-portfolio-download'),
+    path('/multi_download/', Multi_portfolio_DownloadConvertAPIView.as_view(), name='multi-portfolio-download'),
    
 ]
 
