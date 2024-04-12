@@ -177,7 +177,7 @@ class PortfolioSerializer(serializers.ModelSerializer):
     docsubport = serializers.SerializerMethodField() 
      
     def get_docsubport(self, obj): 
-        docsubports = Document.objects.filter(portfolio=obj) 
+        docsubports = Document.objects.filter(portfolio=obj,is_delete=False) 
         serializer = DocumentSerializer(docsubports, many=True) 
         return serializer.data 
     class Meta: 

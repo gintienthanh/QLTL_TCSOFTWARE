@@ -3,6 +3,7 @@ import concurrent.futures
 import os
 import re
 import shutil
+# import threading
 from django.conf import settings
 from django.shortcuts import render
 from pdf2image import convert_from_path
@@ -21,6 +22,8 @@ from rest_framework.pagination import PageNumberPagination
 import mimetypes
 import pandas as pd
 from io import BytesIO
+# import pypdfium2 as pdfium
+# from django.core.files import File
 
 import zipfile
 from django.core.files.storage import default_storage
@@ -315,6 +318,35 @@ class FolderListCreate(generics.ListAPIView):
                 new_name = re.sub(r'\((\d+)\)\.', f'({number}).', name)
             name = new_name
         return name
+    
+    # def process_background_cut_pdf(self,original_file,user,owner):
+    #     pdf_file = original_file.files.path
+    #     pdf = pdfium.PdfDocument(pdf_file)
+    #     for i in range(len(pdf)):
+    #         page = pdf[i]
+    #         image = page.render(scale=4).to_pil()
+    #         image_io = BytesIO()
+    #         image.save(image_io, format='JPEG')
+    #         image_io.seek(0)  # Đặt con trỏ về đầu
+    #         dot_index = original_file.name.rfind(".")
+    #         # Tìm vị trí của khoảng trắng trước dấu chấm cuối cùng
+    #         space_index = original_file.name.rfind("", 0, dot_index)
+    #         # Lấy phần tử từ vị trí 0 đến vị trí khoảng trắng trước dấu chấm cuối cùng
+    #         result = original_file.name[:space_index]
+    #         # Tạo đối tượng File từ đối tượng BytesIO
+    #         image_file = File(image_io, name=f"{result}({i}).jpg")
+    #         # Tạo đối tượng Folder mới với trường image là đối tượng ImageFile
+    #         mini_file = Folder(
+    #             type='File',
+    #             files=image_file,
+    #             file_size=image_file.size,
+    #             path=f"{result}({i}).jpg",
+    #             name=f"{result}({i}).jpg",
+    #             parent_folder=original_file,
+    #             create_by=user,
+    #             owner=owner
+    #         )
+    #         mini_file.save()
     def post(self, request):
         serializer = FolderSerializer(data=request.data,partial=True)
         files = request.FILES.getlist('files')
@@ -341,6 +373,9 @@ class FolderListCreate(generics.ListAPIView):
             if files:
                 type = 'File'
                 for file in files:
+                    # file_extension = os.path.splitext(file.name)[1]
+                    # if file_extension.lower() != ".pdf":
+                    #     continue
                     name = file.name
                     file_size = file.size
                     start_index = name.rfind('.')
@@ -355,6 +390,26 @@ class FolderListCreate(generics.ListAPIView):
                     "status": 200,
                     "message": "created successfully",
                 }
+                #     original_file = Folder(type= type, files=file,file_size = file_size, path = path + newname, name = newname,parent_folder=parent_folder,create_by = user,owner=owner)
+                #     original_file.save()
+                #     print(original_file.id)
+                #     thread = threading.Thread(target=self.process_background_cut_pdf, args=(original_file, user, owner))
+                #     thread.setDaemon(True)
+                    
+                #         thread.start()
+                #         response = {
+                #                 "status": 200,
+                #                 "message": "created successfully",
+                #                 # "data": serializer.data
+                #             }
+                #         return Response(response, status=status.HTTP_201_CREATED)
+                #     finally:
+                #         thread.join()
+                    
+                # # response = {
+                # #     "status": 200,
+                # #     "message": "created successfully",
+                # # }
             else:
                 type = 'Folder'
                 name_default = name + " (1)"
@@ -778,6 +833,18 @@ class APIGroupUpdateDestroy(generics.RetrieveUpdateDestroyAPIView):
         # instance.delete_by=request.user
         # self.perform_update(instance)
         # return Response({'status':200,'message':'destroyed'},status=status.HTTP_204_NO_CONTENT)  
+
+class ApiDeleteGroups(APIView):
+    def delete(seft, request):
+        group_ids = request.data.get('group_ids', '')
+        group_ids_list = [int(group_id) for group_id in group_ids.split(',') if group_id.isdigit()]
+        groups = Group.objects.filter(id__in=group_ids_list).delete()
+        # Thêm các permission từ danh sách thêm
+        # for group in groups:
+        #     group.clear()
+        return Response({'status':200,
+                            'message':'remove successfully'
+                            },status=status.HTTP_200_OK)
 
     
 
@@ -1337,11 +1404,12 @@ class BulkDeleteAPI(APIView):
 ######USER#####   
              
 class UserFilter(filters.FilterSet):
+    id = filters.CharFilter(field_name='id', lookup_expr='exact') 
     username = filters.CharFilter(field_name='username', lookup_expr='icontains')
     # email = filters.CharFilter(field_name='email', lookup_expr='icontains')
     class Meta:
         model = User
-        fields = ['username','email']
+        fields = ['id','username','email']
 class APIUserListView(generics.ListAPIView):
     queryset = User.objects.all()
     serializer_class = UserSerializer

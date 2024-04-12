@@ -109,7 +109,7 @@ class Portfolio(Base):
     barcode = models.CharField(max_length=200, null=True)
     languege = models.ForeignKey(Language, null=True, on_delete=models.CASCADE)
     status = models.CharField(max_length=100, choices=[(tag.value, tag.name) for tag in ChoicesStatus], default=ChoicesStatus.wait.value)
-
+    formationtime = models.CharField(max_length=100, null = True)
 class Folder(Base):
     name = models.CharField(max_length=255, null = True)
     parent_folder = models.ForeignKey('self', on_delete=models.CASCADE, null=True, related_name='subfolders') 
@@ -123,7 +123,7 @@ class Folder(Base):
 
 class Document(Base):
     
-    name = models.CharField(max_length=200)
+    name = models.CharField(max_length=200,null=True)
     box_case = models.ForeignKey(Warehouse,  on_delete=models.CASCADE, null = True)
     path = models.CharField(max_length=200,null=True)
     folder = models.ForeignKey(Folder, on_delete=models.CASCADE, null=True)
@@ -140,7 +140,8 @@ class Document(Base):
     files = models.FileField(upload_to='files/', null=True)
     type = models.CharField(max_length=100, choices=[(tag.value, tag.name) for tag in ChoicesType], default=ChoicesType.Folder.value)
     add_info = models.JSONField(null=True)
-
+    status = models.CharField(max_length=100, choices=[(tag.value, tag.name) for tag in ChoicesStatus], default=ChoicesStatus.wait.value)
+    
     def __str__(self) :
         return  self.name
     
