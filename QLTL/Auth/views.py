@@ -58,8 +58,7 @@ class UserRegistrationView(APIView):
                     'subject': 'Password to login'}
             Util.send_email(data)
             return Response({'status':200,'message':'Create user successfully'}, status=status.HTTP_201_CREATED)
-        except Exception as e:
-            print(e)
+        except :
             return Response({'errors':{'non_field_errors':['Error when create user']}}, status=status.HTTP_400_BAD_REQUEST)
 class UserLoginView(APIView):
     renderer_classes = [UserRenderer]
