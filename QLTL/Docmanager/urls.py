@@ -48,12 +48,13 @@ group_urls = [
     path('/<int:pk>', APIGroupUpdateDestroy.as_view(), name='group-detail'),
     path('/user_groups/<int:pk>/', GroupUserView.as_view(), name='group-users'),
     path('/group_permissions/<int:pk>', GroupPermissionView.as_view(), name='group-permissions'),
+    path('/delete-groups/', ApiDeleteGroups.as_view(), name='delete_groups'),
 ]
 
 portfolio_urls = [
     path('', PortfolioListCreate.as_view(), name='portfolio-list'),
     path('/<int:pk>', PortfolioUpdateDelete.as_view(), name='portfolio-detail'),
-    path('/multi_download/<str:ids>/', Multi_portfolio_DownloadConvertAPIView.as_view(), name='multi-portfolio-download'),
+    path('/multi_download/', Multi_portfolio_DownloadConvertAPIView.as_view(), name='multi-portfolio-download'),
    
 ]
 

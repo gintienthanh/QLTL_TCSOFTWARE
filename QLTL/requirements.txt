@@ -41,4 +41,4 @@ drf-yasg
 setuptools
 sentry-sdk
 django-debug-toolbar
-pdf2image
+pdf2image==1.17.0
