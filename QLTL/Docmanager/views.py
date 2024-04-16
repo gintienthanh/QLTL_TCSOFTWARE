@@ -1306,8 +1306,9 @@ class BulkDeleteAPI(APIView):
                 try:
                     portfolio = Portfolio.objects.get(id=int(portfolio_id))
                     portfolio.soft_delete(request)
-                    document = Document.objects.get(portfolio=portfolio_id)
-                    document.soft_delete(request)
+                    documents = Document.objects.filter(portfolio=portfolio)
+                    for d in documents:
+                        d.soft_delete(request)
                     success_count += 1
                     data = {
                             'status': '200',
