@@ -3,6 +3,7 @@ import concurrent.futures
 import os
 import re
 import shutil
+
 from django.conf import settings
 from django.shortcuts import render
 from pdf2image import convert_from_path
@@ -33,7 +34,12 @@ from rest_framework.permissions import IsAdminUser
 from django.db.models import Count
 from django.db.models.functions import Length
 from django.http import JsonResponse
-# from datetime import datetime, timedelta
+from PyPDF2 import PdfFileReader
+import pytesseract
+from PIL import Image
+
+from pdf2image import convert_from_path
+
 
 # Create your views here.
 class CustomPagination(PageNumberPagination):
@@ -114,59 +120,96 @@ class CustomPagination(PageNumberPagination):
 #######PORTFOLIO######
 
 
-class PortfolioListCreate(generics.ListAPIView):
+class ClassifyVariantList(generics.ListCreateAPIView):
+    queryset = ClassifyVariant.objects.all()
+    serializer_class = ClassifyVariantSerializer
+    paginator = CustomPagination()
+
+class PortfolioListCreate(generics.ListCreateAPIView):
     permission_classes = [permissions.IsAuthenticated]
     queryset = Portfolio.objects.all()
     serializer_class = PortfolioSerializer
+    
     paginator = CustomPagination()
+ 
+    
+    
     
     
     def get_queryset(self, *args, **kwargs):
         queryset = super().get_queryset()
         user = self.request.user
+
         if user.is_authenticated:  # Check if user is authenticated
-            title_query = self.request.GET.get('title', None)   
+            title_query = self.request.GET.get('title', None)  
+            
             queryset = queryset.filter(create_by=user, is_delete=False)
+            
             if title_query:
-                queryset = queryset.filter(title__icontains=title_query)   
+                queryset = queryset.filter(title__icontains=title_query)
+            
+                
             queryset = queryset.order_by(F('updated_at').desc())
             
+        #     context = {
+        #     'portfolios': queryset  # Pass the queryset to the template context
+        # }
+        
+        # return render(request, 'zz.html', context)
         return queryset  
+    
+    
+    
     def post(self, request):
+        
         serializer = PortfolioSerializer(data=request.data)
         if serializer.is_valid():
-            serializer.validated_data['create_by'] = request.user  
+            serializer.validated_data['create_by'] = request.user 
+            serializer.validated_data['owner'] = request.user   
+              
             serializer.save()
             return Response({'status':201,
                              'message':'created successfully',
                              'data':serializer.data}, 
                              status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    
-    
-    
-    
-class PortfolioUpdateDelete(APIView):
+class PortfolioUpdateDelete(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [permissions.IsAuthenticated]
-    def get_portfolio(self, pk):
+    def get_object(self, pk):
         try:
             return Portfolio.objects.get(pk=pk)
         except Portfolio.DoesNotExist:
-            raise status.HTTP_404_NOT_FOUND
+            raise Http404("Portfolio not found")
     def get(self, request, pk):
-        portfolio = self.get_portfolio(pk)
+        portfolio = self.get_object(pk)
         serializer = PortfolioSerializer(portfolio)
-        return Response({'status':200,
+        return Response({'status':201,
                         'message':'found',
-                        'data':serializer.data},status=status.HTTP_200_OK)
+                        'data':serializer.data},status=status.HTTP_302_FOUND)
 
+    def put(self, request, pk):
+        portfolio = self.get_object(pk) 
+        serializer = PortfolioSerializer(portfolio, data=request.data, partial=True )
+        if serializer.is_valid():
+            serializer.validated_data['updated_at'] = datetime.datetime.now() 
+            serializer.validated_data['editor'] = request.user   
+            
+            serializer.save()
+            return Response({'status':200,
+                             'message':'update successfully',
+                             'data':serializer.data},status=status.HTTP_200_OK)
+        return Response({'status':400,
+                        'message':serializer.errors
+                        }, status=status.HTTP_400_BAD_REQUEST)
 
     def patch(self, request, pk):
-        portfolio = self.get_portfolio(pk)
+        portfolio = self.get_object(pk)
         serializer = PortfolioSerializer(portfolio, data=request.data, partial=True)
         if serializer.is_valid():
             serializer.validated_data['updated_at'] = datetime.datetime.now()
-            serializer.validated_data['editor'] = request.user
+            serializer.validated_data['editor'] = request.user   
+
+            
             serializer.save()
             return Response({'status':201,
                              'message':'created successfully',
@@ -175,23 +218,57 @@ class PortfolioUpdateDelete(APIView):
                         'message':serializer.errors},status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self, request, pk):
-        instance = Portfolio.objects.get(pk=pk)
-        instance.soft_delete(request)
-        document = Document.objects.get(portfolio=pk)
-        document.soft_delete(request)
-        
-        serializers = PortfolioSerializer(instance)
-        docserializers = DocumentSerializer(document)
-        
-        return Response({'status':200,
-                             'message':'delete successfully',
-                             'dataportfolio': serializers.data,
-                             'datadocment': docserializers.data
-                            })
-        
+        # portfolio = self.get_object(pk)
+        # serializer = PortfolioSerializer(portfolio, 
+        #     data =
+        #     {   
+        #         'is_delete': True,
 
-        
-        
+        #     }, partial=True)
+        # if serializer.is_valid():
+        #     serializer.validated_data['delete_at'] = timezone.now()
+        #     serializer.validated_data['delete_by'] = request.user   
+            
+        #     serializer.save()
+        #     return Response({'status':200,
+        #                      'message':'delete successfully'
+        #                     })
+        # return Response({'status':400,
+        #                 'message':'delete Fail',
+        #                 },status=status.HTTP_400_BAD_REQUEST)
+       
+        try:
+            portfolio = Portfolio.objects.get(pk=pk)
+            portfolio.soft_delete(request)  # Xóa bảng Portfolio
+            documents = Document.objects.filter(portfolio=portfolio)
+            for document in documents:
+                document.soft_delete(request)  # Xóa bảng Document
+                
+
+            
+
+            serializerport = PortfolioSerializer(portfolio)
+            serializerdoc = DocumentSerializer(documents, many = True)
+
+            return Response({
+                'status': 200,
+                'message': 'delete successfully',
+                'dataport': serializerport.data,
+                'datadoc': serializerdoc.data,
+            })
+        except Document.DoesNotExist:
+            portfolio = Portfolio.objects.get(pk=pk)
+            portfolio.soft_delete(request)  # Chỉ xóa bảng Portfolio
+
+            serializerport = PortfolioSerializer(portfolio)
+
+            return Response({
+                'status': 200,
+                'message': 'delete successfully',
+                'dataport': serializerport.data,
+            })
+    
+    
         
         
 #######DOCUMENT######
@@ -210,17 +287,21 @@ class DocumentListCreate(generics.ListCreateAPIView):
         if user.is_authenticated:  # Check if user is authenticated
             name_query = self.request.GET.get('name', None)
             portfolio_query = self.request.GET.get('portfolio_id', None)
+            
             queryset = queryset.filter(create_by=user, is_delete=False)
+            
             if name_query:
                 queryset = queryset.filter(name__icontains=name_query)   
             if portfolio_query:
                 queryset = queryset.filter(portfolio_id=portfolio_query)   
+                
             queryset = queryset.order_by(F('updated_at').desc())
         return queryset 
     
     def post(self, request):
         serializer = DocumentSerializer(data=request.data)
         if serializer.is_valid():
+            serializer.validated_data['owner'] = request.user
             serializer.validated_data['create_by'] = request.user   
             serializer.save()
             return Response({'status':201,
@@ -261,8 +342,10 @@ class DocumentUpdateDelete(APIView):
     def delete(self, request, pk):
         instance = Document.objects.get(pk=pk)
         instance.soft_delete(request)
+        serializerdoc = DocumentSerializer(instance)
         return Response({'status':200,
-                             'message':'delete successfully'
+                             'message':'delete successfully',
+                             'data': serializerdoc.data
                             })
         
         
@@ -350,10 +433,30 @@ class FolderListCreate(generics.ListAPIView):
                     elif name in name_list:
                         newname = self.extract_and_convert_to_integer(name_default,name_list)
                     newrecord = Folder(type= type, files=file,file_size = file_size, path = path + newname, name = newname,parent_folder=parent_folder,create_by = user,owner=owner)
+                    serializer = FolderSerializer(newrecord)
+                   
+                    if name.lower().endswith('.pdf'):  # Kiểm tra nếu là file PDF
+                        pdf_reader = PdfFileReader(file)
+                        num_pages = pdf_reader.getNumPages()
+                        image_files = []
+                        for page_num in range(num_pages):
+                            page = pdf_reader.getPage(page_num)
+                            print(page, "this is page")
+                            image = pytesseract.image_to_string(page)
+                            image_path = f'{path}{newname}_page{page_num}.png'  # Đường dẫn ảnh
+                            image_pil = Image.open(BytesIO(image))
+                            image_pil.save(image_path, 'PNG')
+                            image_files.append(image_path)
+                        newrecord.files.save(image_files[0], files[0], save=False)
+                    else:
+                        newrecord.files.save(name, file, save=False)  
+                    
                     newrecord.save()
+                    
                 response = {
                     "status": 200,
                     "message": "created successfully",
+                    "data": serializer.data
                 }
             else:
                 type = 'Folder'
@@ -1232,14 +1335,19 @@ class BulkDeleteAPI(APIView):
         folder_ids = request.data.get('folder_ids', [])
         success_count = 0
         
+        # ids = request.GET.get('ids', '')
+        # object_ids = ids.split(',')  # Chia các giá trị thành danh sách các object_id
+        # success_count = 0
+        
         # Soft delete portfolios and associated documents
         try:
             for portfolio_id in portfolio_ids:
                 try:
                     portfolio = Portfolio.objects.get(id=int(portfolio_id))
                     portfolio.soft_delete(request)
-                    document = Document.objects.get(portfolio=portfolio_id)
-                    document.soft_delete(request)
+                    documents = Document.objects.filter(portfolio=portfolio)
+                    for document in documents:
+                        document.soft_delete(request)
                     success_count += 1
                     data = {
                             'status': '200',
@@ -1290,20 +1398,18 @@ class BulkDeleteAPI(APIView):
                         boxcases = Warehouse.objects.filter(parent_warehouse=warehouse)
                         for boxcase in boxcases:
                             boxcase.soft_delete(request)
-                    
-                    if warehouse.type_warehouse == ChoicesTypeWarehouse.Warehouse.value:
-                        # Get all subwarehouses related to the warehouse
-                        warehouse = Warehouse.objects.get(id=int(warehouse_id))
-                        warehouse.soft_delete(request)
-                        shelf = Warehouse.objects.get(parent_warehouse=warehouse)
+                    elif warehouse.type_warehouse == ChoicesTypeWarehouse.BoxCase.value:
+                        # Get the shelf related to the boxcase
+                        shelf = warehouse.parent_warehouse
                         shelf.soft_delete(request)
-                        boxcases = Warehouse.objects.get(parent_warehouse=shelf)
-                        boxcases.soft_delete(request)
-                        success_count += 1
-                    data = {
-                            'status': '200',
-                            'message':'Deleted successfully'
-                        }
+                    else:
+                        # Get all subwarehouses related to the warehouse
+                        subwarehouses = warehouse.subwarehouse.all()
+                        for subwarehouse in subwarehouses:
+                            subwarehouse.soft_delete(request)
+                            
+                    success_count += 1
+                    
                 # return Response(data, status=status.HTTP_200_OK)
             except Warehouse.DoesNotExist:
                 data = {
@@ -1560,7 +1666,7 @@ class RetentionPeriodUpdateDelete(generics.RetrieveUpdateDestroyAPIView):
  
     def delete(self, request, pk): 
         retentionperiod  = RetentionPeriod.objects.get(pk=pk)  
-        retentionperiod.soft_delete(request)  # Xóa bảng Portfolio 
+        retentionperiod.soft_delete(request)  
         serializer = RetentionPeriodSerializer(retentionperiod) 
  
         return Response({ 
