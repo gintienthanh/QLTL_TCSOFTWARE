@@ -180,11 +180,12 @@ class PortfolioUpdateDelete(APIView):
     def delete(self, request, pk):
         instance = Portfolio.objects.get(pk=pk)
         instance.soft_delete(request)
-        document = Document.objects.get(portfolio=pk)
-        document.soft_delete(request)
+        documents = Document.objects.filter(portfolio=instance)
+        for d in documents:
+            d.soft_delete(request)
         
         serializers = PortfolioSerializer(instance)
-        docserializers = DocumentSerializer(document)
+        docserializers = DocumentSerializer(documents,many = True)
         
         return Response({'status':200,
                              'message':'delete successfully',
