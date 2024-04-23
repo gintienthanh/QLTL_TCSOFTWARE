@@ -1365,20 +1365,20 @@ class BulkDeleteAPI(APIView):
                         boxcases = Warehouse.objects.filter(parent_warehouse=warehouse)
                         for boxcase in boxcases:
                             boxcase.soft_delete(request)
-                        portfolios = Portfolio.objects.filter(warehouse=boxcase)
-                        for portfolio in portfolios:
-                            portfolio.soft_delete(request)
-                        documents = Document.objects.filter(portfolio=portfolio)
-                        for document in documents:
-                            document.soft_delete(request)
+                            portfolios = Portfolio.objects.filter(warehouse=boxcase)
+                            for portfolio in portfolios:
+                                portfolio.soft_delete(request)
+                                documents = Document.objects.filter(portfolio=portfolio)
+                                for document in documents:
+                                    document.soft_delete(request)
                     elif warehouse.type_warehouse == ChoicesTypeWarehouse.BoxCase.value:
                         # Get the shelf related to the boxcase
                         portfolios = Portfolio.objects.filter(warehouse=warehouse)
                         for portfolio in portfolios:
                             portfolio.soft_delete(request)
-                        documents = Document.objects.filter(portfolio=portfolio)
-                        for document in documents:
-                            document.soft_delete(request)
+                            documents = Document.objects.filter(portfolio=portfolio)
+                            for document in documents:
+                                document.soft_delete(request)
                         
                     else:
                         # Get all subwarehouses related to the warehouse
@@ -1800,3 +1800,21 @@ class StatisticsCountTime(generics.ListAPIView):
             }
 
             return Response(data)
+        
+# def serve_media(request, filename):
+#     # Kiểm tra quyền truy cập của người dùng ở đây
+#     if not user_has_access(request.user, filename):
+#         raise PermissionDenied
+
+#     # Đường dẫn đầy đủ đến tệp tin trong thư mục media
+#     file_path = os.path.join(settings.MEDIA_ROOT, filename)
+
+#     # Kiểm tra xem tệp tin có tồn tại không
+#     if not os.path.exists(file_path):
+#         return HttpResponse("Tệp tin không tồn tại", status=404)
+
+#     # Phục vụ tệp tin
+#     with open(file_path, 'rb') as f:
+#         response = HttpResponse(f.read(), content_type='application/octet-stream')
+#         response['Content-Disposition'] = 'attachment; filename="{}"'.format(filename)
+#         return response
