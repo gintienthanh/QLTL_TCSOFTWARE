@@ -29,15 +29,14 @@ SECRET_KEY = config('SECRET_KEY', default='secret')
 DEBUG = True
 
 CORS_ALLOW_ALL_ORIGINS = True
-CORS_ORIGIN_ALLOW_ALL = True
 ALLOWED_HOSTS = ['*']
-CORS_ALLOWED_ORIGINS = [
-    "http://127.0.0.1:3000", 
-    "http://localhost:3000", 
-    "https://quanlytailieu.tcgroup.vn",
-    "http://localhost:49361",
-    # '*'
-]
+# CORS_ALLOWED_ORIGINS = [
+#     "http://127.0.0.1:3000", 
+#     "http://localhost:3000", 
+#     "https://quanlytailieu.tcgroup.vn",
+#     "http://localhost:49361",
+#     # '*'
+# ]
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOW_HEADERS = ['*']
 
