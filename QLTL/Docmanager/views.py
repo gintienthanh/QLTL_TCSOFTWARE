@@ -1416,20 +1416,32 @@ class BulkDeleteAPI(APIView):
                         
                     else:
                         # Get all subwarehouses related to the warehouse
-                        warehouse = Warehouse.objects.get(id=int(warehouse_id))
-                        warehouse.soft_delete(request)
-                        shelves = Warehouse.objects.filter(parent_warehouse=warehouse)
-                        for shelf in shelves:
-                            shelf.soft_delete(request)
-                        boxcases = Warehouse.objects.filter(parent_warehouse=shelf)
-                        for boxcase in boxcases:
-                            boxcase.soft_delete(request)
-                        portfolios = Portfolio.objects.filter(warehouse=boxcase)
-                        for portfolio in portfolios:
-                            portfolio.soft_delete(request)
-                        documents = Document.objects.filter(portfolio=portfolio)
-                        for document in documents:
-                            document.soft_delete(request)
+                        subwarehouses = warehouse.subwarehouse.all()
+                        for subwarehouse in subwarehouses:
+                            subwarehouse.soft_delete(request)
+                            boxcases = Warehouse.objects.filter(parent_warehouse=subwarehouse)
+                            for boxcase in boxcases:
+                                boxcase.soft_delete(request)
+                                portfolios = Portfolio.objects.filter(warehouse=boxcase)
+                                for portfolio in portfolios:
+                                    portfolio.soft_delete(request)
+                                    documents = Document.objects.filter(portfolio=portfolio)
+                                    for document in documents:
+                                        document.soft_delete(request)
+                        # warehouse = Warehouse.objects.get(id=int(warehouse_id))
+                        # warehouse.soft_delete(request)
+                        # shelves = Warehouse.objects.filter(parent_warehouse=warehouse)
+                        # for shelf in shelves:
+                        #     shelf.soft_delete(request)
+                        # boxcases = Warehouse.objects.filter(parent_warehouse=shelf)
+                        # for boxcase in boxcases:
+                        #     boxcase.soft_delete(request)
+                        # portfolios = Portfolio.objects.filter(warehouse=boxcase)
+                        # for portfolio in portfolios:
+                        #     portfolio.soft_delete(request)
+                        # documents = Document.objects.filter(portfolio=portfolio)
+                        # for document in documents:
+                        #     document.soft_delete(request)
                         
                         
                         success_count += 1
