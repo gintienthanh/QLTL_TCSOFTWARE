@@ -38,6 +38,7 @@ from django.db.models import Count
 from django.db.models.functions import Length
 from django.http import JsonResponse
 # from datetime import datetime, timedelta
+from PIL import Image
 
 # Create your views here.
 class CustomPagination(PageNumberPagination):
@@ -139,6 +140,9 @@ class PortfolioListCreate(generics.ListAPIView):
     def post(self, request):
         serializer = PortfolioSerializer(data=request.data)
         if serializer.is_valid():
+            serializer.validated_data['created_at'] = datetime.datetime.now()
+            serializer.validated_data['updated_at'] = datetime.datetime.now()
+            
             serializer.validated_data['create_by'] = request.user  
             serializer.save()
             return Response({'status':201,
@@ -273,6 +277,10 @@ class DocumentUpdateDelete(APIView):
         
 ########FOLDER#######
 
+
+
+    
+
 class FolderFilter(filters.FilterSet):
     name = filters.CharFilter(field_name='name', lookup_expr='icontains')
     
@@ -355,6 +363,8 @@ class FolderListCreate(generics.ListAPIView):
         name = request.data.get('name')
         parent_folder_id = request.data.get('parent_folder')
         user = request.user
+        created_at = datetime.datetime.now()
+        updated_at = datetime.datetime.now()
         if name and name != '':
             name = name.rstrip()
         else:
@@ -386,11 +396,14 @@ class FolderListCreate(generics.ListAPIView):
                         newname = name
                     elif name in name_list:
                         newname = self.extract_and_convert_to_integer(name_default,name_list)
-                    newrecord = Folder(type= type, files=file,file_size = file_size, path = path + newname, name = newname,parent_folder=parent_folder,create_by = user,owner=owner)
+                    newrecord = Folder(
+                        type= type, files=file,file_size = file_size, path = path + newname, name = newname,parent_folder=parent_folder,create_by = user,owner=owner, created_at = created_at,  updated_at = updated_at)
                     newrecord.save()
+                    serializer_file = FolderSerializer(newrecord)                    
                 response = {
                     "status": 200,
                     "message": "created successfully",
+                    "data": serializer_file.data,
                 }
                 #     original_file = Folder(type= type, files=file,file_size = file_size, path = path + newname, name = newname,parent_folder=parent_folder,create_by = user,owner=owner)
                 #     original_file.save()
@@ -419,7 +432,7 @@ class FolderListCreate(generics.ListAPIView):
                     newname = name
                 elif name in name_list:
                     newname = self.extract_and_convert_to_integer(name_default,name_list)
-                serializer.save(type = type,file_size = 0,path = path + newname + "/",name = newname,parent_folder=parent_folder,create_by = user,owner=owner)
+                serializer.save(type = type,file_size = 0,path = path + newname + "/",name = newname,parent_folder=parent_folder,create_by = user,owner=owner, created_at = created_at,  updated_at = updated_at)
                 response = {
                     "status": 200,
                     "message": "created successfully",
@@ -443,6 +456,13 @@ class FolderUpdateDelete(APIView):
             return Folder.objects.get(pk=pk)
         except Folder.DoesNotExist:
             raise status.HTTP_404_NOT_FOUND
+    # def get(self, request, pk):
+    #     folder = self.get_object(pk)
+    #     serializer = FolderSerializer(folder,  context={'request': request})
+    #     return Response({'status':200,
+    #                     'message':'found',
+    #                     'data':serializer.data},status=status.HTTP_200_OK)    
+    
     def change(self,path,old_name,new_name):
         new_folder_path = path.replace(old_name,new_name)
         print(new_folder_path)
@@ -539,6 +559,42 @@ class FolderUpdateDelete(APIView):
             }
             return Response(response, status=status.HTTP_200_OK)
         return Response({'status':400}, status=status.HTTP_400_BAD_REQUEST)
+    
+    
+class FileView(generics.ListAPIView):
+    def get_object(self, pk):
+        try:
+            return Folder.objects.get(pk=pk)
+        except Folder.DoesNotExist:
+            raise status.HTTP_404_NOT_FOUND
+    
+    def get_file_response(self, file_path):
+        # Xác định phần mở rộng của tệp tin
+        _, extension = os.path.splitext(file_path)
+        extension = extension.lower()
+
+        if extension in ['.jpg', '.jpeg', '.png', '.gif']:
+            # Nếu là ảnh, mở và hiển thị trên trang web
+            image = Image.open(file_path)
+            response = HttpResponse(content_type='image/jpeg')
+            image.save(response, 'JPEG')
+            return response
+        
+        else:
+            # Nếu là các loại tệp tin khác, tải về
+            return FileResponse(open(file_path, 'rb'), content_type='application/octet-stream')
+
+    def get(self, request, pk):
+        try:
+            folder = self.get_object(pk)
+            file_path = folder.files.path
+            
+            if os.path.exists(file_path):
+                return self.get_file_response(file_path)
+            else:
+                return Response({'status': 404, 'message': 'File not found'}, status=status.HTTP_404_NOT_FOUND)
+        except Folder.DoesNotExist:
+            return Response({'status': 404, 'message': 'Folder not found'}, status=status.HTTP_404_NOT_FOUND)
 class APIFolderPath(APIView):
     # def get_queryset(self):
         
