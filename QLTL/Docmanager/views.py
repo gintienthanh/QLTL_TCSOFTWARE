@@ -964,26 +964,35 @@ class WarehouseListCreate(generics.ListAPIView):
         return queryset 
         
     def post(self, request):
-        try:
+        try:                                                           
             serializer = WarehouseSerializer(data=request.data)
-            id = request.data.get('parent_warehouse_id')
-            if serializer.is_valid():
-                 
-                parent_warehouse =Warehouse.objects.get(id=id)    
-                serializer.save(parent_warehouse=parent_warehouse, create_by=request.user)
-    
+            check_warehouse = Warehouse.objects.filter(name =  request.data.get("name", ""),
+                                                       type_warehouse = request.data.get("type_warehouse", ""),code = request.data.get("code", ""),
+                                                       is_delete = False, parent_warehouse = request.data.get("parent_warehouse", None))
+            print(check_warehouse)
+            if check_warehouse:
+                return Response({'status':400,
+                            'message':'created fail'},status=status.HTTP_400_BAD_REQUEST)
+            
+            id = request.data.get('parent_warehouse',0)
+            if serializer.is_valid(raise_exception=True):
+                parent_warehouse =Warehouse.objects.filter(id=id).first()   
+                
+                if request.data.get("type_warehouse", "") == "" and not parent_warehouse:
+                    serializer.save(type_warehouse = ChoicesTypeWarehouse.Warehouse.value,create_by=request.user)
+                elif request.data.get("type_warehouse", "") == ChoicesTypeWarehouse.Shelf.value and  getattr(parent_warehouse, 'type_warehouse', "") == ChoicesTypeWarehouse.Warehouse.value :
+                    serializer.save(type_warehouse = ChoicesTypeWarehouse.Shelf.value, parent_warehouse = parent_warehouse, create_by=request.user)
+                elif request.data.get("type_warehouse", "") == ChoicesTypeWarehouse.BoxCase.value and  getattr(parent_warehouse, 'type_warehouse', "") == ChoicesTypeWarehouse.Shelf.value :
+                    serializer.save(type_warehouse = ChoicesTypeWarehouse.BoxCase.value, parent_warehouse = parent_warehouse, create_by=request.user)
+                else:
+                    return Response({'status':400,
+                                    'message':'created fail'},status=status.HTTP_400_BAD_REQUEST)
+
+                print(parent_warehouse.name)
                 return Response({'status':201,
                                 'message':'created successfully',
                                 'data':serializer.data},status=status.HTTP_201_CREATED)
-            return Response({'status':400,
-                            'message':'created fail'},status=status.HTTP_400_BAD_REQUEST)
-        except Warehouse.DoesNotExist:
-            serializer.save(create_by=request.user)
-            return Response({'status':201,
-                            'message':'created successfully',
-                            'data':serializer.data},status=status.HTTP_201_CREATED)
-    
-        
+
         except Exception as e:
             return Response({'status':400,
                             'message':'created fail'},status=status.HTTP_400_BAD_REQUEST)
@@ -1006,14 +1015,16 @@ class WarehouseUpdateDelete(APIView):
 
     def patch(self, request, pk):
         warehouse = self.get_warehouse(pk)
-    
         # Copy request data to remove 'type_warehouse' field
         modified_data = request.data.copy()
         if 'type_warehouse' in modified_data:
             del modified_data['type_warehouse']
-    
         serializer = WarehouseSerializer(warehouse, data=modified_data, partial=True)
         if serializer.is_valid():
+            
+            serializer.validated_data['updated_at'] = datetime.datetime.now()
+            serializer.validated_data['editor'] = request.user
+            serializer.validated_data['parent_warehouse'] = Warehouse.objects.get(id = modified_data['parent_warehouse'])
             serializer.save()
             return Response({'status':200,
                              'message':'update successfully'
@@ -1021,7 +1032,7 @@ class WarehouseUpdateDelete(APIView):
         return Response({'status':400,
                              'message':'update fail'
                              },status=status.HTTP_400_BAD_REQUEST)
-        
+    
     def delete(self, request, pk):
         warehouse = self.get_warehouse(pk)
         try:
@@ -1080,12 +1091,11 @@ class WarehouseWithShelvesList(generics.ListAPIView):
 class AllWarehouseAPIView(generics.ListAPIView):
     permission_classes = [permissions.IsAuthenticated]
     filter_backends = [filters.DjangoFilterBackend]
-    queryset = Warehouse.objects.filter(type_warehouse='warehouse')
+    queryset = Warehouse.objects.filter(type_warehouse='warehouse',is_delete = False)
     serializer_class = AllWarehouseSerializer
     permission_classes = [permissions.IsAuthenticated]
     filterset_class = WarehouseFilter
     pagination_class = CustomPagination
-    
 
 #######WatchList#######
 class WatchlistFilter(filters.FilterSet):
