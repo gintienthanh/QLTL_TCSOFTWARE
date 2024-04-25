@@ -18,6 +18,7 @@ from rest_framework.response import Response
 from django.http import FileResponse, Http404, HttpResponse
 from django_filters import rest_framework as filters
 from rest_framework.pagination import PageNumberPagination
+from django.db.models import Q
 
 import mimetypes
 import pandas as pd
@@ -964,11 +965,20 @@ class WarehouseListCreate(generics.ListAPIView):
         return queryset 
         
     def post(self, request):
-        try:                                                           
+        try:               
+            print(request.data)                                            
             serializer = WarehouseSerializer(data=request.data)
-            check_warehouse = Warehouse.objects.filter(name =  request.data.get("name", ""),
-                                                       type_warehouse = request.data.get("type_warehouse", ""),code = request.data.get("code", ""),
-                                                       is_delete = False, parent_warehouse = request.data.get("parent_warehouse", None))
+            name = request.data.get("name", "")
+            type_warehouse = request.data.get("type_warehouse", ChoicesTypeWarehouse.Warehouse.value)
+            code = request.data.get("code", "")
+            parent_warehouse = request.data.get("parent_warehouse", None)
+
+            check_warehouse = Warehouse.objects.filter(
+                Q(name=name) | Q(code=code),
+                type_warehouse = type_warehouse,
+                is_delete=False,
+                parent_warehouse=parent_warehouse
+            )
             print(check_warehouse)
             if check_warehouse:
                 return Response({'status':400,
@@ -988,14 +998,14 @@ class WarehouseListCreate(generics.ListAPIView):
                     return Response({'status':400,
                                     'message':'created fail'},status=status.HTTP_400_BAD_REQUEST)
 
-                print(parent_warehouse.name)
+                # print(serializer.data)
                 return Response({'status':201,
                                 'message':'created successfully',
                                 'data':serializer.data},status=status.HTTP_201_CREATED)
 
         except Exception as e:
             return Response({'status':400,
-                            'message':'created fail'},status=status.HTTP_400_BAD_REQUEST)
+                            'message':e},status=status.HTTP_400_BAD_REQUEST)
                   
 
 class WarehouseUpdateDelete(APIView):
@@ -1021,10 +1031,26 @@ class WarehouseUpdateDelete(APIView):
             del modified_data['type_warehouse']
         serializer = WarehouseSerializer(warehouse, data=modified_data, partial=True)
         if serializer.is_valid():
-            
+            name = modified_data.get("name", "")
+            type_warehouse = modified_data.get('type_warehouse')
+            code = modified_data.get('code','')
+            parent_warehouse = modified_data.get('parent_warehouse',None)
+            print(modified_data)
+            check_warehouse = Warehouse.objects.filter(
+                Q(name=name) | Q(code=code),
+                type_warehouse = warehouse.type_warehouse,
+                is_delete=False,
+                parent_warehouse=parent_warehouse
+            )
+            print(check_warehouse)
+            if check_warehouse:
+                return Response({'status':400,
+                             'message':'update fail'
+                             },status=status.HTTP_400_BAD_REQUEST)
             serializer.validated_data['updated_at'] = datetime.datetime.now()
             serializer.validated_data['editor'] = request.user
-            serializer.validated_data['parent_warehouse'] = Warehouse.objects.get(id = modified_data['parent_warehouse'])
+            if modified_data.get('parent_warehouse'):
+                serializer.validated_data['parent_warehouse'] = Warehouse.objects.filter(id = modified_data.get('parent_warehouse')).first()
             serializer.save()
             return Response({'status':200,
                              'message':'update successfully'
