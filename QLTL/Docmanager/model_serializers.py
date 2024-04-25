@@ -78,6 +78,14 @@ class FolderSerializer(serializers.ModelSerializer):
     parent_folder = serializers.PrimaryKeyRelatedField(required =False,read_only=True)
     file_size = serializers.SerializerMethodField()
     owner_name = serializers.SerializerMethodField()
+    files = serializers.SerializerMethodField()
+    
+    def get_files(self, obj):
+        if obj.type == 'File':
+            request = self.context.get('request')
+            if request is not None:
+                return request.build_absolute_uri() + '/' + str(obj.id) + '/preview'
+        return None
     
     def get_file_size(self, obj):
         if obj.file_size == 0:
