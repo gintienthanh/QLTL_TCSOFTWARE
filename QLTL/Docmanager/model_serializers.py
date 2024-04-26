@@ -85,9 +85,10 @@ class FolderSerializer(serializers.ModelSerializer):
             request = self.context.get('request')
             if request is not None:
                 base_url = request.build_absolute_uri()
-                protocol = 'http://' if not request.is_secure() else 'https://'
                 url_without_params = base_url.split('?')[0]
-                url_without_params.replace('http://',protocol)
+                if not request.is_secure():
+                    url_without_params.replace('http://','https://')
+                
                 return url_without_params + '/' + str(obj.id) + '/preview'
         return None
     
