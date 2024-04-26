@@ -441,6 +441,35 @@ class FolderListCreate(generics.ListAPIView):
             return Response(response, status=status.HTTP_201_CREATED)
         return Response({'status':400}, status=status.HTTP_400_BAD_REQUEST)
 
+class FolderSharedListCreate(generics.ListAPIView):
+    permission_classes = [permissions.IsAuthenticated]
+    queryset = Folder.objects.all()
+    serializer_class = FolderSerializer  
+    filter_backends = [filters.DjangoFilterBackend]
+    filterset_class = FolderFilter
+    paginator = CustomPagination()
+    
+    def get_queryset(self):
+        
+        queryset = super().get_queryset()
+        user = self.request.user
+        if user.is_authenticated:  # Check if user is authenticated
+            folder_share = Share.objects.filter(owner = user,is_delete = False).values('folder')            
+            queryset = queryset.filter( is_delete = False, id__in = folder_share)
+            print(queryset)
+            queryset = queryset.order_by(F('updated_at').desc())
+        return queryset
+    # def get(self, request):
+    #     try:
+    #         print(request.user)
+    #         folder_share = Share.objects.filter(owner = request.user)
+    #         print(folder_share)
+           
+            
+           
+    #         return Response({'status': 404, 'message': 'File not found'}, status=status.HTTP_404_NOT_FOUND)
+    #     except Folder.DoesNotExist:
+    #         return Response({'status': 404, 'message': 'Folder not found'}, status=status.HTTP_404_NOT_FOUND)
 
 
 
@@ -1710,7 +1739,7 @@ class RetentionPeriodListCreate(generics.ListCreateAPIView):
         if user.is_authenticated:  # Check if user is authenticated 
             name_query = self.request.GET.get('name', None)   
              
-            queryset = queryset.filter(create_by=user, is_delete=False) 
+            queryset = queryset.filter(is_delete=False) 
              
             if name_query: 
                 queryset = queryset.filter(name__icontains=name_query) 
