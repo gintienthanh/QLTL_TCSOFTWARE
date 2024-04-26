@@ -139,7 +139,6 @@ class PortfolioListCreate(generics.ListAPIView):
         return queryset  
     def post(self, request):
         serializer = PortfolioSerializer(data=request.data)
-        print(serializer)
         if serializer.is_valid():
             serializer.validated_data['created_at'] = datetime.datetime.now()
             serializer.validated_data['updated_at'] = datetime.datetime.now()
