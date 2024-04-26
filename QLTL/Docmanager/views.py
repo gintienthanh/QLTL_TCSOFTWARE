@@ -139,6 +139,7 @@ class PortfolioListCreate(generics.ListAPIView):
         return queryset  
     def post(self, request):
         serializer = PortfolioSerializer(data=request.data)
+        print(serializer)
         if serializer.is_valid():
             serializer.validated_data['created_at'] = datetime.datetime.now()
             serializer.validated_data['updated_at'] = datetime.datetime.now()
@@ -569,19 +570,21 @@ class FileView(generics.ListAPIView):
             raise status.HTTP_404_NOT_FOUND
     
     def get_file_response(self, file_path):
-        # Xác định phần mở rộng của tệp tin
         _, extension = os.path.splitext(file_path)
         extension = extension.lower()
 
         if extension in ['.jpg', '.jpeg', '.png', '.gif']:
-            # Nếu là ảnh, mở và hiển thị trên trang web
             image = Image.open(file_path)
+
+            # Convert RGBA to RGB if the image has an alpha channel
+            if image.mode == 'RGBA':
+                image = image.convert('RGB')
+
             response = HttpResponse(content_type='image/jpeg')
-            image.save(response, 'JPEG')
+            image.save(response, format='JPEG')
             return response
-        
+
         else:
-            # Nếu là các loại tệp tin khác, tải về
             return FileResponse(open(file_path, 'rb'), content_type='application/octet-stream')
 
     def get(self, request, pk):

@@ -84,7 +84,9 @@ class FolderSerializer(serializers.ModelSerializer):
         if obj.type == 'File':
             request = self.context.get('request')
             if request is not None:
-                return request.build_absolute_uri() + '/' + str(obj.id) + '/preview'
+                base_url = request.build_absolute_uri()
+                url_without_params = base_url.split('?')[0]
+                return url_without_params + '/' + str(obj.id) + '/preview'
         return None
     
     def get_file_size(self, obj):
@@ -205,7 +207,7 @@ class PortfolioSerializer(serializers.ModelSerializer):
     
     class Meta: 
         model = Portfolio 
-        fields = ['id','title','retention_period', 'languege', 'classification','identification_code','usage_policy','start_date','end_date','physical_condition','warehouse','keywords','annotation','barcode','status', 'is_delete','created_at', 'updated_at', 'delete_at', 'owner','create_by','delete_by', 'editor', 'docsubport'] 
+        fields = ['id','title','retention_period', 'languege', 'classification','identification_code','usage_policy','start_date','end_date','physical_condition','warehouse','keywords','annotation','barcode','status', 'is_delete','created_at', 'updated_at', 'delete_at', 'owner','create_by','delete_by', 'editor', 'docsubport','formationtime'] 
     def to_representation(self, instance): 
         data = super().to_representation(instance) 
         if instance.classification: 
