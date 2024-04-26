@@ -27,6 +27,7 @@ folder_urls = [
     path('/change-folder/<int:pk>', FolderUpdateDelete.as_view(),{'change_folder': True}, name='change-folder'),
     path('/folder-path/<int:pk>', APIFolderPath.as_view(), name='folder-path'),
     path('/<int:pk>/preview', FileView.as_view(), name='file-view'),
+    path('/folder-shared', FolderSharedListCreate.as_view(), name='file-list-shared'),
     
     
    
