@@ -1593,7 +1593,7 @@ class UserFilter(filters.FilterSet):
 class APIUserListView(generics.ListAPIView):
     queryset = User.objects.all()
     serializer_class = UserSerializer
-    permission_classes = [authentication]
+    permission_classes = [permissions.IsAuthenticated]
     pagination_class = CustomPagination
     filter_backends = [filters.DjangoFilterBackend]
     filterset_class = UserFilter 
