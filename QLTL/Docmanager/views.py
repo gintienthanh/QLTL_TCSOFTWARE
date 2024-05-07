@@ -294,8 +294,9 @@ class FolderFilter(filters.FilterSet):
 
 
 class FolderListCreate(generics.ListAPIView):
-    permission_classes = [permissions.IsAuthenticated]
+    # permission_classes = [permissions.IsAuthenticated]
     queryset = Folder.objects.all()
+    permission_classes = [check_shared_group_factory(Folder(),'edit') | Check_owner_factory(Folder())]
     serializer_class = FolderSerializer  
     filter_backends = [filters.DjangoFilterBackend]
     filterset_class = FolderFilter
@@ -303,14 +304,26 @@ class FolderListCreate(generics.ListAPIView):
     
     def get_queryset(self):
         
-        queryset = super().get_queryset()
         user = self.request.user
+        queryset = Folder.objects.none()
         if user.is_authenticated:  # Check if user is authenticated
             parent_folder = self.request.GET.get('parent_folder')
             if parent_folder:
-                queryset = queryset.filter(create_by=user, is_delete = False, parent_folder = parent_folder)
+                queryset = Folder.objects.filter(create_by=user, is_delete = False, parent_folder = parent_folder)
+                if Share.objects.filter(owner=user, folder=parent_folder).exists():
+                    queryset = Folder.objects.filter(parent_folder = parent_folder)
+                folder_ids = Share.objects.filter(owner=user, type=type).values_list('folder_id', flat=True)
+                folder = Folder.objects.filter(id=parent_folder).first()
+                while folder is not None:
+                    folder = Folder.objects.filter(id=folder.id).first()
+                    if folder.id in folder_ids:
+                        queryset = Folder.objects.filter(is_delete = False, parent_folder = parent_folder)
+                        ('pass')
+                        break
+                    folder = folder.parent_folder
+                
             else:
-                queryset = queryset.filter(create_by=user, is_delete = False, parent_folder = None)
+                queryset = Folder.objects.filter(create_by=user, is_delete = False, parent_folder = None)
             queryset = queryset.order_by(F('updated_at').desc())
         return queryset
     def extract_and_convert_to_integer(self,name,name_list):
@@ -474,7 +487,8 @@ class FolderSharedListCreate(generics.ListAPIView):
 
 
 class FolderUpdateDelete(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+    # permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [check_shared_group_factory(Folder(),'edit') | Check_owner_factory(Folder())]
     def __init__(self, *args, **kwargs):
         self.change_name = kwargs.pop('change_name', False)
         self.change_folder = kwargs.pop('change_folder', False)
