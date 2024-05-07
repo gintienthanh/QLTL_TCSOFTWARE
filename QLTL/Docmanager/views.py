@@ -1593,7 +1593,7 @@ class UserFilter(filters.FilterSet):
 class APIUserListView(generics.ListAPIView):
     queryset = User.objects.all()
     serializer_class = UserSerializer
-    permission_classes = [IsAdminUser]
+    permission_classes = []
     pagination_class = CustomPagination
     filter_backends = [filters.DjangoFilterBackend]
     filterset_class = UserFilter 
@@ -1626,9 +1626,9 @@ class APIUserListView(generics.ListAPIView):
                     'id': user.id,
                     'username': user.username,
                     'email': user.email,
-                    'user_profile': user_profile_data,  
+                    'user_profile': user_profile_data if request.user.is_staff else {},  
                     'is_active': user.is_active,
-                    'groups': group_data,  
+                    'groups':  group_data,  
                     'user_permissions': permission_data, 
                 }
                 serialized_data.append(user_data)
