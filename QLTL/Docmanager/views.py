@@ -309,7 +309,7 @@ class FolderListCreate(generics.ListAPIView):
         if user.is_authenticated:  # Check if user is authenticated
             parent_folder = self.request.GET.get('parent_folder')
             if parent_folder:
-                queryset = Folder.objects.filter(create_by=user, is_delete = False, parent_folder = parent_folder)
+                queryset = Folder.objects.filter(is_delete = False, parent_folder = parent_folder)
                 if Share.objects.filter(owner=user, folder=parent_folder).exists():
                     queryset = Folder.objects.filter(parent_folder = parent_folder)
                 folder_ids = Share.objects.filter(owner=user, type=type).values_list('folder_id', flat=True)
@@ -318,7 +318,6 @@ class FolderListCreate(generics.ListAPIView):
                     folder = Folder.objects.filter(id=folder.id).first()
                     if folder.id in folder_ids:
                         queryset = Folder.objects.filter(is_delete = False, parent_folder = parent_folder)
-                        ('pass')
                         break
                     folder = folder.parent_folder
                 
