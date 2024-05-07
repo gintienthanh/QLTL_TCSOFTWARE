@@ -7,7 +7,7 @@ import shutil
 from django.conf import settings
 from django.shortcuts import render
 from pdf2image import convert_from_path
-from Docmanager.permissions import Check_owner_factory, check_shared_group_factory, check_group_permisison_factory
+from Docmanager.permissions import Check_owner_factory, Check_owner_parent_factory, check_shared_group_factory, check_group_permisison_factory
 from QLTL.settings import EXPORT_PATH_FILE
 from .model_serializers import*
 from rest_framework import  viewsets
@@ -296,7 +296,7 @@ class FolderFilter(filters.FilterSet):
 class FolderListCreate(generics.ListAPIView):
     # permission_classes = [permissions.IsAuthenticated]
     queryset = Folder.objects.all()
-    permission_classes = [check_shared_group_factory(Folder(),'edit') | Check_owner_factory(Folder())]
+    permission_classes = [check_shared_group_factory(Folder(),'edit') | Check_owner_factory(Folder())| Check_owner_parent_factory(Folder(),'parent_folder')]
     serializer_class = FolderSerializer  
     filter_backends = [filters.DjangoFilterBackend]
     filterset_class = FolderFilter
