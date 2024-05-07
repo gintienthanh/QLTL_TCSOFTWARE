@@ -79,6 +79,35 @@ def Check_owner_factory(Model):
             
     return CheckOwner
 
+def Check_owner_parent_factory(Model,parent):
+    class CheckOwnerParent(BasePermission):
+        def __init__(self,*args,**kwargs):
+            super().__init__(*args,**kwargs)
+        
+        def has_permission(self, request, view):
+            try:
+                http_method = request.method
+                if http_method in ['POST', 'PUT', 'PATCH', 'DELETE']:
+                    id = view.kwargs.get('pk')
+                    data = request.data.copy()
+                    if http_method == 'POST':
+                        id = data.get(parent)
+                    if(id):
+                        obj = type(Model).objects.get(id=id)
+                        print(obj.owner)
+                        print(request.user)
+                        if obj.owner == request.user:
+                            return True 
+                        else:
+                            return False
+                # list_object =  type(Model).object.get(owner = request.user)
+                # if list_object:
+                #     return True
+                # return False
+            except ValueError:
+                return False
+            
+    return CheckOwnerParent
 def checkShare(folder, user, type):
     folder_ids = Share.objects.filter(owner=user, type=type).values_list('folder_id', flat=True)
 
