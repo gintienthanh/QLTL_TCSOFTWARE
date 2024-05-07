@@ -1912,8 +1912,8 @@ class StatisticsCountTime(generics.ListAPIView):
             end_time_str = request.query_params.get('end_time')  
 
            
-            start_time = datetime.strptime(start_time_str, '%Y-%m-%d').date() if start_time_str else None
-            end_time = datetime.strptime(end_time_str, '%Y-%m-%d').date() if end_time_str else None
+            start_time = datetime.datetime.strptime(start_time_str, '%d-%m-%Y').date() if start_time_str else None
+            end_time = datetime.datetime.strptime(end_time_str, '%d-%m-%Y').date() if end_time_str else None
 
             portfolio_queryset = Portfolio.objects.filter(create_by=user, is_delete=False)
             document_queryset = Document.objects.filter(create_by=user, is_delete=False)

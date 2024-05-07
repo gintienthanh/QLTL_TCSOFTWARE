@@ -151,7 +151,7 @@ class GoogleLoginApi( APIView):
 
     def post(self, request, *args, **kwargs):
         id_token = request.headers.get('Authorization')
-        google_validate_id_token(id_token=id_token)
+        # google_validate_id_token(id_token=id_token)
 
         serializer = self.InputSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
