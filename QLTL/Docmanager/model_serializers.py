@@ -119,6 +119,7 @@ class FolderSerializer(serializers.ModelSerializer):
 
 
 class DocumentSerializer(serializers.ModelSerializer):
+    name = AdjustedNameField()
     class Meta:
         model = Document
         fields = '__all__'
