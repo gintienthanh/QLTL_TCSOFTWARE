@@ -1419,14 +1419,17 @@ class Multi_portfolio_DownloadConvertAPIView(APIView):
                 # Thêm các tệp tin liên quan vào zip
                 documents = Document.objects.filter(portfolio=portfolio)
                 for document in documents:
+                    
+                        
                     file_path = os.path.join(settings.MEDIA_ROOT, str(document.files))
-                    arcname = f'portfolio_{portfolio.id}/{os.path.basename(str(document.files))}'
-                    zf.write(file_path, arcname=arcname)
+                    if os.path.exists(file_path): 
+                        arcname = f'portfolio_{portfolio.id}/{os.path.basename(str(document.files))}'
+                        zf.write(file_path, arcname=arcname)
 
         # Đặt tiêu đề và kiểu dữ liệu cho phản hồi
         response = HttpResponse(zip_file.getvalue(), content_type='application/zip')
         response['Content-Disposition'] = 'attachment; filename=data.zip'
-        return response  
+        return response
 
    
 class BulkDeleteAPI(APIView):
