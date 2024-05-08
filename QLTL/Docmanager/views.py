@@ -1049,7 +1049,7 @@ class  WarehouseFilter(filters.FilterSet):
         fields = ['name', 'parent_warehouse', 'type_warehouse'] 
 
 class WarehouseListCreate(generics.ListAPIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAdminUser]
     queryset = Warehouse.objects.all()
     serializer_class = WarehouseSerializer 
     filter_backends = [filters.DjangoFilterBackend]
@@ -1060,7 +1060,7 @@ class WarehouseListCreate(generics.ListAPIView):
         queryset = super().get_queryset()
         user = self.request.user
         if user.is_authenticated:  # Check if user is authenticated
-            queryset = queryset.filter(create_by=user, is_delete = False)
+            queryset = queryset.filter( is_delete = False)
         queryset = queryset.order_by(F('updated_at').desc())
         return queryset 
         
@@ -1109,7 +1109,7 @@ class WarehouseListCreate(generics.ListAPIView):
                   
 
 class WarehouseUpdateDelete(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAdminUser]
     def get_warehouse(self, pk):
         try:
             return Warehouse.objects.get(pk=pk)
