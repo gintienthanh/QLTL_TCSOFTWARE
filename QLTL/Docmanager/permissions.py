@@ -61,14 +61,15 @@ def Check_owner_factory(Model):
         
         def has_permission(self, request, view):
             try:
-                id = view.kwargs.get('pk')
-                
-                if(id):
-                    obj = type(Model).objects.get(id=id)
-                    if obj.owner == request.user:
-                        return True 
-                    else:
-                        return False
+                http_method = request.method
+                if http_method in ['PUT', 'PATCH', 'DELETE']:
+                    id = view.kwargs.get('pk')
+                    if(id):
+                        obj = type(Model).objects.get(id=id)
+                        if obj.owner == request.user:
+                            return True 
+                        else:
+                            return False
                 # list_object =  type(Model).object.get(owner = request.user)
                 # if list_object:
                 #     return True
@@ -78,6 +79,35 @@ def Check_owner_factory(Model):
             
     return CheckOwner
 
+def Check_owner_parent_factory(Model,parent):
+    class CheckOwnerParent(BasePermission):
+        def __init__(self,*args,**kwargs):
+            super().__init__(*args,**kwargs)
+        
+        def has_permission(self, request, view):
+            try:
+                http_method = request.method
+                if http_method in ['POST', 'PUT', 'PATCH', 'DELETE']:
+                    id = view.kwargs.get('pk')
+                    data = request.data.copy()
+                    if http_method == 'POST':
+                        id = data.get(parent)
+                    if(id):
+                        obj = type(Model).objects.get(id=id)
+                        print(obj.owner)
+                        print(request.user)
+                        if obj.owner == request.user:
+                            return True 
+                        else:
+                            return False
+                # list_object =  type(Model).object.get(owner = request.user)
+                # if list_object:
+                #     return True
+                # return False
+            except ValueError:
+                return False
+            
+    return CheckOwnerParent
 def checkShare(folder, user, type):
     folder_ids = Share.objects.filter(owner=user, type=type).values_list('folder_id', flat=True)
 
@@ -98,9 +128,18 @@ def check_shared_group_factory(Model, type):
 
         def has_permission(self, request, view):
             try:
-                id = view.kwargs.get('pk')
+                http_method = request.method
+                id = view.kwargs.get('pk',None)
+                if http_method == 'GET':
+                    return True
                 if isinstance(Model, Folder):
-                    obj = Model.objects.get(id=id)
+                    if not id:
+                        data = request.data.copy()
+                        if http_method == 'POST':
+                            id = data.get('parent_folder')
+                        if not id:
+                            return True
+                    obj = Folder.objects.get(id=id)
                     if Share.objects.filter(owner=request.user, folder=obj, type=type).exists():
                         return True
                     if checkShare(obj, request.user, type):
@@ -110,6 +149,7 @@ def check_shared_group_factory(Model, type):
                     if Share.objects.filter(owner=request.user, document=id, type=type).exists():
                         return True
                     return False
-            except Exception:
+                
+            except Exception as e:
                 return False
     return CheckOwner

@@ -7,7 +7,7 @@ import shutil
 from django.conf import settings
 from django.shortcuts import render
 from pdf2image import convert_from_path
-from Docmanager.permissions import Check_owner_factory, check_shared_group_factory, check_group_permisison_factory
+from Docmanager.permissions import Check_owner_factory, Check_owner_parent_factory, check_shared_group_factory, check_group_permisison_factory
 from QLTL.settings import EXPORT_PATH_FILE
 from .model_serializers import*
 from rest_framework import  viewsets
@@ -18,6 +18,7 @@ from rest_framework.response import Response
 from django.http import FileResponse, Http404, HttpResponse
 from django_filters import rest_framework as filters
 from rest_framework.pagination import PageNumberPagination
+from django.db.models import Q
 
 import mimetypes
 import pandas as pd
@@ -37,6 +38,7 @@ from django.db.models import Count
 from django.db.models.functions import Length
 from django.http import JsonResponse
 # from datetime import datetime, timedelta
+from PIL import Image
 
 # Create your views here.
 class CustomPagination(PageNumberPagination):
@@ -138,6 +140,9 @@ class PortfolioListCreate(generics.ListAPIView):
     def post(self, request):
         serializer = PortfolioSerializer(data=request.data)
         if serializer.is_valid():
+            serializer.validated_data['created_at'] = datetime.datetime.now()
+            serializer.validated_data['updated_at'] = datetime.datetime.now()
+            
             serializer.validated_data['create_by'] = request.user  
             serializer.save()
             return Response({'status':201,
@@ -180,11 +185,12 @@ class PortfolioUpdateDelete(APIView):
     def delete(self, request, pk):
         instance = Portfolio.objects.get(pk=pk)
         instance.soft_delete(request)
-        document = Document.objects.get(portfolio=pk)
-        document.soft_delete(request)
+        documents = Document.objects.filter(portfolio=instance)
+        for d in documents:
+            d.soft_delete(request)
         
         serializers = PortfolioSerializer(instance)
-        docserializers = DocumentSerializer(document)
+        docserializers = DocumentSerializer(documents,many = True)
         
         return Response({'status':200,
                              'message':'delete successfully',
@@ -271,6 +277,10 @@ class DocumentUpdateDelete(APIView):
         
 ########FOLDER#######
 
+
+
+    
+
 class FolderFilter(filters.FilterSet):
     name = filters.CharFilter(field_name='name', lookup_expr='icontains')
     
@@ -284,8 +294,9 @@ class FolderFilter(filters.FilterSet):
 
 
 class FolderListCreate(generics.ListAPIView):
-    permission_classes = [permissions.IsAuthenticated]
+    # permission_classes = [permissions.IsAuthenticated]
     queryset = Folder.objects.all()
+    permission_classes = [check_shared_group_factory(Folder(),'edit') | Check_owner_factory(Folder())| Check_owner_parent_factory(Folder(),'parent_folder')]
     serializer_class = FolderSerializer  
     filter_backends = [filters.DjangoFilterBackend]
     filterset_class = FolderFilter
@@ -293,14 +304,25 @@ class FolderListCreate(generics.ListAPIView):
     
     def get_queryset(self):
         
-        queryset = super().get_queryset()
         user = self.request.user
+        queryset = Folder.objects.none()
         if user.is_authenticated:  # Check if user is authenticated
             parent_folder = self.request.GET.get('parent_folder')
             if parent_folder:
-                queryset = queryset.filter(create_by=user, is_delete = False, parent_folder = parent_folder)
+                queryset = Folder.objects.filter(is_delete = False, parent_folder = parent_folder)
+                if Share.objects.filter(owner=user, folder=parent_folder).exists():
+                    queryset = Folder.objects.filter(parent_folder = parent_folder)
+                folder_ids = Share.objects.filter(owner=user, type=type).values_list('folder_id', flat=True)
+                folder = Folder.objects.filter(id=parent_folder).first()
+                while folder is not None:
+                    folder = Folder.objects.filter(id=folder.id).first()
+                    if folder.id in folder_ids:
+                        queryset = Folder.objects.filter(is_delete = False, parent_folder = parent_folder)
+                        break
+                    folder = folder.parent_folder
+                
             else:
-                queryset = queryset.filter(create_by=user, is_delete = False, parent_folder = None)
+                queryset = Folder.objects.filter(create_by=user, is_delete = False, parent_folder = None)
             queryset = queryset.order_by(F('updated_at').desc())
         return queryset
     def extract_and_convert_to_integer(self,name,name_list):
@@ -353,6 +375,8 @@ class FolderListCreate(generics.ListAPIView):
         name = request.data.get('name')
         parent_folder_id = request.data.get('parent_folder')
         user = request.user
+        created_at = datetime.datetime.now()
+        updated_at = datetime.datetime.now()
         if name and name != '':
             name = name.rstrip()
         else:
@@ -384,11 +408,14 @@ class FolderListCreate(generics.ListAPIView):
                         newname = name
                     elif name in name_list:
                         newname = self.extract_and_convert_to_integer(name_default,name_list)
-                    newrecord = Folder(type= type, files=file,file_size = file_size, path = path + newname, name = newname,parent_folder=parent_folder,create_by = user,owner=owner)
+                    newrecord = Folder(
+                        type= type, files=file,file_size = file_size, path = path + newname, name = newname,parent_folder=parent_folder,create_by = user,owner=owner, created_at = created_at,  updated_at = updated_at)
                     newrecord.save()
+                    serializer_file = FolderSerializer(newrecord)                    
                 response = {
                     "status": 200,
                     "message": "created successfully",
+                    "data": serializer_file.data,
                 }
                 #     original_file = Folder(type= type, files=file,file_size = file_size, path = path + newname, name = newname,parent_folder=parent_folder,create_by = user,owner=owner)
                 #     original_file.save()
@@ -417,7 +444,7 @@ class FolderListCreate(generics.ListAPIView):
                     newname = name
                 elif name in name_list:
                     newname = self.extract_and_convert_to_integer(name_default,name_list)
-                serializer.save(type = type,file_size = 0,path = path + newname + "/",name = newname,parent_folder=parent_folder,create_by = user,owner=owner)
+                serializer.save(type = type,file_size = 0,path = path + newname + "/",name = newname,parent_folder=parent_folder,create_by = user,owner=owner, created_at = created_at,  updated_at = updated_at)
                 response = {
                     "status": 200,
                     "message": "created successfully",
@@ -426,11 +453,41 @@ class FolderListCreate(generics.ListAPIView):
             return Response(response, status=status.HTTP_201_CREATED)
         return Response({'status':400}, status=status.HTTP_400_BAD_REQUEST)
 
+class FolderSharedListCreate(generics.ListAPIView):
+    permission_classes = [permissions.IsAuthenticated]
+    queryset = Folder.objects.all()
+    serializer_class = FolderSerializer  
+    filter_backends = [filters.DjangoFilterBackend]
+    filterset_class = FolderFilter
+    paginator = CustomPagination()
+    
+    def get_queryset(self):
+        
+        queryset = super().get_queryset()
+        user = self.request.user
+        if user.is_authenticated:  # Check if user is authenticated
+            folder_share = Share.objects.filter(owner = user,is_delete = False).values('folder')            
+            queryset = queryset.filter( is_delete = False, id__in = folder_share)
+            print(queryset)
+            queryset = queryset.order_by(F('updated_at').desc())
+        return queryset
+    # def get(self, request):
+    #     try:
+    #         print(request.user)
+    #         folder_share = Share.objects.filter(owner = request.user)
+    #         print(folder_share)
+           
+            
+           
+    #         return Response({'status': 404, 'message': 'File not found'}, status=status.HTTP_404_NOT_FOUND)
+    #     except Folder.DoesNotExist:
+    #         return Response({'status': 404, 'message': 'Folder not found'}, status=status.HTTP_404_NOT_FOUND)
 
 
 
 class FolderUpdateDelete(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+    # permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [check_shared_group_factory(Folder(),'edit') | Check_owner_factory(Folder())]
     def __init__(self, *args, **kwargs):
         self.change_name = kwargs.pop('change_name', False)
         self.change_folder = kwargs.pop('change_folder', False)
@@ -441,6 +498,13 @@ class FolderUpdateDelete(APIView):
             return Folder.objects.get(pk=pk)
         except Folder.DoesNotExist:
             raise status.HTTP_404_NOT_FOUND
+    # def get(self, request, pk):
+    #     folder = self.get_object(pk)
+    #     serializer = FolderSerializer(folder,  context={'request': request})
+    #     return Response({'status':200,
+    #                     'message':'found',
+    #                     'data':serializer.data},status=status.HTTP_200_OK)    
+    
     def change(self,path,old_name,new_name):
         new_folder_path = path.replace(old_name,new_name)
         print(new_folder_path)
@@ -537,6 +601,44 @@ class FolderUpdateDelete(APIView):
             }
             return Response(response, status=status.HTTP_200_OK)
         return Response({'status':400}, status=status.HTTP_400_BAD_REQUEST)
+    
+    
+class FileView(generics.ListAPIView):
+    def get_object(self, pk):
+        try:
+            return Folder.objects.get(pk=pk)
+        except Folder.DoesNotExist:
+            raise status.HTTP_404_NOT_FOUND
+    
+    def get_file_response(self, file_path):
+        _, extension = os.path.splitext(file_path)
+        extension = extension.lower()
+
+        if extension in ['.jpg', '.jpeg', '.png', '.gif']:
+            image = Image.open(file_path)
+
+            # Convert RGBA to RGB if the image has an alpha channel
+            if image.mode == 'RGBA':
+                image = image.convert('RGB')
+
+            response = HttpResponse(content_type='image/jpeg')
+            image.save(response, format='JPEG')
+            return response
+
+        else:
+            return FileResponse(open(file_path, 'rb'), content_type='application/octet-stream')
+
+    def get(self, request, pk):
+        try:
+            folder = self.get_object(pk)
+            file_path = folder.files.path
+            
+            if os.path.exists(file_path):
+                return self.get_file_response(file_path)
+            else:
+                return Response({'status': 404, 'message': 'File not found'}, status=status.HTTP_404_NOT_FOUND)
+        except Folder.DoesNotExist:
+            return Response({'status': 404, 'message': 'Folder not found'}, status=status.HTTP_404_NOT_FOUND)
 class APIFolderPath(APIView):
     # def get_queryset(self):
         
@@ -947,7 +1049,7 @@ class  WarehouseFilter(filters.FilterSet):
         fields = ['name', 'parent_warehouse', 'type_warehouse'] 
 
 class WarehouseListCreate(generics.ListAPIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAdminUser]
     queryset = Warehouse.objects.all()
     serializer_class = WarehouseSerializer 
     filter_backends = [filters.DjangoFilterBackend]
@@ -958,38 +1060,56 @@ class WarehouseListCreate(generics.ListAPIView):
         queryset = super().get_queryset()
         user = self.request.user
         if user.is_authenticated:  # Check if user is authenticated
-            queryset = queryset.filter(create_by=user, is_delete = False)
+            queryset = queryset.filter( is_delete = False)
         queryset = queryset.order_by(F('updated_at').desc())
         return queryset 
         
     def post(self, request):
-        try:
+        try:               
+            print(request.data)                                            
             serializer = WarehouseSerializer(data=request.data)
-            id = request.data.get('parent_warehouse_id')
-            if serializer.is_valid():
-                 
-                parent_warehouse =Warehouse.objects.get(id=id)    
-                serializer.save(parent_warehouse=parent_warehouse, create_by=request.user)
-    
+            name = request.data.get("name", "")
+            type_warehouse = request.data.get("type_warehouse", ChoicesTypeWarehouse.Warehouse.value)
+            code = request.data.get("code", "")
+            parent_warehouse = request.data.get("parent_warehouse", None)
+
+            check_warehouse = Warehouse.objects.filter(
+                Q(name=name) | Q(code=code),
+                type_warehouse = type_warehouse,
+                is_delete=False,
+                parent_warehouse=parent_warehouse
+            )
+            print(check_warehouse)
+            if check_warehouse:
+                return Response({'status':400,
+                            'message':'created fail'},status=status.HTTP_400_BAD_REQUEST)
+            
+            id = request.data.get('parent_warehouse',0)
+            if serializer.is_valid(raise_exception=True):
+                parent_warehouse =Warehouse.objects.filter(id=id).first()   
+                
+                if request.data.get("type_warehouse", "") == "" and not parent_warehouse:
+                    serializer.save(type_warehouse = ChoicesTypeWarehouse.Warehouse.value,create_by=request.user)
+                elif request.data.get("type_warehouse", "") == ChoicesTypeWarehouse.Shelf.value and  getattr(parent_warehouse, 'type_warehouse', "") == ChoicesTypeWarehouse.Warehouse.value :
+                    serializer.save(type_warehouse = ChoicesTypeWarehouse.Shelf.value, parent_warehouse = parent_warehouse, create_by=request.user)
+                elif request.data.get("type_warehouse", "") == ChoicesTypeWarehouse.BoxCase.value and  getattr(parent_warehouse, 'type_warehouse', "") == ChoicesTypeWarehouse.Shelf.value :
+                    serializer.save(type_warehouse = ChoicesTypeWarehouse.BoxCase.value, parent_warehouse = parent_warehouse, create_by=request.user)
+                else:
+                    return Response({'status':400,
+                                    'message':'created fail'},status=status.HTTP_400_BAD_REQUEST)
+
+                # print(serializer.data)
                 return Response({'status':201,
                                 'message':'created successfully',
                                 'data':serializer.data},status=status.HTTP_201_CREATED)
-            return Response({'status':400,
-                            'message':'created fail'},status=status.HTTP_400_BAD_REQUEST)
-        except Warehouse.DoesNotExist:
-            serializer.save(create_by=request.user)
-            return Response({'status':201,
-                            'message':'created successfully',
-                            'data':serializer.data},status=status.HTTP_201_CREATED)
-    
-        
+
         except Exception as e:
             return Response({'status':400,
-                            'message':'created fail'},status=status.HTTP_400_BAD_REQUEST)
+                            'message':e},status=status.HTTP_400_BAD_REQUEST)
                   
 
 class WarehouseUpdateDelete(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAdminUser]
     def get_warehouse(self, pk):
         try:
             return Warehouse.objects.get(pk=pk)
@@ -1005,14 +1125,32 @@ class WarehouseUpdateDelete(APIView):
 
     def patch(self, request, pk):
         warehouse = self.get_warehouse(pk)
-    
         # Copy request data to remove 'type_warehouse' field
         modified_data = request.data.copy()
         if 'type_warehouse' in modified_data:
             del modified_data['type_warehouse']
-    
         serializer = WarehouseSerializer(warehouse, data=modified_data, partial=True)
         if serializer.is_valid():
+            name = modified_data.get("name", "")
+            type_warehouse = modified_data.get('type_warehouse')
+            code = modified_data.get('code','')
+            parent_warehouse = modified_data.get('parent_warehouse',None)
+            print(modified_data)
+            check_warehouse = Warehouse.objects.filter(
+                Q(name=name) | Q(code=code),
+                type_warehouse = warehouse.type_warehouse,
+                is_delete=False,
+                parent_warehouse=parent_warehouse
+            )
+            print(check_warehouse)
+            if check_warehouse:
+                return Response({'status':400,
+                             'message':'update fail'
+                             },status=status.HTTP_400_BAD_REQUEST)
+            serializer.validated_data['updated_at'] = datetime.datetime.now()
+            serializer.validated_data['editor'] = request.user
+            if modified_data.get('parent_warehouse'):
+                serializer.validated_data['parent_warehouse'] = Warehouse.objects.filter(id = modified_data.get('parent_warehouse')).first()
             serializer.save()
             return Response({'status':200,
                              'message':'update successfully'
@@ -1020,7 +1158,7 @@ class WarehouseUpdateDelete(APIView):
         return Response({'status':400,
                              'message':'update fail'
                              },status=status.HTTP_400_BAD_REQUEST)
-        
+    
     def delete(self, request, pk):
         warehouse = self.get_warehouse(pk)
         try:
@@ -1079,12 +1217,11 @@ class WarehouseWithShelvesList(generics.ListAPIView):
 class AllWarehouseAPIView(generics.ListAPIView):
     permission_classes = [permissions.IsAuthenticated]
     filter_backends = [filters.DjangoFilterBackend]
-    queryset = Warehouse.objects.filter(type_warehouse='warehouse')
+    queryset = Warehouse.objects.filter(type_warehouse='warehouse',is_delete = False)
     serializer_class = AllWarehouseSerializer
     permission_classes = [permissions.IsAuthenticated]
     filterset_class = WarehouseFilter
     pagination_class = CustomPagination
-    
 
 #######WatchList#######
 class WatchlistFilter(filters.FilterSet):
@@ -1282,14 +1419,17 @@ class Multi_portfolio_DownloadConvertAPIView(APIView):
                 # Thêm các tệp tin liên quan vào zip
                 documents = Document.objects.filter(portfolio=portfolio)
                 for document in documents:
+                    
+                        
                     file_path = os.path.join(settings.MEDIA_ROOT, str(document.files))
-                    arcname = f'portfolio_{portfolio.id}/{os.path.basename(str(document.files))}'
-                    zf.write(file_path, arcname=arcname)
+                    if os.path.exists(file_path): 
+                        arcname = f'portfolio_{portfolio.id}/{os.path.basename(str(document.files))}'
+                        zf.write(file_path, arcname=arcname)
 
         # Đặt tiêu đề và kiểu dữ liệu cho phản hồi
         response = HttpResponse(zip_file.getvalue(), content_type='application/zip')
         response['Content-Disposition'] = 'attachment; filename=data.zip'
-        return response  
+        return response
 
    
 class BulkDeleteAPI(APIView):
@@ -1300,14 +1440,19 @@ class BulkDeleteAPI(APIView):
         folder_ids = request.data.get('folder_ids', [])
         success_count = 0
         
+        # ids = request.GET.get('ids', '')
+        # object_ids = ids.split(',')  # Chia các giá trị thành danh sách các object_id
+        # success_count = 0
+        
         # Soft delete portfolios and associated documents
         try:
             for portfolio_id in portfolio_ids:
                 try:
                     portfolio = Portfolio.objects.get(id=int(portfolio_id))
                     portfolio.soft_delete(request)
-                    document = Document.objects.get(portfolio=portfolio_id)
-                    document.soft_delete(request)
+                    documents = Document.objects.filter(portfolio=portfolio)
+                    for document in documents:
+                        document.soft_delete(request)
                     success_count += 1
                     data = {
                             'status': '200',
@@ -1352,25 +1497,62 @@ class BulkDeleteAPI(APIView):
                 for warehouse_id in warehouse_ids:
                     warehouse = Warehouse.objects.get(id=int(warehouse_id))
                     warehouse.soft_delete(request)
-
+                    
+                    
                     if warehouse.type_warehouse == ChoicesTypeWarehouse.Shelf.value:
                         # Get all boxcases related to the shelf
                         boxcases = Warehouse.objects.filter(parent_warehouse=warehouse)
                         for boxcase in boxcases:
                             boxcase.soft_delete(request)
-                    
-                    if warehouse.type_warehouse == ChoicesTypeWarehouse.Warehouse.value:
+                            portfolios = Portfolio.objects.filter(warehouse=boxcase)
+                            for portfolio in portfolios:
+                                portfolio.soft_delete(request)
+                                documents = Document.objects.filter(portfolio=portfolio)
+                                for document in documents:
+                                    document.soft_delete(request)
+                    elif warehouse.type_warehouse == ChoicesTypeWarehouse.BoxCase.value:
+                        # Get the shelf related to the boxcase
+                        portfolios = Portfolio.objects.filter(warehouse=warehouse)
+                        for portfolio in portfolios:
+                            portfolio.soft_delete(request)
+                            documents = Document.objects.filter(portfolio=portfolio)
+                            for document in documents:
+                                document.soft_delete(request)
+                        
+                    else:
                         # Get all subwarehouses related to the warehouse
-                        warehouse = Warehouse.objects.get(id=int(warehouse_id))
-                        warehouse.soft_delete(request)
-                        shelf = Warehouse.objects.get(parent_warehouse=warehouse)
-                        shelf.soft_delete(request)
-                        boxcases = Warehouse.objects.get(parent_warehouse=shelf)
-                        boxcases.soft_delete(request)
+                        subwarehouses = warehouse.subwarehouse.all()
+                        for subwarehouse in subwarehouses:
+                            subwarehouse.soft_delete(request)
+                            boxcases = Warehouse.objects.filter(parent_warehouse=subwarehouse)
+                            for boxcase in boxcases:
+                                boxcase.soft_delete(request)
+                                portfolios = Portfolio.objects.filter(warehouse=boxcase)
+                                for portfolio in portfolios:
+                                    portfolio.soft_delete(request)
+                                    documents = Document.objects.filter(portfolio=portfolio)
+                                    for document in documents:
+                                        document.soft_delete(request)
+                        # warehouse = Warehouse.objects.get(id=int(warehouse_id))
+                        # warehouse.soft_delete(request)
+                        # shelves = Warehouse.objects.filter(parent_warehouse=warehouse)
+                        # for shelf in shelves:
+                        #     shelf.soft_delete(request)
+                        # boxcases = Warehouse.objects.filter(parent_warehouse=shelf)
+                        # for boxcase in boxcases:
+                        #     boxcase.soft_delete(request)
+                        # portfolios = Portfolio.objects.filter(warehouse=boxcase)
+                        # for portfolio in portfolios:
+                        #     portfolio.soft_delete(request)
+                        # documents = Document.objects.filter(portfolio=portfolio)
+                        # for document in documents:
+                        #     document.soft_delete(request)
+                        
+                        
                         success_count += 1
                     data = {
                             'status': '200',
-                            'message':'Deleted successfully'
+                            'message':'Deleted successfully',
                         }
                 # return Response(data, status=status.HTTP_200_OK)
             except Warehouse.DoesNotExist:
@@ -1401,7 +1583,6 @@ class BulkDeleteAPI(APIView):
             return Response(data, status=status.HTTP_404_NOT_FOUND)
        
 
-
 ######USER#####   
              
 class UserFilter(filters.FilterSet):
@@ -1414,7 +1595,7 @@ class UserFilter(filters.FilterSet):
 class APIUserListView(generics.ListAPIView):
     queryset = User.objects.all()
     serializer_class = UserSerializer
-    permission_classes = [IsAdminUser]
+    permission_classes = [permissions.IsAuthenticated]
     pagination_class = CustomPagination
     filter_backends = [filters.DjangoFilterBackend]
     filterset_class = UserFilter 
@@ -1447,9 +1628,9 @@ class APIUserListView(generics.ListAPIView):
                     'id': user.id,
                     'username': user.username,
                     'email': user.email,
-                    'user_profile': user_profile_data,  
+                    'user_profile': user_profile_data if request.user.is_staff else {},  
                     'is_active': user.is_active,
-                    'groups': group_data,  
+                    'groups':  group_data,  
                     'user_permissions': permission_data, 
                 }
                 serialized_data.append(user_data)
@@ -1574,7 +1755,7 @@ class RetentionPeriodListCreate(generics.ListCreateAPIView):
         if user.is_authenticated:  # Check if user is authenticated 
             name_query = self.request.GET.get('name', None)   
              
-            queryset = queryset.filter(create_by=user, is_delete=False) 
+            queryset = queryset.filter(is_delete=False) 
              
             if name_query: 
                 queryset = queryset.filter(name__icontains=name_query) 
@@ -1733,8 +1914,8 @@ class StatisticsCountTime(generics.ListAPIView):
             end_time_str = request.query_params.get('end_time')  
 
            
-            start_time = datetime.strptime(start_time_str, '%Y-%m-%d').date() if start_time_str else None
-            end_time = datetime.strptime(end_time_str, '%Y-%m-%d').date() if end_time_str else None
+            start_time = datetime.datetime.strptime(start_time_str, '%d-%m-%Y').date() if start_time_str else None
+            end_time = datetime.datetime.strptime(end_time_str, '%d-%m-%Y').date() if end_time_str else None
 
             portfolio_queryset = Portfolio.objects.filter(create_by=user, is_delete=False)
             document_queryset = Document.objects.filter(create_by=user, is_delete=False)
@@ -1758,3 +1939,21 @@ class StatisticsCountTime(generics.ListAPIView):
             }
 
             return Response(data)
+        
+# def serve_media(request, filename):
+#     # Kiểm tra quyền truy cập của người dùng ở đây
+#     if not user_has_access(request.user, filename):
+#         raise PermissionDenied
+
+#     # Đường dẫn đầy đủ đến tệp tin trong thư mục media
+#     file_path = os.path.join(settings.MEDIA_ROOT, filename)
+
+#     # Kiểm tra xem tệp tin có tồn tại không
+#     if not os.path.exists(file_path):
+#         return HttpResponse("Tệp tin không tồn tại", status=404)
+
+#     # Phục vụ tệp tin
+#     with open(file_path, 'rb') as f:
+#         response = HttpResponse(f.read(), content_type='application/octet-stream')
+#         response['Content-Disposition'] = 'attachment; filename="{}"'.format(filename)
+#         return response

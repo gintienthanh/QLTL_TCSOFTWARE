@@ -29,15 +29,14 @@ SECRET_KEY = config('SECRET_KEY', default='secret')
 DEBUG = True
 
 CORS_ALLOW_ALL_ORIGINS = True
-CORS_ORIGIN_ALLOW_ALL = True
 ALLOWED_HOSTS = ['*']
-CORS_ALLOWED_ORIGINS = [
-    "http://127.0.0.1:3000", 
-    "http://localhost:3000", 
-    "https://quanlytailieu.tcgroup.vn",
-    "http://localhost:49361",
-    # '*'
-]
+# CORS_ALLOWED_ORIGINS = [
+#     "http://127.0.0.1:3000", 
+#     "http://localhost:3000", 
+#     "https://quanlytailieu.tcgroup.vn",
+#     "http://localhost:49361",
+#     # '*'
+# ]
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOW_HEADERS = ['*']
 
@@ -222,8 +221,8 @@ EMAIL_USE_TLS = True
 from datetime import timedelta
 
 SIMPLE_JWT = {
-    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=40),
-    "REFRESH_TOKEN_LIFETIME": timedelta(days=1),
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=3600),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=10),
     "ROTATE_REFRESH_TOKENS": False,
     "BLACKLIST_AFTER_ROTATION": False,
     "UPDATE_LAST_LOGIN": False,

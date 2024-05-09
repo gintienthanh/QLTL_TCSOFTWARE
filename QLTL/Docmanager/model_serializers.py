@@ -78,6 +78,19 @@ class FolderSerializer(serializers.ModelSerializer):
     parent_folder = serializers.PrimaryKeyRelatedField(required =False,read_only=True)
     file_size = serializers.SerializerMethodField()
     owner_name = serializers.SerializerMethodField()
+    files = serializers.SerializerMethodField()
+    
+    def get_files(self, obj):
+        if obj.type == 'File':
+            request = self.context.get('request')
+            if request is not None:
+                base_url = request.build_absolute_uri()
+                url_without_params = base_url.split('?')[0]
+                if not request.is_secure():
+                    url_without_params = url_without_params.replace('http://','https://')
+                
+                return url_without_params + '/' + str(obj.id) + '/preview'
+        return None
     
     def get_file_size(self, obj):
         if obj.file_size == 0:
@@ -106,6 +119,7 @@ class FolderSerializer(serializers.ModelSerializer):
 
 
 class DocumentSerializer(serializers.ModelSerializer):
+    name = AdjustedNameField()
     class Meta:
         model = Document
         fields = '__all__'
@@ -175,14 +189,29 @@ class LanguageSerializer(serializers.ModelSerializer):
 class PortfolioSerializer(serializers.ModelSerializer): 
     title = AdjustedNameField() 
     docsubport = serializers.SerializerMethodField() 
+    owner = serializers.SerializerMethodField(read_only = True)
+    create_by = serializers.SerializerMethodField(read_only = True)
+    
+    def get_owner(self, obj):
+        owner = obj.owner
+        if owner:
+            return {'id': owner.id, 'username': owner.username, 'email': owner.email}
+        return None
+    def get_create_by(self, obj):
+        owner = obj.owner
+        if owner:
+            return {'id': owner.id, 'username': owner.username, 'email': owner.email}
+        return None
+    
      
     def get_docsubport(self, obj): 
         docsubports = Document.objects.filter(portfolio=obj,is_delete=False) 
         serializer = DocumentSerializer(docsubports, many=True) 
         return serializer.data 
+    
     class Meta: 
         model = Portfolio 
-        fields = ['id','title','retention_period', 'languege', 'classification','identification_code','usage_policy','start_date','end_date','physical_condition','warehouse','keywords','annotation','barcode','status', 'is_delete','created_at', 'updated_at', 'delete_at', 'owner','create_by','delete_by', 'editor', 'docsubport'] 
+        fields = ['id','title','retention_period', 'languege', 'classification','identification_code','usage_policy','start_date','end_date','physical_condition','warehouse','keywords','annotation','barcode','status', 'is_delete','created_at', 'updated_at', 'delete_at', 'owner','create_by','delete_by', 'editor', 'docsubport','formationtime'] 
     def to_representation(self, instance): 
         data = super().to_representation(instance) 
         if instance.classification: 
